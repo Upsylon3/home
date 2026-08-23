@@ -1,0 +1,8 @@
+{
+  "name": "HomeMedia",
+  "short_name": "HomeMedia",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#14171c",
+  "theme_color": "#14171c"
+}

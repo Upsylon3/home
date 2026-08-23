@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Simple sync-arrows mark in the ecosystem's amber accent, echoing
+     HOME_ARTISTIC_DIRECTION.md §12's "HomeSync — arrows / connection"
+     icon concept (see backend/src/homecore/seed.js's icon field for the
+     same concept referenced on the web side). A placeholder worth a real
+     designer's pass eventually, not a permanent answer. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M34,42 A20,20 0 0 1 72,32"
+        android:strokeColor="#E8A33D"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M72,32 L72,44 L60,44"
+        android:strokeColor="#E8A33D"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M74,66 A20,20 0 0 1 36,76"
+        android:strokeColor="#E8A33D"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M36,76 L36,64 L48,64"
+        android:strokeColor="#E8A33D"
+        android:strokeWidth="6"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000" />
+</vector>

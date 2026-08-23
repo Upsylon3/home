@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Solid near-black, matching the ecosystem's dark identity (see
+     ui/theme/Color.kt's DarkBg) — deliberately plain, not a pattern or
+     gradient, so the amber mark in the foreground layer stays legible at
+     launcher-icon size. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#14171C" />
+</shape>

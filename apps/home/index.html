@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Home</title>
+
+    <!-- See ../frontend/index.html for why this has to be inline, first,
+         and dependency-free: it must run before any CSS paints. -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem("homecloud-theme");
+          var pref = stored === "light" || stored === "dark" ? stored : "system";
+          var resolved =
+            pref === "system"
+              ? window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches
+                ? "light"
+                : "dark"
+              : pref;
+          document.documentElement.setAttribute("data-theme", resolved);
+          if (resolved === "light") {
+            var meta = document.querySelector('meta[name="theme-color"]');
+            if (meta) meta.setAttribute("content", "#f6f2ea");
+          }
+        } catch (e) {
+          // Storage disabled (e.g. private browsing) — the default dark
+          // theme already baked into the CSS still applies fine.
+        }
+      })();
+    </script>
+
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#14171c" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Home" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

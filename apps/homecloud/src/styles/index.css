@@ -1,0 +1,467 @@
+:root {
+  --bg: #14171c;
+  --panel: #1d2128;
+  --panel-raised: #262b33;
+  --border: #333a45;
+  --text: #e8e6e1;
+  --text-dim: #9aa1ad;
+  --amber: #e8a33d;
+  --amber-dim: #7a5a28;
+  --teal: #4fb0a5;
+  --red: #d65f5f;
+
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --font-sans: "Inter", system-ui, sans-serif;
+}
+
+/* Light theme — same building, different lighting condition (see
+   HOME_ARTISTIC_DIRECTION.md §7). Surfaces get *slightly darker* than the
+   page background as they elevate (the inverse of dark mode, where they
+   get lighter), since you can't go lighter than off-white. Accent hues
+   (amber/teal/red) stay conceptually the same color but are deepened,
+   since the original values were tuned for contrast against a near-black
+   page and read too pale against an off-white one. */
+[data-theme="light"] {
+  --bg: #f6f2ea;
+  --panel: #ece6d9;
+  --panel-raised: #e0d8c5;
+  --border: #d2c7ae;
+  --text: #2a2419;
+  --text-dim: #766c58;
+  --amber: #8a5a16;
+  --amber-dim: #b89a6e;
+  --teal: #2f7d72;
+  --red: #b23b3b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font-family: inherit;
+}
+
+button:focus-visible,
+input:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ---------- Layout shells ---------- */
+
+.auth-screen {
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  position: relative;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(232, 163, 61, 0.06), transparent 40%),
+    var(--bg);
+}
+
+.auth-screen .theme-toggle-corner {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 32px;
+}
+
+.auth-brand {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  color: var(--amber);
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.auth-title {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  margin: 0 0 4px;
+}
+
+.auth-subtitle {
+  color: var(--text-dim);
+  font-size: 13px;
+  margin: 0 0 24px;
+}
+
+.field {
+  margin-bottom: 16px;
+}
+
+.field label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+  font-family: var(--font-mono);
+}
+
+.field input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-size: 14px;
+  font-family: var(--font-mono);
+}
+
+.field input:focus {
+  border-color: var(--amber-dim);
+}
+
+.btn {
+  width: 100%;
+  border: none;
+  border-radius: 4px;
+  padding: 11px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+.btn:hover {
+  filter: brightness(1.08);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--amber);
+  color: #1a1103;
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.btn-danger-ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--red);
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+.switch-row {
+  margin-top: 18px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.switch-row button {
+  background: none;
+  border: none;
+  color: var(--amber);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0;
+}
+
+.error-banner {
+  background: rgba(214, 95, 95, 0.12);
+  border: 1px solid rgba(214, 95, 95, 0.4);
+  color: #f0a8a8;
+  font-size: 13px;
+  padding: 10px 12px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+/* The dark-mode error-banner colors above are tuned to sit on a near-black
+   page — #f0a8a8 (pale pink) would nearly disappear against an off-white
+   one, so light mode gets its own, deeper treatment. */
+[data-theme="light"] .error-banner {
+  background: rgba(178, 59, 59, 0.08);
+  border-color: rgba(178, 59, 59, 0.35);
+  color: var(--red);
+}
+
+/* ---------- Dashboard ---------- */
+
+.dashboard {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 100%;
+}
+
+@media (max-width: 720px) {
+  .dashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .file-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}
+
+.sidebar {
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-brand {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--amber);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 28px;
+}
+
+.sidebar-user {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 20px;
+}
+
+.sidebar-user strong {
+  display: block;
+  color: var(--text);
+  font-size: 14px;
+  font-family: var(--font-mono);
+}
+
+.gauge-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  margin-bottom: 6px;
+}
+
+.gauge-track {
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.gauge-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--amber-dim), var(--amber));
+  transition: width 0.4s ease;
+}
+
+.gauge-fill.warn {
+  background: linear-gradient(90deg, #8a3f3f, var(--red));
+}
+
+.sidebar-spacer {
+  flex: 1;
+}
+
+.main {
+  padding: 28px 32px;
+}
+
+.main-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.main-header h1 {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  margin: 0;
+}
+
+.main-header .count {
+  color: var(--text-dim);
+  font-size: 13px;
+  font-family: var(--font-mono);
+}
+
+/* Activity LED - blinks briefly on upload/download/delete, like drive activity */
+.activity-led {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--amber-dim);
+  box-shadow: none;
+}
+
+.activity-led.on {
+  background: var(--teal);
+  box-shadow: 0 0 6px 1px rgba(79, 176, 165, 0.7);
+  animation: led-blink 0.5s ease-out;
+}
+
+@keyframes led-blink {
+  from {
+    box-shadow: 0 0 10px 3px rgba(79, 176, 165, 0.9);
+  }
+  to {
+    box-shadow: 0 0 6px 1px rgba(79, 176, 165, 0.7);
+  }
+}
+
+/* Upload dropzone */
+.dropzone {
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  padding: 28px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 13px;
+  margin-bottom: 24px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  cursor: pointer;
+}
+
+.dropzone.dragover {
+  border-color: var(--amber);
+  background: rgba(232, 163, 61, 0.05);
+  color: var(--text);
+}
+
+.dropzone input {
+  display: none;
+}
+
+.dropzone .hint {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
+.upload-progress {
+  margin-bottom: 20px;
+}
+
+.upload-progress-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+
+/* File table */
+.file-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.file-table th {
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 12px;
+  font-weight: 500;
+}
+
+.file-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.file-table tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* A white-wash hover overlay is invisible (or backwards) on a light page —
+   darken instead, same as any real surface would in that lighting. */
+[data-theme="light"] .file-table tr:hover td {
+  background: rgba(0, 0, 0, 0.035);
+}
+
+.file-name {
+  font-family: var(--font-mono);
+}
+
+.file-meta {
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.file-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.empty-state {
+  padding: 48px 12px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.empty-state .glyph {
+  font-family: var(--font-mono);
+  font-size: 28px;
+  color: var(--amber-dim);
+  display: block;
+  margin-bottom: 8px;
+}

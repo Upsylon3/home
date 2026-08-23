@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pre-Android-12 auto backup rules. Excludes the DataStore files holding
+     the session token and server address — those shouldn't silently ride
+     along in a device backup/restore to a different phone. -->
+<full-backup-content>
+    <exclude domain="sharedpref" path="." />
+    <exclude domain="file" path="datastore" />
+</full-backup-content>

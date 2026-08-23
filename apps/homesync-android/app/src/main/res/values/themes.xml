@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Compose owns all actual UI (see ui/theme/Theme.kt) — this XML
+         theme only sets the window-level basics Android needs before
+         Compose even starts (no action bar, base color while the first
+         frame renders). -->
+    <style name="Theme.HomeSync" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/window_background</item>
+        <item name="android:statusBarColor">@color/window_background</item>
+    </style>
+</resources>

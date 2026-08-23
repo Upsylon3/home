@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Android 13+ (API 33) split storage permission into per-media-type
+         grants rather than one blanket READ_EXTERNAL_STORAGE. Both are
+         declared with maxSdkVersion/minSdkVersion so the right one applies
+         on the right OS version — this is the standard, current way to
+         request media access, not a legacy fallback. -->
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+
+    <!-- Lets WorkManager actually wake the backup job on schedule rather
+         than having it silently delayed by Doze — required for the
+         "automatic scheduled backup" feature to be reliable, not optional
+         polish. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <application
+        android:name=".HomeSyncApplication"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.HomeSync"
+        android:usesCleartextTraffic="true">
+        <!-- Deliberately true, not the Android-9+ default of false: the
+             server address here is whatever the person types in on first
+             launch (see ui/login/LoginScreen.kt), and a huge fraction of
+             self-hosted deployments are reached over plain HTTP on the
+             home LAN, with TLS only added later (if at all) for access
+             from outside the house — see the main README's "Getting to
+             it from outside your house" section. This doesn't force
+             cleartext for anyone; an https:// server address still uses
+             TLS exactly as normal. It only stops Android from silently
+             blocking the http:// case most self-hosters will actually hit
+             on day one. -->
+
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="true"
+            android:theme="@style/Theme.HomeSync">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- WorkManager registers its own worker via WorkManager APIs at
+             runtime (see BackupScheduler.kt) — nothing to declare here. -->
+    </application>
+
+</manifest>

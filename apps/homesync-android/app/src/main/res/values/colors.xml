@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches ui/theme/Color.kt's LightBg — used only for the brief
+         window background before Compose's first frame draws, so it
+         should match whichever theme Compose is about to resolve to
+         (isSystemInDarkTheme() → the same system day/night signal this
+         resource qualifier already follows). The values-night/ variant
+         below covers the dark case. -->
+    <color name="window_background">#F6F2EA</color>
+</resources>

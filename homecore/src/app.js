@@ -2,7 +2,7 @@
 // TRANSITIONAL FILE — read this before changing anything below.
 //
 // This directory is named `homecore/`, but it is NOT yet the real,
-// separated Tier 0 HomeCore described in ARCHITECTURE.md. It is still the
+// separated Tier 0 HomeCore described in docs/ARCHITECTURE.md. It is still the
 // original HomeCloud file-storage backend (authRoutes, fileRoutes,
 // folderRoutes, adminRoutes, activityRoutes, publicShareRoutes below) with
 // the real HomeCore platform code (`./homecore`, mounted at /api/core)

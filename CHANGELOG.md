@@ -6,25 +6,49 @@ follows [SemVer](https://semver.org/) as described in `VERSIONING.md`.
 > **A note on the history below `0.1.0`:** there was no git repository
 > before this pass, so nothing before `0.1.0` has real commit history —
 > it's reconstructed, as accurately as the surviving docs allow, from
-> `ARCHITECTURE.md`, `SERVICES.md`, and `ROADMAP.md`'s own "checked
+> `docs/ARCHITECTURE.md`, `docs/SERVICES.md`, and `docs/ROADMAP.md`'s own "checked
 > directly against the repo" passes. Treat it as a summary, not a ledger.
 
 ## [Unreleased]
 
-### Known unmerged work (see `VERSIONING.md`'s "Reconciling the branches")
-- The 9-icon SVG set + wordmark + `AppIcon.jsx`, built in a separate
-  session, is **not in this checkout**. `homecore/seed.js` still points at
-  icon paths (`/icons/homecloud.svg` etc.) that don't resolve to real
-  files here.
-- HomeSync Android's `data/` package (`SessionManager`, `SettingsStore`,
-  `ApiClient`/`HomeSyncApi`, `AppDatabase`, `SyncedMediaDao`,
-  `SyncedMediaEntity`), also built in a separate session, is **not in this
-  checkout**. The Android app still will not build without it.
+### Correction to this file (2026-08-24)
+The "Known unmerged work" entry originally here assumed the icon-set and
+HomeSync-Android-data-layer code from earlier sessions could still be
+pasted in later. That code is confirmed lost — it only ever existed
+inside past chat sessions and was never saved anywhere retrievable. What
+survives is the *specification* of both, in the doc set folded into this
+repo below (`docs/`): `docs/DESIGN_SYSTEM.md`'s "Icon system" section
+describes the icon language precisely enough to regenerate it, and
+`docs/SERVICES.md`'s HomeSync section lists the exact missing Kotlin
+classes and what each one needs to do. Both are tracked as ordinary
+backlog items in `docs/ROADMAP.md` (#1 and #3) — rebuilt from spec, not
+recovered.
 
 ### Planned
+- Rebuild the icon set from `docs/DESIGN_SYSTEM.md`'s spec.
+- Rebuild HomeSync Android's `data/` package from `docs/SERVICES.md`'s
+  exact missing-class list.
 - Real separation of HomeCore (identity/sessions/permissions/registry)
   from HomeCloud (files/folders/sharing) into two independent services —
-  see `MIGRATION_PLAN.md`.
+  see `MIGRATION_PLAN.md`. Not blocked by either item above; all three
+  can happen in any order or in parallel, on separate branches.
+
+## [0.1.1]
+
+### Added
+- Folded the full doc set (`docs.zip` — `SETUP.md`, `SERVICES.md`,
+  `SECURITY.md`, `ROADMAP.md`, `TESTING.md`, `DESIGN_SYSTEM.md`,
+  `DEVELOPER_GUIDE.md`, `SETUP_SCRIPT_CHANGES.md`, and the doc-set's own
+  index `README.md`) into this repo under `docs/`, alongside
+  `ARCHITECTURE.md` (moved there from the root — it was a byte-identical
+  duplicate of the copy already in the doc set). This was previously a
+  second, separate zip with no fixed relationship to the code — now it's
+  one repo, one history. All references to these files elsewhere in the
+  repo were updated to point at `docs/`.
+
+### Fixed
+- Corrected this file's "Known unmerged work" entry — see the
+  [Unreleased] section above.
 
 ## [0.1.0] — first tracked checkpoint (this pass)
 
@@ -84,7 +108,7 @@ this commit.
   this checkout entirely (see Unreleased above) — not regressions, just
   never-merged work from other sessions.
 - HomeCore's permission system is still declarative only (per
-  `SECURITY.md`) — nothing enforces a declared permission before granting
+  `docs/SECURITY.md`) — nothing enforces a declared permission before granting
   cross-app access.
 
 ## Before [0.1.0] — reconstructed summary, no real commit history
@@ -104,8 +128,8 @@ this commit.
 - The gateway was introduced (single origin, shared login), then
   **dropped entirely** during a period of parallel-session work on
   different apps, then restored — the incident that directly motivated
-  the Tier 0/1/2 layering rule in `ARCHITECTURE.md` §4.
+  the Tier 0/1/2 layering rule in `docs/ARCHITECTURE.md` §4.
 - This pass: repository restructured into `gateway/`, `homecore/`,
   `apps/*`, `services/backup/`; HomeNotes built as a fourth Tier 1 app
-  (backend + frontend + tests) — not yet reflected in `SERVICES.md`/
-  `ROADMAP.md`, which still describe it as "not started."
+  (backend + frontend + tests) — not yet reflected in `docs/SERVICES.md`/
+  `docs/ROADMAP.md`, which still describe it as "not started."

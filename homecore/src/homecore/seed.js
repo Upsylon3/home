@@ -49,7 +49,7 @@ function seedHomecloudApplication() {
   // HOMECLOUD_FRONTEND_URL=/cloud/ (a *path*, not a full URL) because the
   // gateway now puts every app behind one origin — see gateway/nginx.conf.
   // The fallback below only kicks in when this file runs OUTSIDE Docker
-  // (§4 of SETUP.md, e.g. `npm run dev` inside homecore/ directly), where
+  // (§4 of docs/SETUP.md, e.g. `npm run dev` inside homecore/ directly), where
   // there is no gateway in front of it yet, so a real host:port is needed
   // instead of a path. IMPORTANT: this must stay a *path-shaped* default
   // ("/cloud") to match the gateway once you *do* run behind it — a bare

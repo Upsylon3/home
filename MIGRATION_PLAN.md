@@ -46,14 +46,14 @@ exactly this:
   already a well-built seam, not something to throw away.
 - Once split, HomeCloud can't call a same-process listener anymore. It
   instead **emits** to HomeCore's event bus over HTTP, fire-and-forget —
-  exactly the Tier 1 rule in `ARCHITECTURE.md` §4 ("may emit events to
+  exactly the Tier 1 rule in `docs/ARCHITECTURE.md` §4 ("may emit events to
   the shared bus... your app must work identically whether anything is
   listening or not"). If that call fails, the upload/delete/share still
   succeeds; only the audit-trail entry is missed, logged as a warning.
 - `GET /api/activity` (today: "my own recent activity," reading
   `activity_log`) becomes a HomeCore route filtering `hc_activity_events`
   by `user_id` instead. One feed, one table, both apps write to it.
-- This is also, for free, the first real piece of `ROADMAP.md`'s
+- This is also, for free, the first real piece of `docs/ROADMAP.md`'s
   cross-app timeline idea — the one it calls "the single best
   effort-to-payoff idea on this list."
 
@@ -84,7 +84,7 @@ directory was clearly scaffolded for.
 - New folder, own `package.json`, own `Dockerfile`, own SQLite data
   directory — same shape as `homemedia-backend`.
 - Depends on `packages/homecore-client` for auth (no local JWT
-  verification — delegates to HomeCore, per `DEVELOPER_GUIDE.md`'s
+  verification — delegates to HomeCore, per `docs/DEVELOPER_GUIDE.md`'s
   "delegated auth" principle, the same way its three siblings already
   do).
 - A working `/api/health` endpoint and a passing (near-empty) test suite.
@@ -105,7 +105,7 @@ directory was clearly scaffolded for.
 - Move the matching test files; adapt them to spin up the new isolated
   service the way `homemedia-backend/test/` already does against a real
   HomeCore test instance (integration, not mocks — matches
-  `TESTING.md`'s existing standard).
+  `docs/TESTING.md`'s existing standard).
 - Don't delete the originals in `homecore/` until the new suite is fully
   green — keep both on the branch, delete in the same commit that flips
   the switch.
@@ -127,7 +127,7 @@ directory was clearly scaffolded for.
   `files` table.
 - Add a small internal endpoint on the new HomeCloud backend —
   `GET /internal/users/usage`, shared-secret authenticated (same pattern
-  as `ARCHITECTURE.md` §4's HomeBridge "Option B," reused here since it's
+  as `docs/ARCHITECTURE.md` §4's HomeBridge "Option B," reused here since it's
   the same shape of problem: one trusted service calling another as
   itself, not as a user).
 - `admin.js` (staying in HomeCore — it's genuinely a user-management
@@ -158,7 +158,7 @@ directory was clearly scaffolded for.
   prefix like its siblings for consistency. Keeping the existing paths
   means zero frontend changes; adopting the prefix means one less
   special case in the gateway config. Either is fine — pick one and note
-  it in `ARCHITECTURE.md` §5's routing table so it doesn't need
+  it in `docs/ARCHITECTURE.md` §5's routing table so it doesn't need
   rediscovering later.
 - `homecore/src/homecore/seed.js`: delete `seedHomecloudApplication()`'s
   special self-registration case — once HomeCloud is a real separate
@@ -170,7 +170,7 @@ directory was clearly scaffolded for.
 
 - Delete the now-unused route files, table definitions, and the
   TRANSITIONAL notice at the top of `homecore/src/app.js`.
-- Update `ARCHITECTURE.md` §3/§6 and `README.md`'s "Tiered architecture"
+- Update `docs/ARCHITECTURE.md` §3/§6 and `README.md`'s "Tiered architecture"
   section — both currently describe the split as further along than it
   is; once it's real, they should say so plainly, matching this
   project's own stated standard of verifying claims against the repo
@@ -186,7 +186,7 @@ directory was clearly scaffolded for.
 - `packages/homecore-client` becomes the one obvious place any *future*
   app (HomeTasks, HomeMonitor) plugs into identity, instead of writing a
   fourth-then-fifth copy of the same client.
-- HomeVault's threat model (`SECURITY.md` Part B) explicitly lists a real
+- HomeVault's threat model (`docs/SECURITY.md` Part B) explicitly lists a real
   permission-enforcement pass as a prerequisite for anything beyond
   HomeCloud/HomeMedia/HomeSync's current owner-only checks — a real
   HomeCore service with its own clean API surface is a meaningfully

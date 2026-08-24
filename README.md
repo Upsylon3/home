@@ -9,7 +9,7 @@
 > one. Where this document still says "homecloud" meaning *the whole project*,
 > read it as "Home"; where it says "homecloud" meaning *the file-storage app
 > specifically* (uploads, folders, quotas), that's still accurate as-is. See
-> `ARCHITECTURE.md` for the current, precise picture — this file is the long
+> `docs/ARCHITECTURE.md` for the current, precise picture — this file is the long
 > beginner's walkthrough, not the source of truth for what's actually built.
 
 This document has two jobs. First, it's a **lesson** — if you don't know what
@@ -35,7 +35,7 @@ family's files. Anyone in your family creates one account and, from one
 dashboard, gets access to whichever of Home's apps are installed: HomeCloud
 for file storage (upload, list, download, delete — recoverably, more on that
 below), and others as they're added. One login, one identity, many rooms in
-the same house — see `DESIGN_SYSTEM.md` for that metaphor in full.
+the same house — see `docs/DESIGN_SYSTEM.md` for that metaphor in full.
 
 The rest of Part 1 below explains the concepts using HomeCloud's own
 file-storage feature set as the running example, since it's the most

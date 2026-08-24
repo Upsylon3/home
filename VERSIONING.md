@@ -46,7 +46,7 @@ forever:
   capability. The seed.js URL-fallback fix and the `.gitignore`/compose
   project-name fix in this pass are exactly patch-sized.
 - **MINOR** (`0.1.0` → `0.2.0`) — a new capability lands and is verified
-  working (per `TESTING.md`'s "verified by actually running it," not
+  working (per `docs/TESTING.md`'s "verified by actually running it," not
   "should work"). Finishing HomeSync's Android `data/` package, actually
   integrating the icon set, or completing the real HomeCore/HomeCloud
   split are each minor-version-sized.
@@ -114,20 +114,28 @@ Once that exists, every future session should clone/pull from there
 instead of working from a fresh zip export — that's what actually closes
 the loop on "10000 forks."
 
-## Reconciling the branches that already diverged
+## The icon set and HomeSync Android's data layer: lost, not unmerged
 
-Three pieces of real, working code currently exist in three places that
-don't talk to each other:
+An earlier version of this section assumed two pieces of work built in
+past sessions — the icon SVG set and HomeSync Android's `data/` package
+— could be pasted back in later as their own branches. That code is
+confirmed gone; it only ever existed inside chat sessions that weren't
+saved anywhere durable. **This is exactly the failure mode this file
+exists to prevent going forward** — from `v0.1.0` on, if it isn't
+committed to `main`, treat it as not existing yet, full stop, no matter
+how recently it was written.
 
-| Work | Where it lives right now |
-|---|---|
-| This tiered-refactor restructure (`apps/`, `homecore/`, gateway, HomeNotes) | This checkout |
-| The 9-icon SVG set + wordmark + `AppIcon.jsx` | A separate, earlier session — not in this checkout |
-| HomeSync Android's `data/` package (SessionManager, ApiClient, AppDatabase, ...) | A separate, earlier session — not in this checkout |
+What does survive is the *specification* of both, now living in this
+repo under `docs/` (folded in at `v0.1.1` — see `CHANGELOG.md`):
 
-None of this is lost — it's just unmerged. The fastest path to actually
-having all of it in one place: paste or re-upload each of those two
-pieces of work in a follow-up session, and they'll be added as their own
-branches (`feat/design-icon-system`, `feat/homesync-data-layer`) merged
-into the `main` this pass just created, rather than left as separate
-zips indefinitely.
+- `docs/DESIGN_SYSTEM.md`'s "Icon system" section — the shared frame, the
+  per-app glyph for each of the nine apps, the `currentColor` requirement.
+- `docs/SERVICES.md`'s HomeSync section — the exact list of missing
+  Kotlin classes (`SessionManager`, `SettingsStore`, `ApiClient`/
+  `HomeSyncApi`, `AppDatabase`, `SyncedMediaDao`, `SyncedMediaEntity`) and
+  what each needs to do.
+- Both are tracked as ordinary backlog items in `docs/ROADMAP.md` (#1 and
+  #3) — rebuild from spec on their own branches
+  (`feat/design-icon-system`, `feat/homesync-data-layer`) whenever it's
+  time to tackle them. Neither blocks `MIGRATION_PLAN.md`; all three can
+  proceed in any order.

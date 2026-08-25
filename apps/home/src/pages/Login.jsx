@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, setToken } from "../api.js";
-import { HomeGlyph } from "../components/icons.jsx";
+import Wordmark from "../components/Wordmark.jsx";
 import ThemeToggle from "../components/ThemeToggle.jsx";
 
 // Home signs in against the same /api/auth/login HomeCloud already uses —
@@ -64,7 +64,7 @@ export default function Login({ onAuthed }) {
         <ThemeToggle className="btn btn-ghost theme-toggle-corner" />
         <div className="auth-card">
           <div className="auth-brand">
-            <HomeGlyph size={14} /> home
+            <Wordmark height={20} />
           </div>
           <h1 className="auth-title">Enter your code</h1>
           <p className="auth-subtitle">Open your authenticator app, or use one of your recovery codes.</p>
@@ -112,7 +112,7 @@ export default function Login({ onAuthed }) {
       <ThemeToggle className="btn btn-ghost theme-toggle-corner" />
       <div className="auth-card">
         <div className="auth-brand">
-          <HomeGlyph size={14} /> home
+          <Wordmark height={20} />
         </div>
         <h1 className="auth-title">Welcome back</h1>
         <p className="auth-subtitle">Sign in to see what's here.</p>

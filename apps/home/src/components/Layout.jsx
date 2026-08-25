@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { api, setToken } from "../api.js";
-import { HomeGlyph, GridGlyph, GearGlyph } from "./icons.jsx";
+import { GridGlyph, GearGlyph } from "./icons.jsx";
+import AppIcon from "./AppIcon.jsx";
 import NotificationBell from "./NotificationBell.jsx";
 import ThemeToggle from "./ThemeToggle.jsx";
 
@@ -27,14 +28,14 @@ export default function Layout({ user, onLogout }) {
     <div className="shell">
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <HomeGlyph size={16} /> Home
+          <AppIcon name="home" size={16} /> Home
         </div>
 
         <nav>
           <ul className="nav-list">
             <li>
               <NavLink to="/" end className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
-                <HomeGlyph size={15} /> Home
+                <AppIcon name="home" size={15} /> Home
               </NavLink>
             </li>
             {apps
@@ -42,7 +43,7 @@ export default function Layout({ user, onLogout }) {
               .map((a) => (
                 <li key={a.slug}>
                   <a className="nav-link" href={a.baseUrl || "#"} target="_blank" rel="noreferrer">
-                    <span className="dot" /> {a.name}
+                    <AppIcon name={a.slug} size={15} /> {a.name}
                   </a>
                 </li>
               ))}
@@ -78,7 +79,9 @@ export default function Layout({ user, onLogout }) {
 
       <div className="shell-main">
         <header className="topbar">
-          <div className="topbar-brand">Home</div>
+          <div className="topbar-brand">
+            <AppIcon name="home" size={18} /> Home
+          </div>
           <div className="topbar-actions">
             <ThemeToggle className="icon-btn" iconOnly />
             <NotificationBell />
@@ -93,7 +96,7 @@ export default function Layout({ user, onLogout }) {
 
       <nav className="bottom-nav">
         <NavLink to="/" end className={({ isActive }) => `bottom-nav-item${isActive ? " active" : ""}`}>
-          <HomeGlyph size={18} />
+          <AppIcon name="home" size={18} />
           Home
         </NavLink>
         <NavLink to="/apps" className={({ isActive }) => `bottom-nav-item${isActive ? " active" : ""}`}>

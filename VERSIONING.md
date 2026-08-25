@@ -116,6 +116,12 @@ the loop on "10000 forks."
 
 ## The icon set and HomeSync Android's data layer: lost, not unmerged
 
+**Update, `v0.2.0`:** the icon set below has since been rebuilt from spec
+and committed — see `CHANGELOG.md` `[0.2.0]`. Leaving the section below
+as-is rather than deleting it; the lesson it documents (uncommitted work
+is not real, no matter how recent) still applies to HomeSync Android's
+data layer, and to anything built in any future session.
+
 An earlier version of this section assumed two pieces of work built in
 past sessions — the icon SVG set and HomeSync Android's `data/` package
 — could be pasted back in later as their own branches. That code is

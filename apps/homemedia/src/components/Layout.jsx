@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { setToken } from "../api.js";
 import { ImageGlyph, StarGlyph, GridGlyph, GearGlyph } from "./icons.jsx";
+import AppIcon from "./AppIcon.jsx";
 import ThemeToggle from "./ThemeToggle.jsx";
 
 export default function Layout({ user, onLogout }) {
@@ -16,7 +17,7 @@ export default function Layout({ user, onLogout }) {
     <div className="shell">
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <ImageGlyph size={16} /> HomeMedia
+          <AppIcon name="homemedia" size={16} /> HomeMedia
         </div>
 
         <nav>
@@ -63,7 +64,9 @@ export default function Layout({ user, onLogout }) {
 
       <div className="shell-main">
         <header className="topbar">
-          <div className="topbar-brand">HomeMedia</div>
+          <div className="topbar-brand">
+            <AppIcon name="homemedia" size={18} /> HomeMedia
+          </div>
           <div className="topbar-actions">
             <ThemeToggle className="icon-btn" iconOnly />
             <NavLink to="/settings" className="icon-btn" aria-label="Settings">

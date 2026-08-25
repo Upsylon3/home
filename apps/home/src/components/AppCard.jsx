@@ -1,11 +1,29 @@
+import AppIcon from "./AppIcon.jsx";
+
+// Only slugs the icon set actually has a glyph for — anything else (a
+// future app not yet designed) falls back to the initial-letter tile
+// rather than rendering a broken/blank icon. See design/AppIcon.jsx.
+const ICONED_SLUGS = new Set([
+  "home",
+  "homecloud",
+  "homemedia",
+  "homenotes",
+  "hometasks",
+  "homesync",
+  "homemonitor",
+  "homevault",
+  "homeai"
+]);
+
 export default function AppCard({ app, stat, adminControls }) {
   const initial = app.name ? app.name.charAt(0).toUpperCase() : "?";
+  const hasIcon = app.slug && ICONED_SLUGS.has(app.slug);
 
   return (
     <div className="app-card">
       <div className="app-card-top">
         <div className="app-card-icon" aria-hidden="true">
-          {initial}
+          {hasIcon ? <AppIcon name={app.slug} size={28} /> : initial}
         </div>
       </div>
       <div>

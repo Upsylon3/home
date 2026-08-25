@@ -25,13 +25,45 @@ backlog items in `docs/ROADMAP.md` (#1 and #3) — rebuilt from spec, not
 recovered.
 
 ### Planned
-- Rebuild the icon set from `docs/DESIGN_SYSTEM.md`'s spec.
 - Rebuild HomeSync Android's `data/` package from `docs/SERVICES.md`'s
   exact missing-class list.
 - Real separation of HomeCore (identity/sessions/permissions/registry)
   from HomeCloud (files/folders/sharing) into two independent services —
-  see `MIGRATION_PLAN.md`. Not blocked by either item above; all three
-  can happen in any order or in parallel, on separate branches.
+  see `MIGRATION_PLAN.md`. Not blocked by anything above; can happen in
+  any order or in parallel, on separate branches.
+
+## [0.2.0] — icon set rebuilt from spec
+
+### Added
+- The 9-icon set + wordmark from `docs/DESIGN_SYSTEM.md`'s spec, rebuilt
+  from scratch (the original was lost — see the [Unreleased] correction
+  note above) and rendered/verified with `rsvg-convert` at both preview
+  and favicon scale, on both light and dark backgrounds, before shipping
+  — not just written and assumed correct.
+- `design/` — the canonical source: `design/icons/*.svg` (nine app icons
+  + `wordmark.svg`), `design/AppIcon.jsx` and `design/Wordmark.jsx` (inline
+  React versions — an `<img src>` can't be recolored by `currentColor`,
+  so anywhere an icon needs to follow the theme, it has to be inlined
+  JSX, not a static file reference), and `design/sync-assets.sh`, which
+  copies these out to every frontend that uses them. Edit only the
+  `design/` copies; the script overwrites the rest.
+- Real icons wired into Home (`AppCard.jsx` launcher tiles, sidebar app
+  list, sidebar/topbar brand, mobile bottom-nav, and the `Wordmark`
+  component on both login screens), HomeMedia's and HomeNotes'
+  sidebar/topbar brand.
+- `homecore/seed.js`'s icon paths (`/icons/homecloud.svg` etc.) now
+  resolve to real files for the first time.
+
+### Verified
+- `apps/home`, `apps/homemedia`, and `apps/homenotes` each `npm run
+  build` clean with these changes in place — not just checked by eye.
+
+### Known gap
+- `apps/homecloud` has no shared branded `Layout.jsx` the way its three
+  siblings do (predates that pattern), so it only received the icon
+  *files* (favicon/manifest use) — nothing to inline the icon into yet.
+  Worth a small follow-up once someone's touching that frontend anyway;
+  not urgent enough to justify restructuring it on its own.
 
 ## [0.1.1]
 

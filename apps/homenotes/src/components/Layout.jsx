@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { api, setToken } from "../api.js";
 import { NoteGlyph, StarGlyph, TrashGlyph, GearGlyph, PlusGlyph } from "./icons.jsx";
+import AppIcon from "./AppIcon.jsx";
 import ThemeToggle from "./ThemeToggle.jsx";
 import FolderTree from "./FolderTree.jsx";
 
@@ -58,7 +59,7 @@ export default function Layout({ user, onLogout }) {
     <div className="shell">
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <NoteGlyph size={16} /> HomeNotes
+          <AppIcon name="homenotes" size={16} /> HomeNotes
         </div>
 
         <button className="btn btn-primary" style={{ margin: "4px 0 14px" }} onClick={handleNewNote}>
@@ -131,7 +132,9 @@ export default function Layout({ user, onLogout }) {
 
       <div className="shell-main">
         <header className="topbar">
-          <div className="topbar-brand">HomeNotes</div>
+          <div className="topbar-brand">
+            <AppIcon name="homenotes" size={18} /> HomeNotes
+          </div>
           <div className="topbar-actions">
             <ThemeToggle className="icon-btn" iconOnly />
             <NavLink to="/settings" className="icon-btn" aria-label="Settings">

@@ -27,6 +27,15 @@ async function startTestApp() {
   process.env.CORS_ORIGIN = "*";
   delete process.env.PORT; // avoid ever accidentally colliding with a fixed port in tests
 
+  // homecore's own test harness (booted just above) already sets these to
+  // the same values, and since everything here runs in one process they'd
+  // be inherited either way — set explicitly anyway so this harness stays
+  // correct and self-documenting even if that ever changes upstream.
+  // Small quota (2 MB, matching homecore/test/files.test.js's own value)
+  // so quota-exceeded tests don't need to actually upload huge files.
+  process.env.QUOTA_BYTES = String(2 * 1024 * 1024);
+  process.env.TRASH_RETENTION_DAYS = "30";
+
   // eslint-disable-next-line global-require -- must load after env vars are set
   const { app, db } = require("../../src/app");
 

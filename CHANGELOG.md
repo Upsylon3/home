@@ -29,6 +29,79 @@ recovered.
   from HomeCloud (files/folders/sharing) into two independent services —
   see `MIGRATION_PLAN.md`.
 
+## [0.6.0] — Phase 2 of `MIGRATION_PLAN.md`: real file/folder/share logic moves
+
+The big one. `files.js`, `folders.js`, `publicShare.js`, and their tables
+moved from `homecore/` into `apps/homecloud-backend`, which now actually
+does something.
+
+### Added
+- `apps/homecloud-backend/src/db.js`: `files`/`folders`/`shares` tables,
+  moved from `homecore/src/db.js`. One deliberate schema change: no
+  foreign keys to `users(id)` anymore — can't reach across two separate
+  database files. Checked directly first: no account-deletion route
+  exists anywhere today (only disable/quota/role/2FA-reset in
+  `admin.js`), so this drops no live behavior — a real, named gap for
+  whoever adds account deletion later, not a live bug now.
+- `apps/homecloud-backend/src/files.js`, `folders.js`, `publicShare.js` —
+  moved, with exactly two behavioral changes from the originals: auth
+  applies at mount time via `@home/homecore-client` instead of a local
+  middleware import, and the quota limit comes from
+  `req.user.quotaOverride` (see the `homecore/src/auth.js` change below)
+  instead of a local `users` table query. Every route, status code, and
+  error message was diffed against the original and confirmed identical
+  otherwise — one real mismatch caught this way in an early draft of
+  `publicShare.js` (wrong status codes, wrong rate-limit option name)
+  before it ever reached a test run.
+- **New:** `GET /api/homecloud/files/quota` — didn't exist in the
+  original. HomeCore's own `/api/auth/me` could compute `usedBytes` with
+  a direct query in the merged process; once split, that field is stale
+  for anyone actually using this service (checked directly — the adapted
+  quota test failed against it, `0 !== 1468006`, which is what surfaced
+  this). This is the real, reachable replacement, exposing what this
+  service already computes locally for its own quota enforcement.
+- Routes settled at `/api/homecloud/files`, `/api/homecloud/folders` —
+  `MIGRATION_PLAN.md`'s Phase 5 originally left this as an open decision;
+  Phase 2's own tests needed something concrete to call, so it got
+  decided here instead. The public share-download route stayed at the
+  unprefixed `/api/share/:token`, deliberately — link stability for
+  already-shared URLs matters more there than API-prefix consistency.
+- `apps/homecloud-backend/test/files.test.js`, `folders.test.js`,
+  `publicShare.test.js` — moved from `homecore/test/`, adapted for two
+  real services instead of one (registration against HomeCore, requests
+  against this service, one exception: the quota check now calls this
+  service's own new `/quota` endpoint instead of HomeCore's `/me`).
+
+### Changed
+- `homecore/src/auth.js`'s still-live `/api/auth/me` gains an additive
+  `quotaOverride` field (the raw limit, not the computed usage) —
+  `quotaBytes`/`usedBytes` stay exactly as they were, since
+  `apps/homecloud`'s current frontend still depends on them until Phase 5
+  flips the switch. Confirmed additive, not breaking: HomeCore's own
+  suite re-run immediately after this one-line change, still 64/64.
+
+### Known, temporary gap (see `apps/homecloud-backend/src/db.js`'s comment)
+- `logActivity()` in the new service is a genuine no-op for now. File/
+  folder actions performed through it do not appear in anyone's activity
+  feed until Phase 3 lands the real HTTP-emit-to-HomeCore replacement.
+  Every call site was moved unchanged specifically so Phase 3 only has to
+  change what the function *does*, not rewrite every caller a second
+  time.
+
+### Verified
+- New suite: 33/33 (5 from Phase 1 + 2 new `/quota` tests + 26 moved and
+  adapted from `homecore/test/`). One real failure surfaced and fixed
+  along the way (the `/quota` gap above), not swept under a passing
+  count.
+- Every other backend suite re-run afterward: `homecore` 64/64 (including
+  the `/me` change), `homemedia-backend` 18/18, `homesync-backend` 20/20,
+  `homenotes-backend` 24/24.
+- Confirmed directly (not assumed): the originals in `homecore/src/`
+  still exist and still pass their own tests — nothing deleted yet, per
+  the plan's explicit "delete in the same commit that flips the switch."
+  Confirmed `homecloud-backend` still isn't wired into
+  `docker-compose.yml`/`gateway/nginx.conf` — that's Phase 5.
+
 ## [0.5.0] — Phase 1 of `MIGRATION_PLAN.md`: `apps/homecloud-backend` shell
 
 ### Added

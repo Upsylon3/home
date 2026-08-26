@@ -111,7 +111,7 @@ token, accepts a real HomeCore-issued token) rather than just importing
 `requireAuth` unused — Phase 2 replaces it with real routes. See
 `CHANGELOG.md` `[0.5.0]`.
 
-## Phase 2 — move file/folder/share logic and data
+## Phase 2 — move file/folder/share logic and data ✅ done (`v0.6.0`)
 
 - Move `files.js`, `folders.js`, `publicShare.js`, and the `files`/
   `folders`/`shares` table definitions from `homecore/src/db.js` into
@@ -130,6 +130,37 @@ token, accepts a real HomeCore-issued token) rather than just importing
 - Don't delete the originals in `homecore/` until the new suite is fully
   green — keep both on the branch, delete in the same commit that flips
   the switch.
+
+**Done largely as planned, with two things worth knowing:**
+
+1. **The route-prefix decision Phase 5 (below) originally left open got
+   made here instead**, out of necessity — Phase 2's own tests needed a
+   real path to call. Routes moved to `/api/homecloud/files`,
+   `/api/homecloud/folders` (matching the sibling apps' convention); the
+   public share-download route stayed at the unprefixed `/api/share/:token`
+   deliberately, for URL stability (see `apps/homecloud-backend/src/app.js`'s
+   comment). Phase 5's job is now the concrete "point the frontend at
+   these paths," not an open question.
+2. **A real gap the adapted test suite caught, not something planned for
+   up front:** `/api/auth/me`'s `usedBytes` field reads HomeCore's own
+   (now cold, for anyone actually using the new service) `files` table —
+   fine as an additive, backward-compatible field for the still-live old
+   flow, but genuinely stale for the new one. The fix: a new
+   `GET /api/homecloud/files/quota` endpoint, exposing what this service
+   already computes locally for its own quota enforcement.
+   `apps/homecloud`'s `StorageGauge.jsx` moves to this once Phase 5 wires
+   the frontend up. This is exactly the kind of thing "verified by
+   actually running the tests" is supposed to catch before it becomes a
+   production surprise.
+
+Every adapted test's status codes, error messages, and route list were
+diffed against the original line-by-line before trusting them (one real
+mismatch was caught this way in `publicShare.js` — see `CHANGELOG.md`).
+Verified: new suite 33/33 (up from Phase 1's 5 — 5 original + 2 new
+quota-endpoint tests + roughly 26 moved from `homecore/test/`). Every
+other backend suite re-run afterward, unaffected: `homecore` 64/64,
+`homemedia-backend` 18/18, `homesync-backend` 20/20, `homenotes-backend`
+24/24. See `CHANGELOG.md` `[0.6.0]`.
 
 ## Phase 3 — retire `activity_log`
 
@@ -171,16 +202,17 @@ token, accepts a real HomeCore-issued token) rather than just importing
   build at it instead of at `homecore`.
 - `gateway/nginx.conf`: add a `/api/homecloud/` → `homecloud-backend`
   rule alongside the existing `/api/homemedia/`, `/api/homesync/`,
-  `/api/homenotes/` ones. **Note:** HomeCloud's frontend today calls bare
-  `/api/files`, `/api/folders`, `/api/share` (no `/homecloud/` prefix,
-  because it used to be the same service as `/api/auth`, `/api/admin`
-  etc.) — decide whether to keep those exact paths (gateway routes them
-  to the new backend instead of `homecore`) or adopt the `/api/homecloud/`
-  prefix like its siblings for consistency. Keeping the existing paths
-  means zero frontend changes; adopting the prefix means one less
-  special case in the gateway config. Either is fine — pick one and note
-  it in `docs/ARCHITECTURE.md` §5's routing table so it doesn't need
-  rediscovering later.
+  `/api/homenotes/` ones, plus `/api/share/` → `homecloud-backend` for
+  the public share-download route (kept unprefixed and unauthenticated —
+  see Phase 2). **The path-prefix question this note used to leave open
+  got decided in Phase 2** (out of necessity — its tests needed something
+  concrete to call): `/api/files`/`/api/folders` became
+  `/api/homecloud/files`/`/api/homecloud/folders`. This phase's actual
+  remaining job is mechanical — update `apps/homecloud`'s frontend
+  `api.js` to call the new paths (including `StorageGauge.jsx` moving
+  from `/api/auth/me`'s `usedBytes` to the new
+  `GET /api/homecloud/files/quota`, per Phase 2) — not a decision to
+  make.
 - `homecore/src/homecore/seed.js`: delete `seedHomecloudApplication()`'s
   special self-registration case — once HomeCloud is a real separate
   service, it gets pre-seeded exactly like HomeMedia/HomeSync/HomeNotes

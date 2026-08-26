@@ -226,7 +226,17 @@ router.get("/me", requireAuth, (req, res) => {
     role: req.user.role,
     quotaBytes,
     usedBytes: usedRow.used,
-    totpEnabled: Boolean(row.totp_enabled)
+    totpEnabled: Boolean(row.totp_enabled),
+    // Additive, not a replacement for quotaBytes/usedBytes above — this
+    // service's own frontend (apps/homecloud) still reads those two as
+    // the combined answer. quotaOverride is the raw per-user limit
+    // override alone (or null, meaning "use the default"), specifically
+    // for apps/homecloud-backend (see MIGRATION_PLAN.md's Phase 2) to
+    // compute its own quota check locally — it knows its own usedBytes
+    // from its own files table, and now gets the limit from here instead
+    // of a database join that can't work once files/folders/shares live
+    // in a different database entirely.
+    quotaOverride: row.quota_override ?? null
   });
 });
 

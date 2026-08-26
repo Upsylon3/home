@@ -1,22 +1,19 @@
-// Phase 1 of MIGRATION_PLAN.md's test suite: deliberately small, since
-// there's deliberately not much here yet. What it proves:
-//   1. The service boots and its health endpoint responds.
-//   2. Auth delegation to HomeCore actually works end to end — not just
-//      "requireAuth is imported," but a real request without a token is
-//      rejected, and a real token issued by HomeCore is accepted.
-// Phase 2 replaces the temporary /whoami route this exercises with real
-// files/folders/shares routes and their own, much larger test files.
+// The temporary /whoami route this file used to exercise (Phase 1) is
+// gone — replaced by real files/folders/shares routes in Phase 2 (see
+// files.test.js/folders.test.js/publicShare.test.js), which now cover
+// the same "auth delegation actually works end-to-end" ground more
+// thoroughly (real routes, real data, not a diagnostic stand-in). What's
+// left here: the two things that were never about auth in the first
+// place.
 const { test, before, after } = require("node:test");
 const assert = require("node:assert/strict");
 const { startTestApp, stopTestApp } = require("./helpers/app");
-const { makeClient, registerHomecloudBackendUser } = require("./helpers/client");
+const { makeClient } = require("./helpers/client");
 
-let baseUrl, homecore;
+let baseUrl;
 
 before(async () => {
-  const started = await startTestApp();
-  baseUrl = started.baseUrl;
-  homecore = started.homecore;
+  ({ baseUrl } = await startTestApp());
 });
 
 after(async () => {
@@ -28,26 +25,6 @@ test("health endpoint responds without auth", async () => {
   const res = await client.get("/api/homecloud/health");
   assert.equal(res.status, 200);
   assert.equal(res.body.status, "ok");
-});
-
-test("whoami rejects a request with no token", async () => {
-  const client = makeClient(baseUrl);
-  const res = await client.get("/api/homecloud/whoami");
-  assert.equal(res.status, 401);
-});
-
-test("whoami rejects a garbage token", async () => {
-  const client = makeClient(baseUrl);
-  client.setToken("not-a-real-token");
-  const res = await client.get("/api/homecloud/whoami");
-  assert.equal(res.status, 401);
-});
-
-test("whoami accepts a real token issued by HomeCore, and returns that user", async () => {
-  const { client, username } = await registerHomecloudBackendUser(homecore, baseUrl);
-  const res = await client.get("/api/homecloud/whoami");
-  assert.equal(res.status, 200);
-  assert.equal(res.body.user.username, username);
 });
 
 test("an unknown /api route 404s cleanly", async () => {

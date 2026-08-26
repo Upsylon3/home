@@ -98,7 +98,13 @@ against a real HomeCloud instance.
 
 ### Android app (`homesync-android/`)
 
-**This is the one part of the ecosystem with a real, current build gap.**
+**Update, `v0.3.0` (see `CHANGELOG.md`): the `data` package below has
+since been written** — 9 files, traced against every consumer's exact
+call signatures and against the real backend routes' JSON shapes. Left
+the section below as it was at the time it was written, since the
+reasoning (why it mattered, how it was checked) is still worth having;
+what's changed is stated plainly at each point rather than by silently
+editing history.
 
 What exists: 14 Kotlin files (13 main + 1 test) — sign-in with full 2FA
 support, independent Photos/Videos/Screenshots/Downloads toggles,
@@ -112,24 +118,28 @@ run outside Android entirely. It was compiled and run directly with
 checked against known test vectors and independently against Java's
 `MessageDigest`) are present and structured correctly.
 
-**What's missing:** `HomeSyncApplication.kt`, `BackupWorker.kt`,
-`HomeViewModel.kt`, and `LoginViewModel.kt` all import a `data` package —
-`ApiClient`, `HomeSyncApi` (plus its request/response types like
-`LoginRequest`, `CheckRequest`, `RegisterDeviceRequest`,
+**What was missing, as of `v0.1.x`:** `HomeSyncApplication.kt`,
+`BackupWorker.kt`, `HomeViewModel.kt`, and `LoginViewModel.kt` all import
+a `data` package — `ApiClient`, `HomeSyncApi` (plus its request/response
+types like `LoginRequest`, `CheckRequest`, `RegisterDeviceRequest`,
 `TwoFactorVerifyRequest`, `HistorySummary`), `SessionManager`,
 `SettingsStore`, `AppDatabase`, `SyncedMediaDao`, `SyncedMediaEntity` —
-**none of which exist anywhere in the repository.** This isn't a subtle
-gap: it's the entire network client and local database layer. As checked
-in, this module cannot compile. (Checked against both the gateway-restored
-and the sister setup-tooling branch — same gap in both, and nothing in
-`.gitignore` explains it as an intentionally excluded folder.)
+**none of which existed anywhere in the repository.** Not a subtle gap:
+the entire network client and local database layer.
 
-Earlier documentation described this as "written carefully but never
-build-tested" and estimated "17 Kotlin files" — both slightly optimistic
-relative to what's actually in the repo (14 files, and a missing data
-layer, not just an unverified build). Treat writing the `data/` package
-as the next concrete task here, before a first Android Studio build is
-attempted — see `ROADMAP.md`.
+**As of `v0.3.0`:** all nine files exist under `data/` (see
+`CHANGELOG.md` `[0.3.0]` for the exact list). Every import across the app
+resolves to a real file — cross-checked directly, not assumed. Two
+dependency-free files (`BackupSettings.kt`, `api/Models.kt`) were
+compiled with `kotlinc` alongside the already-verified `SyncLogic.kt`.
+The other seven depend on `android.*`, DataStore, Room, or Retrofit, none
+of which are resolvable without a real Android SDK + Gradle + a reachable
+Maven repository — unavailable in the sandbox that wrote them, same
+limitation this section already documented for `SyncLogicTest.kt` above.
+**A real `./gradlew build` (or an Android Studio Gradle sync) is the next
+real checkpoint** — everything here was carefully traced against actual
+call sites, not compiled, and "carefully traced" has been wrong before
+(see this same section's history above).
 
 **Deliberately deferred (design decisions, not oversights):** true
 resumable/chunked upload (retries re-send the whole file — reasonable
@@ -137,7 +147,9 @@ given Wi-Fi-only defaults and typical file sizes); a numeric
 battery-percentage threshold (uses WorkManager's built-in
 `requiresBatteryNotLow` instead); detecting an in-place photo edit (the
 dedup cache keys on MediaStore id alone); a real app icon / matching
-typography (placeholder for now).
+typography (placeholder for now — though the app now has *ecosystem*
+icons available to draw on, see `DESIGN_SYSTEM.md`'s icon system and
+`CHANGELOG.md` `[0.2.0]`).
 
 ## HomeCore
 

@@ -7,12 +7,16 @@ none of it committed.
 
 ## Near-term backlog (concrete, surfaced by checking the repo)
 
-1. **Write HomeSync Android's missing `data` package.** The single most
-   important open item — `SessionManager`, `SettingsStore`, `ApiClient` /
+1. **~~Write HomeSync Android's missing `data` package.~~ Written as of
+   `v0.3.0`** — `SessionManager`, `SettingsStore`, `ApiClient` /
    `HomeSyncApi` (+ its request/response types), `AppDatabase`,
-   `SyncedMediaDao`, `SyncedMediaEntity` are imported throughout the app
-   but don't exist. Nothing else Android-side can be verified (Gradle
-   sync, a real device run) until this exists. See `SERVICES.md#homesync`.
+   `SyncedMediaDao`, `SyncedMediaEntity` all exist now, traced against
+   every consumer's call signatures and against the real backend routes'
+   JSON shapes — see `CHANGELOG.md` `[0.3.0]`. **Not yet compiled with a
+   real Android toolchain** (no Android SDK / Gradle / reachable Maven
+   repo in the environment that wrote it) — a real `./gradlew build` or
+   Android Studio Gradle sync is the actual next step, and the thing that
+   turns "carefully traced" into "verified." See `SERVICES.md#homesync`.
 2. **Patch `setup.sh` / `setup.ps1`** to match the restored gateway: drop
    the `LAN_IP` templating (unused by `docker-compose.yml` now) and the
    `8081`/`8082`/`8083` port references in their final summary; point

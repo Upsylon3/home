@@ -25,12 +25,55 @@ backlog items in `docs/ROADMAP.md` (#1 and #3) — rebuilt from spec, not
 recovered.
 
 ### Planned
-- Rebuild HomeSync Android's `data/` package from `docs/SERVICES.md`'s
-  exact missing-class list.
 - Real separation of HomeCore (identity/sessions/permissions/registry)
   from HomeCloud (files/folders/sharing) into two independent services —
-  see `MIGRATION_PLAN.md`. Not blocked by anything above; can happen in
-  any order or in parallel, on separate branches.
+  see `MIGRATION_PLAN.md`.
+
+## [0.3.0] — HomeSync Android's `data/` package rebuilt from spec
+
+Rebuilt (the original was lost — see the `[Unreleased]` correction note
+above) by tracing every consumer file (`HomeSyncApplication.kt`,
+`BackupWorker.kt`, `HomeViewModel.kt`, `LoginViewModel.kt`) for its exact
+expected constructor/method signatures, and every request/response shape
+against the real backend routes (`homecore/src/auth.js`,
+`homesync-backend/src/devices.js`, `homesync-backend/src/sync.js`)
+directly — not assumed or reconstructed from memory of the lost version.
+
+### Added
+- `data/BackupSettings.kt`, `data/SessionManager.kt`,
+  `data/SettingsStore.kt` — DataStore-backed session and backup
+  preferences. `SessionManager` keeps an in-memory `StateFlow` copy
+  alongside the persisted value specifically so `ApiClient`'s auth
+  interceptor (which can't `suspend`) can read the current token
+  synchronously.
+- `data/api/Models.kt`, `data/api/HomeSyncApi.kt`, `data/api/ApiClient.kt`
+  — Retrofit/OkHttp, matched field-for-field against the real backend
+  JSON. `ApiClient` normalizes the bare `192.168.1.50:8080`-style address
+  from the login screen into a real base URL, and rebuilds its cached
+  client if that address changes.
+- `data/local/AppDatabase.kt`, `data/local/SyncedMediaDao.kt`,
+  `data/local/SyncedMediaEntity.kt` — Room, for the on-device
+  already-backed-up cache used both to skip re-scanning known files and
+  as the offline fallback for the Home screen's summary card.
+
+### Verified, and what wasn't
+- Every import across the app now resolves to a real file — checked by
+  cross-referencing every `import com.homeecosystems.homesync.data...`
+  line in the app against what was actually written, not just assumed
+  complete.
+- `data/BackupSettings.kt` and `data/api/Models.kt` (the two files with no
+  Android/Retrofit/Room dependencies) were **compiled with `kotlinc`**
+  alongside the already-verified `sync/SyncLogic.kt` — a real compile,
+  not a read-through.
+- The other seven files depend on `android.*`, DataStore, Room, or
+  Retrofit, none of which are resolvable in a sandbox with no Android SDK
+  and no Maven repository on its network allowlist — same limitation
+  `TESTING.md` already documents for this module. These were carefully
+  traced against real call sites and checked for balanced
+  braces/parens, but **not compiled**. A real `./gradlew build` (or
+  Android Studio's Gradle sync) is the next real checkpoint, and the
+  first thing worth doing once this reaches a machine that has the
+  Android SDK installed.
 
 ## [0.2.0] — icon set rebuilt from spec
 

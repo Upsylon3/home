@@ -1,4 +1,4 @@
-// Mirrors backend/src/app.js's split (app wiring here, process concerns in
+// Mirrors homecore/src/app.js's split (app wiring here, process concerns in
 // server.js) — built that way from the start this time, having learned
 // from having to retrofit it onto HomeCloud's backend.
 const express = require("express");
@@ -6,8 +6,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 
 const { db } = require("./db"); // ensures tables + data directories exist before anything else runs
-const { requireAuth } = require("./authMiddleware");
-const { HOMECLOUD_URL } = require("./homecloudClient");
+const { requireAuth, HOMECLOUD_URL } = require("@home/homecore-client");
 const libraryRoutes = require("./library");
 const collectionsRoutes = require("./collections");
 

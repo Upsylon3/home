@@ -1,31 +1,9 @@
 // Same principle as homemedia-backend and homesync-backend's own clients:
 // HomeNotes has no identity of its own, and attachments are real
-// HomeCloud files, not something this service stores itself.
-const HOMECLOUD_URL = (process.env.HOMECLOUD_INTERNAL_URL || "http://backend:4000").replace(/\/$/, "");
-
-const meCache = new Map(); // token -> { user, expiresAt }
-const ME_CACHE_TTL_MS = 5000;
-
-async function verifyUser(token) {
-  const cached = meCache.get(token);
-  if (cached && cached.expiresAt > Date.now()) return cached.user;
-
-  let res;
-  try {
-    res = await fetch(`${HOMECLOUD_URL}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
-  } catch (err) {
-    const wrapped = new Error("Couldn't reach HomeCloud to verify this session.");
-    wrapped.status = 502;
-    throw wrapped;
-  }
-  if (!res.ok) {
-    meCache.delete(token);
-    return null;
-  }
-  const user = await res.json();
-  meCache.set(token, { user, expiresAt: Date.now() + ME_CACHE_TTL_MS });
-  return user;
-}
+// HomeCloud files, not something this service stores itself. Identity
+// verification itself now lives in packages/homecore-client, shared with
+// HomeMedia's and HomeSync's equivalents of this file.
+const { HOMECLOUD_URL } = require("@home/homecore-client");
 
 // Used before attaching a file id to a note — HomeNotes has no ownership
 // records of its own for HomeCloud files, so this asks HomeCloud (the
@@ -60,4 +38,4 @@ async function uploadFile(token, { buffer, filename, mimetype }) {
   return data.file;
 }
 
-module.exports = { verifyUser, fileExists, uploadFile, HOMECLOUD_URL };
+module.exports = { fileExists, uploadFile };

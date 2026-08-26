@@ -1,0 +1,7 @@
+{
+  "name": "@home/homecore-client",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The one piece every Tier 1 app that has no identity of its own (HomeMedia, HomeSync, HomeNotes, and — once split, see MIGRATION_PLAN.md — HomeCloud) genuinely shares: verifying a request's token by asking HomeCore, and the Express middleware that wraps that check. Extracted from three near-identical copies of the same ~40 lines — see CHANGELOG.md for the extraction.",
+  "main": "src/index.js"
+}

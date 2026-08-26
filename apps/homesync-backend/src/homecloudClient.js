@@ -1,34 +1,11 @@
-// Same principle as homemedia-backend/src/homecloudClient.js: HomeSync has
-// no identity or storage of its own. Every request is authenticated by
-// asking HomeCloud, and every backed-up file is actually stored by
-// uploading it straight through to HomeCloud's own upload endpoint —
-// HomeSync's own database only ever tracks what's already been sent, for
-// dedup and backup history, never the bytes themselves.
-const HOMECLOUD_URL = (process.env.HOMECLOUD_INTERNAL_URL || "http://backend:4000").replace(/\/$/, "");
-
-const meCache = new Map(); // token -> { user, expiresAt }
-const ME_CACHE_TTL_MS = 5000;
-
-async function verifyUser(token) {
-  const cached = meCache.get(token);
-  if (cached && cached.expiresAt > Date.now()) return cached.user;
-
-  let res;
-  try {
-    res = await fetch(`${HOMECLOUD_URL}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
-  } catch (err) {
-    const wrapped = new Error("Couldn't reach HomeCloud to verify this session.");
-    wrapped.status = 502;
-    throw wrapped;
-  }
-  if (!res.ok) {
-    meCache.delete(token);
-    return null;
-  }
-  const user = await res.json();
-  meCache.set(token, { user, expiresAt: Date.now() + ME_CACHE_TTL_MS });
-  return user;
-}
+// Same principle as homemedia-backend's homecloudClient.js: HomeSync has
+// no identity or storage of its own. Every backed-up file is actually
+// stored by uploading it straight through to HomeCloud's own upload
+// endpoint — HomeSync's own database only ever tracks what's already
+// been sent, for dedup and backup history, never the bytes themselves.
+// Identity verification itself now lives in packages/homecore-client,
+// shared with HomeMedia's and HomeNotes' equivalents of this file.
+const { HOMECLOUD_URL } = require("@home/homecore-client");
 
 async function listFoldersFlat(token) {
   const res = await fetch(`${HOMECLOUD_URL}/api/folders/all`, { headers: { Authorization: `Bearer ${token}` } });
@@ -117,4 +94,4 @@ async function uploadFile(token, { buffer, filename, mimetype, folderId }) {
   return data.file;
 }
 
-module.exports = { verifyUser, listFoldersFlat, createFolder, resolveFolderPath, uploadFile, HOMECLOUD_URL };
+module.exports = { listFoldersFlat, createFolder, resolveFolderPath, uploadFile };

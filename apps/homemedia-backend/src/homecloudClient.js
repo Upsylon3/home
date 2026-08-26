@@ -2,41 +2,12 @@
 // of one identity provider (not one per application) means every request
 // here is authenticated by asking HomeCloud, and every photo/video byte
 // comes from HomeCloud's storage, fetched on demand. This module is the
-// one place that talks to HomeCloud over the network; everything else in
-// HomeMedia goes through it rather than constructing HomeCloud URLs itself.
-const HOMECLOUD_URL = (process.env.HOMECLOUD_INTERNAL_URL || "http://backend:4000").replace(/\/$/, "");
-
-// Verifying every request against HomeCloud's own /api/auth/me is what
-// makes HomeMedia respect exactly the same account state HomeCloud already
-// tracks — disabled accounts, logout-everywhere, password changes, all of
-// it — without HomeMedia keeping its own copy of any of that. The cost is
-// a network hop per request; this cache exists purely so a single gallery
-// page load (which might ask for a few dozen thumbnails in parallel)
-// doesn't fire a few dozen near-simultaneous /me calls — not to compromise
-// on how fresh "signed out" is. 5 seconds of staleness is a fair trade.
-const meCache = new Map(); // token -> { user, expiresAt }
-const ME_CACHE_TTL_MS = 5000;
-
-async function verifyUser(token) {
-  const cached = meCache.get(token);
-  if (cached && cached.expiresAt > Date.now()) return cached.user;
-
-  let res;
-  try {
-    res = await fetch(`${HOMECLOUD_URL}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
-  } catch (err) {
-    const wrapped = new Error("Couldn't reach HomeCloud to verify this session.");
-    wrapped.status = 502;
-    throw wrapped;
-  }
-  if (!res.ok) {
-    meCache.delete(token);
-    return null;
-  }
-  const user = await res.json();
-  meCache.set(token, { user, expiresAt: Date.now() + ME_CACHE_TTL_MS });
-  return user;
-}
+// one place that talks to HomeCloud over the network for HomeMedia's OWN
+// concerns (listing/downloading files); identity verification itself
+// (verifyUser, the /api/auth/me cache) now lives in
+// packages/homecore-client, shared with HomeSync's and HomeNotes'
+// equivalents of this file — see that package's src/verify.js for why.
+const { HOMECLOUD_URL } = require("@home/homecore-client");
 
 // type: "image" | "video" | undefined (undefined = both, requested as two
 // separate calls since HomeCloud's /api/files/all only filters one prefix
@@ -95,4 +66,4 @@ async function fileExists(token, fileId) {
   return files.some((f) => f.id === fileId);
 }
 
-module.exports = { verifyUser, listFiles, downloadFile, fileExists, HOMECLOUD_URL };
+module.exports = { listFiles, downloadFile, fileExists };

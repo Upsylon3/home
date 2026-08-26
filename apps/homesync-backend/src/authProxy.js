@@ -1,5 +1,5 @@
 const express = require("express");
-const { HOMECLOUD_URL } = require("./homecloudClient");
+const { HOMECLOUD_URL } = require("@home/homecore-client");
 
 const router = express.Router();
 

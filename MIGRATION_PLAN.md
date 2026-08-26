@@ -57,7 +57,16 @@ exactly this:
   cross-app timeline idea — the one it calls "the single best
   effort-to-payoff idea on this list."
 
-## Phase 0 — extract the shared HomeCore-client library
+## Phase 0 — extract the shared HomeCore-client library ✅ done (`v0.4.0`)
+
+**Done as planned, with one correction:** the plan below assumed
+`homecloudClient.js` was near-identical across all three backends. It
+wasn't — only `verifyUser`/the cache/`HOMECLOUD_URL` (~40 lines)
+duplicated; the app-specific calls were genuinely different per app and
+correctly stayed put. Confirmed by diffing pairwise before writing
+anything, not assumed. See `CHANGELOG.md` `[0.4.0]` for exactly what
+moved where, and for a real test-infrastructure bug (broken paths from
+the `backend/` → `homecore/` rename) found and fixed on the way.
 
 Do this **first**, before touching any tables, because it's pure
 refactor (no behavior change) and de-risks everything after it.

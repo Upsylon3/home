@@ -7,6 +7,7 @@
   "//workspaces": "Every folder listed here has its own package.json and can still be developed independently (cd into it, npm run dev, as SETUP.md §4 describes). Listing them explicitly here — rather than a glob like 'apps/*' — is deliberate: apps/homesync-android is a Kotlin/Gradle project with no package.json, and an explicit list means a future new app under apps/ is NOT silently picked up as a workspace until someone adds it here on purpose.",
   "workspaces": [
     "homecore",
+    "packages/homecore-client",
     "apps/home",
     "apps/homecloud",
     "apps/homemedia",

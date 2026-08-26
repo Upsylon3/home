@@ -3,8 +3,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 
 const { db } = require("./db");
-const { requireAuth } = require("./authMiddleware");
-const { HOMECLOUD_URL } = require("./homecloudClient");
+const { requireAuth, HOMECLOUD_URL } = require("@home/homecore-client");
 const deviceRoutes = require("./devices");
 const syncRoutes = require("./sync");
 const authProxyRoutes = require("./authProxy");

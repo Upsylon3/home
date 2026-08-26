@@ -29,6 +29,46 @@ recovered.
   from HomeCloud (files/folders/sharing) into two independent services —
   see `MIGRATION_PLAN.md`.
 
+## [0.4.0] — Phase 0 of `MIGRATION_PLAN.md`: shared `packages/homecore-client`
+
+### Fixed (landed first, its own commit, before touching anything else)
+- `test/helpers/{app,client}.js` in `homemedia-backend`, `homesync-backend`,
+  and `homenotes-backend` all still required `../../../backend/...` — the
+  pre-rename path, broken since `backend/` became `homecore/` and these
+  three moved under `apps/`. Confirmed broken first (`MODULE_NOT_FOUND`,
+  reproduced directly), then fixed, then re-ran every affected suite:
+  `homecore` 64/64, `homemedia-backend` 18/18, `homesync-backend` 20/20,
+  `homenotes-backend` 24/24 (this last count wasn't previously documented
+  anywhere). Exactly the "carefully written, never actually run" failure
+  mode this project's docs already warn about — here in test
+  infrastructure rather than app code.
+
+### Added
+- `packages/homecore-client/` (`@home/homecore-client`) — `verifyUser()`
+  (ask HomeCore's `/api/auth/me`, cache 5s) and the `requireAuth` Express
+  middleware wrapping it, extracted from three copies that were confirmed
+  — by diffing pairwise, not assumed — identical only in that one ~40-line
+  block. Each app's own `homecloudClient.js` still holds its genuinely
+  different app-specific calls (`listFiles`, `uploadFile`,
+  `resolveFolderPath`, etc.).
+
+### Changed
+- `homemedia-backend`, `homesync-backend`, `homenotes-backend`: each
+  `homecloudClient.js` now imports `HOMECLOUD_URL` from the shared package
+  instead of defining it locally; each `app.js` (and HomeSync's
+  `authProxy.js`) imports `requireAuth`/`HOMECLOUD_URL` from
+  `@home/homecore-client`. Three `authMiddleware.js` files deleted.
+- Per-workspace `package-lock.json` files (`apps/*`, `homecore/`) removed
+  — an npm workspace uses one root lockfile, not one per package; these
+  predated workspaces being set up.
+
+### Verified
+- All four affected suites re-run **after** the extraction, not just
+  after the preceding path fix — same counts as above, confirming the
+  refactor changed nothing observable: `homecore` 64/64,
+  `homemedia-backend` 18/18, `homesync-backend` 20/20, `homenotes-backend`
+  24/24.
+
 ## [0.3.0] — HomeSync Android's `data/` package rebuilt from spec
 
 Rebuilt (the original was lost — see the `[Unreleased]` correction note

@@ -29,6 +29,34 @@ recovered.
   from HomeCloud (files/folders/sharing) into two independent services —
   see `MIGRATION_PLAN.md`.
 
+## [0.5.0] — Phase 1 of `MIGRATION_PLAN.md`: `apps/homecloud-backend` shell
+
+### Added
+- `apps/homecloud-backend/` — new, independent service: own `package.json`
+  (`@home/homecore-client` as its only auth dependency, no local JWT
+  verification), own `Dockerfile`, own SQLite file (`db.js` — no tables
+  yet; Phase 2 moves `files`/`folders`/`shares` here from `homecore/`).
+- `GET /api/homecloud/health` — public, matches the sibling apps'
+  `/api/<app>/health` convention.
+- `GET /api/homecloud/whoami` — temporary, proves the HomeCore
+  auth-delegation pattern actually works end-to-end for this service
+  (rejects a missing token, rejects a garbage token, accepts a real
+  HomeCore-issued one and returns that user) rather than just importing
+  `requireAuth` unused. Replaced by real routes in Phase 2.
+- `apps/homecloud-backend/test/` — 5 real assertions (health, the three
+  whoami cases, a clean 404), following the same test-harness pattern as
+  `homemedia-backend` (a real isolated HomeCore instance booted per test
+  file, not a mock).
+
+### Verified
+- New suite: 5/5. Every existing suite re-run after adding the new
+  workspace member and root install, to confirm neither disturbed
+  anything: `homecore` 64/64, `homemedia-backend` 18/18, `homesync-backend`
+  20/20, `homenotes-backend` 24/24.
+- Confirmed **not** wired into `docker-compose.yml` or
+  `gateway/nginx.conf` — checked directly, matching the plan's explicit
+  Phase 1 scope. That's Phase 5.
+
 ## [0.4.0] — Phase 0 of `MIGRATION_PLAN.md`: shared `packages/homecore-client`
 
 ### Fixed (landed first, its own commit, before touching anything else)

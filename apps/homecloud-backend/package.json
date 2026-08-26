@@ -1,0 +1,20 @@
+{
+  "name": "homecloud-backend",
+  "version": "0.1.0",
+  "description": "HomeCloud's real, independent backend — file storage, folders, and sharing, split out from homecore/ per MIGRATION_PLAN.md. This is Phase 1: an empty shell with a health endpoint and delegated auth, not yet wired into docker-compose.yml or the gateway. Phase 2 moves the actual files/folders/publicShare logic here.",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@home/homecore-client": "^1.0.0",
+    "better-sqlite3": "^11.3.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "helmet": "^7.1.0"
+  }
+}

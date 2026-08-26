@@ -88,7 +88,7 @@ directory was clearly scaffolded for.
   (Phase 2) — proving the extraction was worth doing before you needed
   it a fourth time, not after.
 
-## Phase 1 — stand up an empty `apps/homecloud-backend`
+## Phase 1 — stand up an empty `apps/homecloud-backend` ✅ done (`v0.5.0`)
 
 - New folder, own `package.json`, own `Dockerfile`, own SQLite data
   directory — same shape as `homemedia-backend`.
@@ -98,6 +98,18 @@ directory was clearly scaffolded for.
   do).
 - A working `/api/health` endpoint and a passing (near-empty) test suite.
   Not wired into `docker-compose.yml`/`gateway/nginx.conf` yet.
+
+**Done as planned.** Health endpoint at `/api/homecloud/health` (matching
+the sibling apps' `/api/<app>/health` convention — note this doesn't
+prejudge Phase 5's still-open question about whether the eventual real
+routes keep HomeCloud's existing bare `/api/files` paths or adopt an
+`/api/homecloud/` prefix; a health check nothing else calls is a
+zero-risk place to pick the sibling-consistent form now). Added a
+temporary `/api/homecloud/whoami` route specifically to prove the auth
+delegation actually works end-to-end (rejects no token, rejects a garbage
+token, accepts a real HomeCore-issued token) rather than just importing
+`requireAuth` unused — Phase 2 replaces it with real routes. See
+`CHANGELOG.md` `[0.5.0]`.
 
 ## Phase 2 — move file/folder/share logic and data
 

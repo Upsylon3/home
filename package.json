@@ -10,6 +10,7 @@
     "packages/homecore-client",
     "apps/home",
     "apps/homecloud",
+    "apps/homecloud-backend",
     "apps/homemedia",
     "apps/homemedia-backend",
     "apps/homenotes",

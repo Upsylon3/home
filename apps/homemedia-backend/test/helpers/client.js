@@ -4,7 +4,7 @@
 // test/helpers/app.js boots, and the resulting token is handed to a
 // HomeMedia-pointed client — exactly mirroring how a real browser would
 // get a token from HomeCloud and then use it against HomeMedia.
-const { makeClient, registerUser } = require("../../../backend/test/helpers/client");
+const { makeClient, registerUser } = require("../../../../homecore/test/helpers/client");
 
 async function registerHomeMediaUser(homecloud, homemediaBaseUrl, overrides = {}) {
   const { username, password, user, token } = await registerUser(homecloud.baseUrl, overrides);

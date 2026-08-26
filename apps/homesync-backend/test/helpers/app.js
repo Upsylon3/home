@@ -15,7 +15,7 @@ const os = require("os");
 const path = require("path");
 const http = require("http");
 
-const homecloudTestApp = require("../../../backend/test/helpers/app");
+const homecloudTestApp = require("../../../../homecore/test/helpers/app");
 
 let started = null;
 

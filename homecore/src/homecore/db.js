@@ -12,7 +12,7 @@
 // this module multiple times is safe (Node caches it), and running it
 // against a database that already has these tables is a no-op.
 const { db, ensureColumn, onActivity } = require("../db");
-const { emitEvent } = require("./events");
+const { emitEvent, toEventType } = require("./events");
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS hc_applications (
@@ -97,43 +97,12 @@ function getApplicationIdBySlug(slug) {
   return row ? row.id : null;
 }
 
-// Translates HomeCloud's existing activity_log action strings (see auth.js,
-// files.js, folders.js, admin.js) into namespaced HomeCore event types, per
-// HOME_MASTER_SPECIFICATION.md §7.6 / §11 (e.g. "homecloud.file.uploaded").
-// Anything not explicitly listed still gets a generic "homecloud.<action>"
-// type instead of being silently dropped, so new HomeCloud actions show up
-// in the HomeCore audit trail automatically even before this map is updated.
-const ACTION_EVENT_MAP = {
-  upload: "homecloud.file.uploaded",
-  move: "homecloud.file.moved",
-  download_batch: "homecloud.file.downloaded",
-  share_create: "homecloud.file.share_created",
-  share_revoke: "homecloud.file.share_revoked",
-  delete: "homecloud.file.deleted",
-  restore: "homecloud.file.restored",
-  permanent_delete: "homecloud.file.purged",
-  folder_create: "homecloud.folder.created",
-  folder_rename: "homecloud.folder.renamed",
-  folder_delete: "homecloud.folder.deleted",
-  "2fa_login": "homecloud.user.login_2fa",
-  "2fa_recovery_login": "homecloud.user.login_2fa_recovery",
-  password_change: "homecloud.user.password_changed",
-  logout_everywhere: "homecloud.user.logout_everywhere",
-  "2fa_enable": "homecloud.user.2fa_enabled",
-  "2fa_disable": "homecloud.user.2fa_disabled",
-  "2fa_recovery_codes_regenerated": "homecloud.user.2fa_recovery_codes_regenerated",
-  admin_reset_password: "homecloud.admin.password_reset",
-  admin_disable: "homecloud.admin.user_disabled",
-  admin_enable: "homecloud.admin.user_enabled",
-  admin_set_quota: "homecloud.admin.quota_changed",
-  admin_promote: "homecloud.admin.user_promoted",
-  admin_demote: "homecloud.admin.user_demoted",
-  admin_disable_2fa: "homecloud.admin.2fa_disabled"
-};
-
-function toEventType(action) {
-  return ACTION_EVENT_MAP[action] || `homecloud.${action}`;
-}
+// The action->eventType map (and its exact inverse, toAction) used to live
+// here; moved to ./events in MIGRATION_PLAN.md's Phase 3 since toEventType
+// is now needed by a second caller (the new POST /internal/events route —
+// see ../internalEvents.js) and toAction by two more (the legacy
+// GET /api/activity / /api/admin/activity routes) — one shared home for
+// the map beats redefining or re-deriving it per caller.
 
 // The bridge itself: every logActivity() call anywhere in HomeCloud now also
 // produces a HomeCore activity event, without files.js/folders.js/auth.js/

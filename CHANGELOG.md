@@ -29,6 +29,101 @@ recovered.
   from HomeCloud (files/folders/sharing) into two independent services —
   see `MIGRATION_PLAN.md`.
 
+## [0.7.0] — Phase 3 of `MIGRATION_PLAN.md`: `activity_log` retired
+
+`activity_log` is gone. Every activity feed — HomeCloud's own per-user
+panel, the admin cross-user view, and HomeCore's cross-app audit feed —
+now reads from the one shared `hc_activity_events` table, written to by
+both a same-process bridge (auth/admin actions) and a new HTTP endpoint
+(everything `apps/homecloud-backend` does, now that it's a separate
+process).
+
+### Added
+- `POST /internal/events` (`homecore/src/internalEvents.js`) — a new,
+  shared-secret-authenticated endpoint (`HOMECORE_INTERNAL_SECRET`, fails
+  closed if unset) so a genuinely separate Tier 1 process can emit into
+  HomeCore's event bus without a per-request user token to forward.
+  `apps/homecloud-backend/src/db.js`'s `logActivity()` calls this,
+  fire-and-forget, exactly as `docs/ARCHITECTURE.md` §4's Tier 1 rule
+  describes — never awaited by its callers, and a failed call (HomeCore
+  down, bad secret, network blip) only costs an activity-feed entry, never
+  the upload/move/delete/share action itself.
+- `homecore/src/homecore/events.js`: `toAction()`, the exact inverse of
+  the existing `toEventType()` (both now live here, moved from
+  `homecore/src/homecore/db.js` — see "Changed" below), and an
+  `applicationId` filter on `listEvents()`.
+- Tests: `homecore/test/internalEvents.test.js` (secret validation, body
+  validation, a real emitted event landing in `hc_activity_events`),
+  `homecore/test/activity.test.js` (the moved `GET /api/activity` keeps
+  its original response shape and per-user scoping — previously
+  untested), `apps/homecloud-backend/test/activity.test.js` (genuine
+  end-to-end: an action through that service's real HTTP API reaching
+  HomeCore over the network, plus a resilience test confirming the action
+  itself still succeeds when HomeCore is unreachable).
+
+### Changed
+- `homecore/src/db.js`: `activity_log` is no longer created; an explicit
+  `DROP TABLE IF EXISTS activity_log` removes it from any existing
+  on-disk database. `logActivity()` no longer writes to it directly — the
+  `onActivity()` listener bridge (unchanged) is now the only write path,
+  landing in `hc_activity_events` instead.
+- `GET /api/activity` moved from `homecore/src/activity.js` (deleted) to
+  `homecore/src/homecore/homecloudActivity.js` — same URL, same
+  `{action, targetName, createdAt}` response shape (`apps/homecloud`'s
+  `Settings.jsx` needed no changes), now reading `hc_activity_events`
+  filtered by `applicationId` (HomeCloud only) and `actorUserId`.
+- `homecore/src/admin.js`'s `GET /api/admin/activity` — same move, same
+  reasoning, same unchanged response shape (`Admin.jsx` needed no
+  changes); see "Real gap found" below for why this wasn't optional.
+- `ACTION_EVENT_MAP`/`toEventType()` moved from `homecore/src/homecore/
+  db.js` to `homecore/src/homecore/events.js` — needed by a second
+  caller (the new internal-events route) as well as the original
+  in-process bridge, so one shared home beat two copies.
+- `apps/homecloud-backend/src/db.js`'s `logActivity()`: real
+  implementation, replacing the documented no-op from `[0.6.0]`. Same
+  3-argument signature, same unawaited call sites in `files.js`/
+  `folders.js` — only what the function *does* changed, exactly as
+  planned.
+
+### Real gap found (not in the original plan text)
+- `homecore/src/admin.js`'s `GET /api/admin/activity` reads `activity_log`
+  directly too, separately from `homecore/src/activity.js` — dropping the
+  table would have silently 500'd the admin activity panel. Caught by
+  tracing every *reader* of the table before dropping it, not just the
+  writers the plan named. Fixed the same way as the per-user feed.
+
+### Known, accepted gap
+- `hc_activity_events` has been populated by the `onActivity()` bridge
+  since HomeCore's event bus was introduced, so any install running since
+  then keeps its full history. An install with `activity_log` rows older
+  than that bridge loses just that window's history — there's no backfill
+  for it. Judged not worth a one-time migration script for a pre-1.0
+  family server; noted here rather than silently accepted.
+
+### Fixed
+- Root `package.json`'s `version` field had never been bumped past its
+  initial `0.1.0`, despite git tags reaching `v0.6.0` — `VERSIONING.md` is
+  explicit that this field is "the one you tag releases with," so it
+  should have tracked each tag. Found while preparing this tag, not
+  something this pass otherwise depended on: checked directly, nothing in
+  the running code reads *this* file's version (`health.js`/`system.js`/
+  `seed.js` all read `homecore/package.json`'s own, separately-versioned
+  field instead) — so this was a documentation-accuracy gap, not a live
+  bug. Fixed going forward (bumped to `0.7.0` here); past tags are left
+  as-is rather than rewriting history.
+
+### Verified
+- `homecore` 70/70 (up from 64 — 6 new: 3 `internalEvents.test.js` + 3
+  `activity.test.js`), `apps/homecloud-backend` 35/35 (up from 33 — 2 new,
+  the end-to-end cross-service test). `homemedia-backend` 18/18,
+  `homesync-backend` 20/20, `homenotes-backend` 24/24 — re-run, unaffected.
+- The `DROP TABLE` itself checked against more than a fresh test database
+  (which never has the table to begin with, so could never have caught a
+  migration bug either way): a one-off script built a simulated
+  pre-`v0.7.0` database with real `activity_log` rows, booted current
+  code against it, and confirmed the table drops cleanly while
+  pre-existing `users` rows survive untouched.
+
 ## [0.6.0] — Phase 2 of `MIGRATION_PLAN.md`: real file/folder/share logic moves
 
 The big one. `files.js`, `folders.js`, `publicShare.js`, and their tables

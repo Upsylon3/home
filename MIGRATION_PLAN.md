@@ -162,7 +162,7 @@ other backend suite re-run afterward, unaffected: `homecore` 64/64,
 `homemedia-backend` 18/18, `homesync-backend` 20/20, `homenotes-backend`
 24/24. See `CHANGELOG.md` `[0.6.0]`.
 
-## Phase 3 — retire `activity_log`
+## Phase 3 — retire `activity_log` ✅ done (`v0.7.0`)
 
 - Implement the HTTP-emit version of `onActivity()` in HomeCloud's new
   backend (see "the one real design decision" above).
@@ -171,6 +171,35 @@ other backend suite re-run afterward, unaffected: `homecore` 64/64,
 - Drop `activity_log` and `homecore/src/activity.js` once both sides are
   verified emitting correctly (check `hc_activity_events` fills up
   during a manual upload/delete/share pass).
+
+**Done largely as planned, with two things worth knowing:**
+
+1. **A real gap not named above, caught by tracing every reader of
+   `activity_log` before dropping it, not just its writers:**
+   `admin.js`'s `GET /api/admin/activity` reads the same table directly —
+   dropping it would have silently broken the admin activity panel too.
+   Fixed the same way as `GET /api/activity`: filtered
+   `hc_activity_events` by `applicationId`, translated back to the
+   original response shape.
+2. **The HTTP-emit call needed a real auth answer, not just "call the
+   endpoint":** `logActivity(userId, action, targetName)` never carried a
+   per-request bearer token (only ever a plain `userId`), so there was no
+   user identity to forward. Landed on the shared-secret
+   `POST /internal/events` design instead — the same shape of problem
+   Phase 4 below already names for its own internal endpoint, just the
+   first real instance of it rather than a second. `toEventType`'s map
+   (and a new exact inverse, `toAction`) moved to
+   `homecore/src/homecore/events.js` so both the old in-process bridge
+   and the new HTTP route share one copy of it.
+
+Verified two ways: the adapted/new test suite (`homecore` 70/70,
+`apps/homecloud-backend` 35/35, `homemedia-backend`/`homesync-backend`/
+`homenotes-backend` unaffected at 18/20/24), and — since dropping a table
+is exactly the kind of change a fresh-database test suite can't catch on
+its own — a one-off manual check booting the current code against a
+simulated pre-`v0.7.0` database with real `activity_log` rows, confirming
+the table drops cleanly and pre-existing data survives. See `CHANGELOG.md`
+`[0.7.0]`.
 
 ## Phase 4 — admin panel's cross-service field
 

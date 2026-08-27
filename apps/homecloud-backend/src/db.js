@@ -84,20 +84,53 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_shares_created_by ON shares(created_by);
 `);
 
-// TEMPORARY — see MIGRATION_PLAN.md's Phase 3. files.js/folders.js were
-// moved here from homecore/ largely unchanged, including every
-// logActivity() call site, so Phase 3 only has to change what this
-// function DOES, not rewrite every caller a second time.
+// Phase 3 of MIGRATION_PLAN.md: emits into HomeCore's shared
+// hc_activity_events over HTTP, fire-and-forget, per the Tier 1 rule in
+// ARCHITECTURE.md §4 ("may emit events to the shared bus... your app must
+// work identically whether anything is listening or not"). Replaces the
+// no-op this used to be — see CHANGELOG.md for that gap's history.
 //
-// Right now this is a genuine, honest no-op: file/folder actions
-// performed through this service do NOT appear in anyone's activity feed
-// until Phase 3 lands the real replacement (emitting into HomeCore's
-// shared hc_activity_events over HTTP, fire-and-forget, per the Tier 1
-// rule in ARCHITECTURE.md §4). This is a real, temporary, KNOWN gap — see
-// CHANGELOG.md — not an oversight, and nothing here depends on
-// logActivity doing anything beyond "don't crash."
+// Same 3-argument signature as before, and every files.js/folders.js call
+// site is still a bare, un-awaited statement — this only had to change
+// what the function DOES, not how (or how often) anything calls it.
+// That's deliberate: logActivity() never had a request's bearer token to
+// forward (only ever a plain userId — check any call site), so this
+// authenticates as HomeCloud's *backend itself* calling HomeCore, via a
+// shared secret, rather than as the acting user. See
+// homecore/src/internalEvents.js's header comment for the other half of
+// this and why that's the right shape for this specific call, not a
+// workaround.
+//
+// Reuses @home/homecore-client's HOMECLOUD_URL rather than re-deriving
+// HOMECLOUD_INTERNAL_URL a second time — that package already points at
+// HomeCore (the name predates the Tier 0/1 rename; see its own comment).
+const { HOMECLOUD_URL } = require("@home/homecore-client");
+
+const INTERNAL_EVENTS_URL = `${HOMECLOUD_URL}/internal/events`;
+
 function logActivity(userId, action, targetName = null) {
-  // Intentionally empty — see comment above.
+  fetch(INTERNAL_EVENTS_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Internal-Secret": process.env.HOMECORE_INTERNAL_SECRET || ""
+    },
+    body: JSON.stringify({ userId, applicationSlug: "homecloud", action, targetName })
+  })
+    .then((res) => {
+      if (!res.ok) {
+        console.warn(
+          `[homecloud-backend] HomeCore rejected activity event (${res.status}) for action "${action}" — ` +
+          "the action itself already succeeded; only its entry in the activity feed is missing."
+        );
+      }
+    })
+    .catch((err) => {
+      console.warn(
+        `[homecloud-backend] Couldn't reach HomeCore to emit activity event for action "${action}" ` +
+        `(the action itself already succeeded): ${err.message}`
+      );
+    });
 }
 
 module.exports = { db, DATA_DIR, UPLOADS_DIR, logActivity };

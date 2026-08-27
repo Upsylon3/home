@@ -35,6 +35,11 @@ async function startTestApp() {
   // so quota-exceeded tests don't need to actually upload huge files.
   process.env.QUOTA_BYTES = String(2 * 1024 * 1024);
   process.env.TRASH_RETENTION_DAYS = "30";
+  // HOMECORE_INTERNAL_SECRET is NOT re-set here, unlike the above: it's
+  // read directly from process.env at call-time by src/db.js's
+  // logActivity() (not baked in at require-time like HOMECLOUD_INTERNAL_URL
+  // is), so homecore's test harness setting it above is already sufficient
+  // — there's no separate value to copy, just one shared env var.
 
   // eslint-disable-next-line global-require -- must load after env vars are set
   const { app, db } = require("../../src/app");

@@ -40,7 +40,10 @@ const authRoutes = require("./auth");
 const fileRoutes = require("./files");
 const folderRoutes = require("./folders");
 const adminRoutes = require("./admin");
-const activityRoutes = require("./activity");
+// Moved into ./homecore/ in MIGRATION_PLAN.md's Phase 3 — same route
+// (/api/activity), now backed by hc_activity_events instead of the
+// now-dropped activity_log. See that file's header comment.
+const activityRoutes = require("./homecore/homecloudActivity");
 const publicShareRoutes = require("./publicShare");
 // HomeCore v0 — shared platform (identity extras, application registry,
 // permissions catalog, cross-app events/audit, health, notifications). See
@@ -48,11 +51,23 @@ const publicShareRoutes = require("./publicShare");
 // routes so its startup seeding (registering HomeCloud as the first
 // application) runs against an already-initialized database.
 const homecoreRoutes = require("./homecore");
+// New in Phase 3 — see internalEvents.js's header comment for why this is
+// a separate, shared-secret-authenticated mount rather than another route
+// under /api/core.
+const internalEventsRoutes = require("./internalEvents");
 
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET === "change_this_to_a_long_random_string") {
   console.warn(
     "\n[homecloud] WARNING: JWT_SECRET is unset or using the example value.\n" +
     "Set a real secret in your .env file before exposing this server beyond your LAN.\n"
+  );
+}
+
+if (!process.env.HOMECORE_INTERNAL_SECRET || process.env.HOMECORE_INTERNAL_SECRET === "change_this_to_a_long_random_string") {
+  console.warn(
+    "\n[homecloud] WARNING: HOMECORE_INTERNAL_SECRET is unset or using the example value.\n" +
+    "POST /internal/events will reject every request (fails closed by design) until this\n" +
+    "is set to a real, matching value on both this server and the app calling it.\n"
   );
 }
 
@@ -86,6 +101,9 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/activity", activityRoutes);
 app.use("/api/share", publicShareRoutes);
 app.use("/api/core", homecoreRoutes);
+// Deliberately not under /api — see internalEvents.js's header comment for
+// why this is machine-to-machine (shared-secret) rather than user-facing.
+app.use("/internal/events", internalEventsRoutes);
 
 // Catches routes that don't exist, so a typo'd or outdated frontend request
 // gets a clean 404 instead of falling through to the error handler below.

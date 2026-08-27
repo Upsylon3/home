@@ -35,6 +35,11 @@ async function startTestApp({ disableRateLimit = true } = {}) {
   process.env.TRASH_RETENTION_DAYS = "30";
   process.env.CORS_ORIGIN = "*";
   process.env.DISABLE_RATE_LIMIT_FOR_TESTS = disableRateLimit ? "true" : "false";
+  // Shared secret for POST /internal/events (see ../internalEvents.js).
+  // apps/homecloud-backend/test/helpers/app.js reads this exact value back
+  // out of process.env to configure its own test instance identically, the
+  // same way it reads back baseUrl for HOMECLOUD_INTERNAL_URL.
+  process.env.HOMECORE_INTERNAL_SECRET = `test_internal_secret_${Math.random().toString(36).slice(2)}`;
 
   // eslint-disable-next-line global-require -- must load after env vars are set
   const { app, db } = require("../../src/app");
@@ -48,7 +53,8 @@ async function startTestApp({ disableRateLimit = true } = {}) {
     db,
     server,
     baseUrl: `http://127.0.0.1:${port}`,
-    dataDir
+    dataDir,
+    internalSecret: process.env.HOMECORE_INTERNAL_SECRET
   };
   return started;
 }

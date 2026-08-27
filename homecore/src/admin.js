@@ -4,6 +4,11 @@ const { db, logActivity } = require("./db");
 const { requireAuth, requireAdmin } = require("./middleware/authMiddleware");
 const { asyncHandler } = require("./asyncHandler");
 const { revokeAllSessions } = require("./homecore/sessions");
+// Phase 3 of MIGRATION_PLAN.md: the activity feed below now reads
+// hc_activity_events instead of the now-dropped activity_log — see the
+// route's own comment.
+const { getApplicationIdBySlug } = require("./homecore/db");
+const { listEvents, toAction } = require("./homecore/events");
 
 const router = express.Router();
 router.use(requireAuth, requireAdmin);
@@ -145,17 +150,24 @@ router.post("/users/:id/2fa/disable", (req, res) => {
 });
 
 // Cross-family activity feed — every logged action, from every account, so
-// an admin can answer "who deleted this?" without guessing.
+// an admin can answer "who deleted this?" without guessing. Moved off
+// activity_log (dropped in Phase 3 of MIGRATION_PLAN.md) onto the shared
+// hc_activity_events table, scoped to just HomeCloud's own events —
+// exactly what activity_log always held anyway — and translated back into
+// the {action, targetName, createdAt, username} shape apps/homecloud's
+// Admin.jsx (via describeActivity()/ACTION_LABELS) has always expected, so
+// that frontend needed no changes here.
 router.get("/activity", (req, res) => {
-  const rows = db
-    .prepare(
-      `SELECT a.action, a.target_name AS targetName, a.created_at AS createdAt, u.username
-       FROM activity_log a
-       JOIN users u ON u.id = a.user_id
-       ORDER BY a.created_at DESC
-       LIMIT 200`
-    )
-    .all();
+  const events = listEvents({
+    limit: 200,
+    applicationId: getApplicationIdBySlug("homecloud")
+  });
+  const rows = events.map((e) => ({
+    action: toAction(e.eventType),
+    targetName: e.targetId,
+    createdAt: e.createdAt,
+    username: e.actorUsername
+  }));
   res.json({ activity: rows });
 });
 

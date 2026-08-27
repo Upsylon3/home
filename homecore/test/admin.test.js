@@ -34,6 +34,60 @@ test("GET /api/admin/users lists accounts with usage and quota", async () => {
   assert.equal(typeof me.quotaBytes, "number");
 });
 
+test("usedBytes falls back to the local files table when homecloud-backend is unreachable", async () => {
+  // In this suite's isolated test environment, HOMECLOUD_BACKEND_INTERNAL_URL
+  // is never set to anything real — this IS the current live-deployment
+  // reality too (see admin.js's comment on the Phase 4 -> Phase 5 gap),
+  // not a test-only condition. Real data uploaded through this same
+  // process's still-live /api/files proves the fallback path is exercised
+  // for real, not just "didn't crash."
+  const user = await registerUser(baseUrl, { username: "fallback_usage_user" });
+  const form = new FormData();
+  form.append("file", new Blob(["x".repeat(777)], { type: "text/plain" }), "note.txt");
+  const upload = await user.client.post("/api/files/upload", form, { raw: true });
+  assert.equal(upload.status, 201);
+
+  const res = await admin.client.get("/api/admin/users");
+  const row = res.body.users.find((u) => u.username === "fallback_usage_user");
+  assert.equal(row.usedBytes, 777);
+});
+
+test("usedBytes prefers homecloud-backend's own answer when it IS reachable", async () => {
+  // A lightweight stand-in for apps/homecloud-backend's real
+  // GET /internal/users/usage — not the full service (that contract is
+  // already covered by apps/homecloud-backend/test/internalUsage.test.js
+  // against the real thing). This test is specifically about admin.js's
+  // OWN calling/parsing/merging logic: given a real response shaped like
+  // the contract, does it use it instead of falling back?
+  const http = require("node:http");
+  const target = await registerUser(baseUrl, { username: "reachable_usage_user" });
+
+  const stub = http.createServer((req, res) => {
+    if (req.headers["x-internal-secret"] !== process.env.HOMECORE_INTERNAL_SECRET) {
+      res.writeHead(401).end();
+      return;
+    }
+    res.writeHead(200, { "Content-Type": "application/json" });
+    // A value that could only have come from the stub, not the (empty,
+    // for this user) local files table — proves this path was actually
+    // taken, not silently ignored in favor of the fallback.
+    res.end(JSON.stringify({ usage: [{ userId: target.user.id, usedBytes: 999999 }] }));
+  });
+  await new Promise((resolve) => stub.listen(0, "127.0.0.1", resolve));
+  const { port } = stub.address();
+
+  const original = process.env.HOMECLOUD_BACKEND_INTERNAL_URL;
+  process.env.HOMECLOUD_BACKEND_INTERNAL_URL = `http://127.0.0.1:${port}`;
+  try {
+    const res = await admin.client.get("/api/admin/users");
+    const row = res.body.users.find((u) => u.username === "reachable_usage_user");
+    assert.equal(row.usedBytes, 999999);
+  } finally {
+    process.env.HOMECLOUD_BACKEND_INTERNAL_URL = original;
+    await new Promise((resolve) => stub.close(resolve));
+  }
+});
+
 test("reset-password: validates length, invalidates the target's existing session", async () => {
   const target = await registerUser(baseUrl, { username: "reset_pw_target" });
 

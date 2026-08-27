@@ -29,6 +29,49 @@ recovered.
   from HomeCloud (files/folders/sharing) into two independent services —
   see `MIGRATION_PLAN.md`.
 
+## [0.8.0] — Phase 4 of `MIGRATION_PLAN.md`: admin panel's cross-service usage field
+
+### Added
+- `apps/homecloud-backend/src/internalUsage.js` — `GET /internal/users/usage`,
+  authenticated with the same `HOMECORE_INTERNAL_SECRET` Phase 3
+  introduced (one shared secret for machine-to-machine calls between
+  these two services in either direction, not a second one to generate
+  and keep in sync). Returns usage only for users who actually have
+  files — the caller defaults anyone missing to 0.
+- `apps/homecloud-backend/test/internalUsage.test.js` — 4 tests: no
+  header, wrong secret, server's own secret unset (fails closed even with
+  a header provided), and the real shape (only non-zero users appear).
+
+### Changed
+- `homecore/src/admin.js`'s `GET /api/admin/users`: `usedBytes` now tries
+  `apps/homecloud-backend`'s internal endpoint first (2s timeout), falling
+  back to the original local `SUM(size) ... GROUP BY user_id` query
+  against `homecore/src/db.js`'s own `files` table if that call fails.
+  Always falls back today, in every real deployment — `homecloud-backend`
+  isn't wired into `docker-compose.yml` yet (that's Phase 5) — which is
+  exactly the point: today's live behavior is unchanged, the real path is
+  already built and proven.
+- `homecore/test/admin.test.js`: two new tests, not just incidental
+  coverage — one uploads a real file through HomeCore's own still-live
+  `/api/files/upload` and confirms the fallback path reflects it
+  correctly; the other spins up a lightweight stand-in HTTP server
+  (not the full real `homecloud-backend` — that contract is already
+  covered by `internalUsage.test.js` against the genuine thing) to prove
+  `admin.js` actually prefers a reachable answer over the fallback, not
+  just "doesn't crash when both exist."
+
+### Deliberately not done — still your call, per `MIGRATION_PLAN.md`
+- The Admin page still lives in `apps/homecloud/src/pages/Admin.jsx`,
+  same as it did before Phase 4. Moving it to `apps/home` remains flagged
+  as a UX decision, not executed without confirmation.
+
+### Verified
+- New endpoint: 4/4. `homecore`: 72/72 (+2, both real behavioral tests,
+  not just re-runs). Every other suite unaffected:
+  `apps/homecloud-backend` 39/39, `homemedia-backend` 18/18,
+  `homesync-backend` 20/20, `homenotes-backend` 24/24. 173 tests across
+  the ecosystem, all actually run.
+
 ## [0.7.0] — Phase 3 of `MIGRATION_PLAN.md`: `activity_log` retired
 
 `activity_log` is gone. Every activity feed — HomeCloud's own per-user

@@ -9,6 +9,15 @@ const { requireAuth, HOMECLOUD_URL } = require("@home/homecore-client");
 const filesRoutes = require("./files");
 const foldersRoutes = require("./folders");
 const publicShareRoutes = require("./publicShare");
+const internalUsageRoutes = require("./internalUsage");
+
+if (!process.env.HOMECORE_INTERNAL_SECRET || process.env.HOMECORE_INTERNAL_SECRET === "change_this_to_a_long_random_string") {
+  console.warn(
+    "\n[homecloud-backend] WARNING: HOMECORE_INTERNAL_SECRET is unset or using the example value.\n" +
+    "GET /internal/users/usage will reject every request (fails closed by design) until this\n" +
+    "is set to a real, matching value on both this server and HomeCore (see MIGRATION_PLAN.md's Phase 4).\n"
+  );
+}
 
 const app = express();
 app.use(helmet({ contentSecurityPolicy: false }));
@@ -55,6 +64,13 @@ app.use("/api/homecloud/folders", requireAuth, foldersRoutes);
 // generated and sent to people need to keep working exactly as they do
 // today once this service actually goes live in Phase 5.
 app.use("/api/share", publicShareRoutes);
+
+// Deliberately NOT under /api — same reasoning as HomeCore's own
+// /internal/events (see homecore/src/internalEvents.js's header comment):
+// this is a machine-to-machine call (HomeCore's admin panel asking on
+// behalf of the whole user list, not any one signed-in user), so it's
+// authenticated by shared secret instead of a user's bearer token.
+app.use("/internal/users/usage", internalUsageRoutes);
 
 app.use("/api", (req, res) => {
   res.status(404).json({ error: "Not found." });

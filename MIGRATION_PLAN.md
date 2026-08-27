@@ -201,7 +201,7 @@ simulated pre-`v0.7.0` database with real `activity_log` rows, confirming
 the table drops cleanly and pre-existing data survives. See `CHANGELOG.md`
 `[0.7.0]`.
 
-## Phase 4 — admin panel's cross-service field
+## Phase 4 — admin panel's cross-service field ✅ backend done (`v0.8.0`); UX decision still open
 
 - `admin.js`'s user list needs one field it can no longer get via a SQL
   JOIN once split: `usedBytes` per user, computed from HomeCloud's
@@ -214,21 +214,42 @@ the table drops cleanly and pre-existing data survives. See `CHANGELOG.md`
 - `admin.js` (staying in HomeCore — it's genuinely a user-management
   concern; only this one field was ever storage-derived) calls that
   endpoint and merges the result in JS instead of SQL.
-- **Separate, optional decision, needs your call rather than mine:** the
-  Admin page currently lives in `apps/homecloud/src/pages/Admin.jsx`, but
-  once its backend is 100% HomeCore, it's arguably a Home-the-hub concern
-  (user administration isn't HomeCloud-specific — quota is about all
-  storage, not just this one app). Moving it to `apps/home` fits the
-  "Home is the hub" direction you asked for. This is UX-visible (a
-  navigation change for you, day to day), so it's flagged rather than
-  just done — say the word and it's a small, mechanical move once Phase 4
-  lands.
+
+**Done, with a safety net for the gap before Phase 5:** `admin.js` now
+tries `apps/homecloud-backend`'s `GET /internal/users/usage` first
+(reusing `HOMECORE_INTERNAL_SECRET` — the same shared secret Phase 3
+already introduced, rather than a second one) and falls back to the
+local `files` table query only if that call fails. Right now it always
+falls back, in every real deployment — `homecloud-backend` isn't wired
+into `docker-compose.yml` yet, so it isn't actually running anywhere.
+That's expected, not a bug: it means today's live admin panel behavior
+is provably unchanged (both paths have real, separate test coverage —
+`apps/homecloud-backend/test/internalUsage.test.js` for the endpoint
+itself, `homecore/test/admin.test.js` for admin.js correctly preferring
+it when reachable and correctly falling back when not, via a lightweight
+stand-in server) while the real path is already fully built and proven
+ahead of when Phase 5 makes it live. Phase 5 or 6's job: delete the
+fallback once `homecore/src/db.js`'s own `files` table is actually
+dropped — at that point a failed fetch should be a real error, not a
+silent fallback to a table that no longer exists.
+
+- **Still open, still your call — not acted on:** the Admin page still
+  lives in `apps/homecloud/src/pages/Admin.jsx`. Moving it to `apps/home`
+  once its backend is 100% HomeCore still fits "Home is the hub," and is
+  still flagged rather than done, for the same reason as before — it's a
+  navigation change you'd live with day to day, not a backend
+  implementation detail.
 
 ## Phase 5 — wire it in
 
 - `docker-compose.yml`: add `homecloud-backend` (own volume, own
   healthcheck, depends on `homecore`), point `apps/homecloud`'s frontend
-  build at it instead of at `homecore`.
+  build at it instead of at `homecore`. Also: set `HOMECORE_INTERNAL_SECRET`
+  to the same real value on both `homecore` and `homecloud-backend`'s
+  compose entries — Phase 3 and Phase 4 both built real functionality
+  behind this (event emission, usage lookups) that fails closed (by
+  design) until it's actually configured, not just left at the `.env.example`
+  placeholder.
 - `gateway/nginx.conf`: add a `/api/homecloud/` → `homecloud-backend`
   rule alongside the existing `/api/homemedia/`, `/api/homesync/`,
   `/api/homenotes/` ones, plus `/api/share/` → `homecloud-backend` for

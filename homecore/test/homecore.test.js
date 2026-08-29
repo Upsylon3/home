@@ -3,11 +3,11 @@ const assert = require("node:assert/strict");
 const { startTestApp, stopTestApp } = require("./helpers/app");
 const { makeClient, registerUser } = require("./helpers/client");
 
-let baseUrl, db;
+let baseUrl, db, internalSecret;
 let admin; // first user registered in this file's isolated database
 
 before(async () => {
-  ({ baseUrl, db } = await startTestApp());
+  ({ baseUrl, db, internalSecret } = await startTestApp());
   admin = await registerUser(baseUrl, { username: "core_admin" });
   assert.equal(admin.user.role, "admin");
 });
@@ -158,10 +158,18 @@ test("apps: the homecloud application itself can never be removed", async () => 
 });
 
 test("activity bridge: a HomeCloud action shows up as a namespaced HomeCore event", async () => {
-  const { client } = await registerUser(baseUrl, { username: "core_activity_user" });
+  const { client, user } = await registerUser(baseUrl, { username: "core_activity_user" });
 
-  const folder = await client.post("/api/folders", { name: "Bridged" });
-  assert.equal(folder.status, 201);
+  // Simulates exactly what apps/homecloud-backend's real logActivity()
+  // sends over HTTP (see homecore/src/internalEvents.js) — the old
+  // /api/folders route this test used to create a real folder through no
+  // longer exists here at all as of MIGRATION_PLAN.md's Phase 5.
+  const emit = await fetch(`${baseUrl}/internal/events`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Internal-Secret": internalSecret },
+    body: JSON.stringify({ userId: user.id, applicationSlug: "homecloud", action: "folder_create", targetName: "Bridged" })
+  });
+  assert.equal(emit.status, 202);
 
   const mine = await client.get("/api/core/activity/me");
   assert.equal(mine.status, 200);

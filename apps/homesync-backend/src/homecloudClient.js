@@ -1,14 +1,17 @@
 // Same principle as homemedia-backend's homecloudClient.js: HomeSync has
 // no identity or storage of its own. Every backed-up file is actually
-// stored by uploading it straight through to HomeCloud's own upload
-// endpoint — HomeSync's own database only ever tracks what's already
-// been sent, for dedup and backup history, never the bytes themselves.
-// Identity verification itself now lives in packages/homecore-client,
-// shared with HomeMedia's and HomeNotes' equivalents of this file.
-const { HOMECLOUD_URL } = require("@home/homecore-client");
+// stored by uploading it straight through to apps/homecloud-backend's own
+// upload endpoint — HomeSync's own database only ever tracks what's
+// already been sent, for dedup and backup history, never the bytes
+// themselves. Identity verification itself lives in packages/homecore-client
+// (this file doesn't need HOMECLOUD_URL from there — that's HomeCore's
+// address, for auth; this file only ever talks to the separate file-
+// storage service below), shared with HomeMedia's and HomeNotes'
+// equivalents of this file.
+const HOMECLOUD_BACKEND_URL = (process.env.HOMECLOUD_BACKEND_INTERNAL_URL || "http://homecloud-backend:4500").replace(/\/$/, "");
 
 async function listFoldersFlat(token) {
-  const res = await fetch(`${HOMECLOUD_URL}/api/folders/all`, { headers: { Authorization: `Bearer ${token}` } });
+  const res = await fetch(`${HOMECLOUD_BACKEND_URL}/api/homecloud/folders/all`, { headers: { Authorization: `Bearer ${token}` } });
   if (!res.ok) {
     const err = new Error("Couldn't reach HomeCloud to list folders.");
     err.status = 502;
@@ -19,7 +22,7 @@ async function listFoldersFlat(token) {
 }
 
 async function createFolder(token, name, parentId) {
-  const res = await fetch(`${HOMECLOUD_URL}/api/folders`, {
+  const res = await fetch(`${HOMECLOUD_BACKEND_URL}/api/homecloud/folders`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({ name, parentId: parentId ?? undefined })
@@ -80,7 +83,7 @@ async function uploadFile(token, { buffer, filename, mimetype, folderId }) {
   form.append("file", new Blob([buffer], { type: mimetype || "application/octet-stream" }), filename);
   if (folderId !== null && folderId !== undefined) form.append("folderId", String(folderId));
 
-  const res = await fetch(`${HOMECLOUD_URL}/api/files/upload`, {
+  const res = await fetch(`${HOMECLOUD_BACKEND_URL}/api/homecloud/files/upload`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
     body: form

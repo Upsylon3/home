@@ -1,19 +1,30 @@
 // HomeMedia has no identity or storage of its own — HomeCore's principle
 // of one identity provider (not one per application) means every request
-// here is authenticated by asking HomeCloud, and every photo/video byte
-// comes from HomeCloud's storage, fetched on demand. This module is the
-// one place that talks to HomeCloud over the network for HomeMedia's OWN
-// concerns (listing/downloading files); identity verification itself
-// (verifyUser, the /api/auth/me cache) now lives in
+// here is authenticated by asking HomeCore, and every photo/video byte
+// comes from apps/homecloud-backend's storage, fetched on demand. This
+// module is the one place that talks to HomeCloud over the network for
+// HomeMedia's OWN concerns (listing/downloading files); identity
+// verification itself (verifyUser, the /api/auth/me cache) now lives in
 // packages/homecore-client, shared with HomeSync's and HomeNotes'
 // equivalents of this file — see that package's src/verify.js for why.
+//
+// Two separate URLs, not one, as of MIGRATION_PLAN.md's Phase 5: before
+// the split, "where do I verify a token" and "where do I fetch a file"
+// were the same server, so HOMECLOUD_URL (from packages/homecore-client)
+// correctly answered both. Now they're two different services —
+// HOMECLOUD_URL still answers the first (HomeCore), and
+// HOMECLOUD_BACKEND_URL below answers the second. Conflating them again
+// here would silently break every file operation the moment
+// apps/homecloud-backend's address differs from HomeCore's, which it
+// always does.
 const { HOMECLOUD_URL } = require("@home/homecore-client");
+const HOMECLOUD_BACKEND_URL = (process.env.HOMECLOUD_BACKEND_INTERNAL_URL || "http://homecloud-backend:4500").replace(/\/$/, "");
 
 // type: "image" | "video" | undefined (undefined = both, requested as two
-// separate calls since HomeCloud's /api/files/all only filters one prefix
-// at a time).
+// separate calls since HomeCloud's /api/homecloud/files/all only filters
+// one prefix at a time).
 async function listFiles(token, type) {
-  const url = new URL("/api/files/all", HOMECLOUD_URL);
+  const url = new URL("/api/homecloud/files/all", HOMECLOUD_BACKEND_URL);
   if (type) url.searchParams.set("type", type);
   let res;
   try {
@@ -37,7 +48,7 @@ async function listFiles(token, type) {
 async function downloadFile(token, fileId) {
   let res;
   try {
-    res = await fetch(`${HOMECLOUD_URL}/api/files/${fileId}/download`, {
+    res = await fetch(`${HOMECLOUD_BACKEND_URL}/api/homecloud/files/${fileId}/download`, {
       headers: { Authorization: `Bearer ${token}` }
     });
   } catch (err) {

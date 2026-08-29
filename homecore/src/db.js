@@ -3,10 +3,9 @@ const fs = require("fs");
 const Database = require("better-sqlite3");
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "..", "data");
-const UPLOADS_DIR = path.join(DATA_DIR, "uploads");
 
-// Make sure the directories we need actually exist before anything touches them.
-fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+// Make sure the directory we need actually exists before anything touches it.
+fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const db = new Database(path.join(DATA_DIR, "homecloud.db"));
 db.pragma("journal_mode = WAL");
@@ -19,43 +18,23 @@ db.exec(`
     password_hash TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
-
-  CREATE TABLE IF NOT EXISTS files (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    original_name TEXT NOT NULL,
-    stored_name TEXT NOT NULL,
-    size INTEGER NOT NULL,
-    mimetype TEXT,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
-  );
-
-  CREATE INDEX IF NOT EXISTS idx_files_user_id ON files(user_id);
-
-  CREATE TABLE IF NOT EXISTS folders (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    parent_id INTEGER REFERENCES folders(id) ON DELETE CASCADE,
-    name TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
-  );
-
-  CREATE INDEX IF NOT EXISTS idx_folders_user_id ON folders(user_id);
-  CREATE INDEX IF NOT EXISTS idx_folders_parent_id ON folders(parent_id);
-
-  CREATE TABLE IF NOT EXISTS shares (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    file_id INTEGER NOT NULL REFERENCES files(id) ON DELETE CASCADE,
-    token TEXT UNIQUE NOT NULL,
-    created_by INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    expires_at TEXT,
-    revoked_at TEXT,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
-  );
-
-  CREATE INDEX IF NOT EXISTS idx_shares_token ON shares(token);
-  CREATE INDEX IF NOT EXISTS idx_shares_created_by ON shares(created_by);
 `);
+
+// files/folders/shares moved to apps/homecloud-backend's own database as
+// of MIGRATION_PLAN.md's Phase 5 — see scripts/migrate-legacy-homecloud-data.js
+// for how an existing deployment's real data gets there.
+//
+// Deliberately NOT dropped here, unlike activity_log above — this table
+// held real file ownership records, not an audit trail with an already-
+// documented "acceptable to lose some history" precedent. On a fresh
+// install these tables simply never get created (no CREATE TABLE
+// statement for them anymore); on an existing install being upgraded,
+// they're left completely inert — unused by any code path, but present
+// and untouched, exactly like the migration script's own "copy, never
+// move" philosophy for the uploaded file bytes themselves. Reclaiming
+// this space (a manual DROP TABLE, or eventually a fresh volume once
+// you're confident the migration succeeded) is an explicit, later,
+// separate step — never automatic.
 
 // activity_log is retired as of MIGRATION_PLAN.md's Phase 3, in favor of
 // the shared, cross-app hc_activity_events table (homecore/src/homecore/
@@ -91,9 +70,6 @@ ensureColumn("users", "role TEXT NOT NULL DEFAULT 'user'");
 ensureColumn("users", "token_version INTEGER NOT NULL DEFAULT 0");
 ensureColumn("users", "disabled INTEGER NOT NULL DEFAULT 0");
 ensureColumn("users", "quota_override INTEGER");
-ensureColumn("files", "deleted_at TEXT");
-ensureColumn("files", "folder_id INTEGER");
-ensureColumn("files", "thumbnail_name TEXT");
 ensureColumn("users", "totp_secret TEXT");
 ensureColumn("users", "totp_enabled INTEGER NOT NULL DEFAULT 0");
 
@@ -154,4 +130,4 @@ function logActivity(userId, action, targetName = null) {
   }
 }
 
-module.exports = { db, DATA_DIR, UPLOADS_DIR, logActivity, onActivity, ensureColumn };
+module.exports = { db, DATA_DIR, logActivity, onActivity, ensureColumn };

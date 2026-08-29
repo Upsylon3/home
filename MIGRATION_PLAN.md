@@ -240,7 +240,7 @@ silent fallback to a table that no longer exists.
   navigation change you'd live with day to day, not a backend
   implementation detail.
 
-## Phase 5 — wire it in
+## Phase 5 — wire it in ✅ done (`v0.9.0`)
 
 - `docker-compose.yml`: add `homecloud-backend` (own volume, own
   healthcheck, depends on `homecore`), point `apps/homecloud`'s frontend
@@ -269,15 +269,86 @@ silent fallback to a table that no longer exists.
   already are. Four Tier 1 apps, one seeding pattern, no special case.
   (Net simplification, not added complexity.)
 
+**Done — and this phase turned out considerably bigger than the plan
+above anticipated.** Four things this note didn't originally account for,
+each found by actually running the full ecosystem's tests or an actual
+end-to-end pass rather than assumed away:
+
+1. **Real existing data needs a real migration path, not just a
+   compatibility note.** `MIGRATION.md` flagged this risk back at
+   `v0.1.0` in principle ("moving its owner in the source tree does not
+   migrate or duplicate user data") but never built an actual mechanism.
+   `scripts/migrate-legacy-homecloud-data.js` does: copies (never moves)
+   real rows and real file bytes from the old storage into the new,
+   preserving every id exactly. Verified with SHA-256 byte comparison on
+   real file bytes, confirmed idempotent-by-refusal (won't double-migrate
+   or corrupt a destination that already has data), confirmed the source
+   is left completely untouched. Packaged as its own on-demand Compose
+   service (`migrate-legacy-data`, `profiles: [tools]` — never starts
+   with a normal `docker compose up`) since the script lives at the repo
+   root, outside any one service's own build context. See
+   `docs/SETUP.md`'s new "Upgrading an existing install past v0.9.0"
+   section.
+2. **`/api/auth/me`'s `usedBytes`/`quotaBytes` had to go, not just gain a
+   `quotaOverride` field.** Once the local `files` table is actually
+   gone, computing them would crash. Simplified `/me` down to pure
+   identity + `quotaOverride`; every real consumer (`apps/homecloud`'s
+   `Dashboard.jsx`, `apps/home`'s dashboard quota widget) moved to the
+   new `GET /api/homecloud/files/quota` — found by grepping every
+   `usedBytes`/`quotaBytes` reference across the frontend tree before
+   touching anything, not discovered by a crash later.
+3. **`admin.js`'s temporary fallback came out the right way, not just
+   deleted.** Unreachable now means `usedBytes: null` (a distinct fact
+   from "zero," surfaced as "Usage unavailable" in `Admin.jsx`) while
+   every other admin action keeps working — matching
+   `docs/ARCHITECTURE.md`'s graceful-degradation principle instead of an
+   all-or-nothing failure over one field.
+4. **The single biggest gap: HomeMedia, HomeSync, and HomeNotes were all
+   about to break in production.** Each fetches real HomeCloud files
+   through its own `homecloudClient.js`, which — before this phase — used
+   the *same* URL for identity verification and file operations, because
+   before the split those were the same server. `homemedia-backend`'s
+   test suite failing immediately after the old routes were deleted is
+   what surfaced this, not a design review. Fixed by introducing a second
+   URL, `HOMECLOUD_BACKEND_INTERNAL_URL`, distinct from
+   `HOMECLOUD_URL`/`HOMECLOUD_INTERNAL_URL` (identity, still HomeCore),
+   across all three siblings' source *and* their test harnesses (each now
+   boots the real `homecloud-backend` service, which itself boots a real
+   HomeCore — verified this correctly reuses one HomeCore instance via
+   Node's module cache, not three divergent ones, before trusting it).
+5. **Smaller, along the way:** `services/backup/backup.sh` only ever
+   backed up one volume — `homemedia_data`/`homenotes_data`/`homesync_data`
+   (including HomeNotes' actual note content, not just a cache) were
+   silently never covered at all. Generalized to loop over any number of
+   named sources rather than left as a separate backlog item, since it's
+   the exact same code path either way.
+
+**Verified end-to-end, not just through isolated test suites:** real
+HomeCore and `homecloud-backend` processes, real nginx running the actual
+gateway config (Docker service names substituted for `127.0.0.1`), real
+`curl` calls through that gateway — register, upload, list, check quota,
+download, create a share, download it anonymously via the unprefixed
+route, and confirm HomeCore can reach `homecloud-backend`'s internal
+usage endpoint for real. 145 tests across the whole ecosystem, all
+actually run: `homecore` 44, `homecloud-backend` 39, `homemedia-backend`
+18, `homesync-backend` 20, `homenotes-backend` 24. See `CHANGELOG.md`
+`[0.9.0]` for the complete account.
+
 ## Phase 6 — cleanup and doc sync
 
-- Delete the now-unused route files, table definitions, and the
-  TRANSITIONAL notice at the top of `homecore/src/app.js`.
-- Update `docs/ARCHITECTURE.md` §3/§6 and `README.md`'s "Tiered architecture"
-  section — both currently describe the split as further along than it
-  is; once it's real, they should say so plainly, matching this
-  project's own stated standard of verifying claims against the repo
-  rather than carrying forward stale ones.
+- ~~Delete the now-unused route files, table definitions, and the
+  TRANSITIONAL notice at the top of `homecore/src/app.js`.~~ **Already
+  done as part of Phase 5** — see `CHANGELOG.md` `[0.9.0]`. Phase 5 ended
+  up being the actual "flip the switch" commit (real end-to-end
+  verification came first, then the deletion, in the same phase), so
+  this item moved earlier than originally planned rather than sitting
+  here as a separate step.
+- Update `docs/ARCHITECTURE.md` §3/§5/§6 and `README.md`'s "Tiered
+  architecture" section — both still describe the split as further along
+  than it *was*, and now need to describe what's actually true: a real
+  separation, not a folder rename. Matches this project's own stated
+  standard of verifying claims against the repo rather than carrying
+  forward stale ones.
 - Bump to a new **MINOR** version per `VERSIONING.md` (this is a real new
   capability, verified working) and tag it.
 

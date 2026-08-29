@@ -3,11 +3,11 @@ const assert = require("node:assert/strict");
 const { startTestApp, stopTestApp } = require("./helpers/app");
 const { makeClient, registerUser } = require("./helpers/client");
 
-let baseUrl;
+let baseUrl, internalSecret;
 let admin; // the very first user registered in this file — see the first test
 
 before(async () => {
-  ({ baseUrl } = await startTestApp());
+  ({ baseUrl, internalSecret } = await startTestApp());
   admin = await registerUser(baseUrl, { username: "root_admin" });
   assert.equal(admin.user.role, "admin", "sanity check: the first registered user in a fresh db must be admin");
 });
@@ -34,31 +34,42 @@ test("GET /api/admin/users lists accounts with usage and quota", async () => {
   assert.equal(typeof me.quotaBytes, "number");
 });
 
-test("usedBytes falls back to the local files table when homecloud-backend is unreachable", async () => {
-  // In this suite's isolated test environment, HOMECLOUD_BACKEND_INTERNAL_URL
-  // is never set to anything real — this IS the current live-deployment
-  // reality too (see admin.js's comment on the Phase 4 -> Phase 5 gap),
-  // not a test-only condition. Real data uploaded through this same
-  // process's still-live /api/files proves the fallback path is exercised
-  // for real, not just "didn't crash."
-  const user = await registerUser(baseUrl, { username: "fallback_usage_user" });
-  const form = new FormData();
-  form.append("file", new Blob(["x".repeat(777)], { type: "text/plain" }), "note.txt");
-  const upload = await user.client.post("/api/files/upload", form, { raw: true });
-  assert.equal(upload.status, 201);
+test("usedBytes is null (not 0, not a failure) when homecloud-backend is unreachable — the rest of the panel still works", async () => {
+  // apps/homecloud-backend's real GET /internal/users/usage is covered by
+  // its own suite (apps/homecloud-backend/test/internalUsage.test.js).
+  // This test is specifically about admin.js's OWN behavior when that
+  // call fails — pointing at a port nothing is listening on, rather than
+  // a stand-in, is what makes this a genuine unreachable-service case
+  // (a closed connection), not just a slow or malformed one.
+  const user = await registerUser(baseUrl, { username: "unreachable_usage_user" });
 
-  const res = await admin.client.get("/api/admin/users");
-  const row = res.body.users.find((u) => u.username === "fallback_usage_user");
-  assert.equal(row.usedBytes, 777);
+  const original = process.env.HOMECLOUD_BACKEND_INTERNAL_URL;
+  process.env.HOMECLOUD_BACKEND_INTERNAL_URL = "http://127.0.0.1:1"; // nothing listens on port 1
+  try {
+    const res = await admin.client.get("/api/admin/users");
+    assert.equal(res.status, 200, "the whole route must not fail just because usage couldn't be fetched");
+    assert.ok(res.body.usageError, "the failure should be surfaced, not silently swallowed");
+
+    const row = res.body.users.find((u) => u.username === "unreachable_usage_user");
+    assert.equal(row.usedBytes, null);
+    // Graceful degradation, per docs/ARCHITECTURE.md's principle: every
+    // OTHER field — the thing an admin actually needs to manage
+    // accounts — is completely unaffected by HomeCloud being unreachable.
+    assert.equal(row.role, "user");
+    assert.equal(row.disabled, false);
+    assert.equal(typeof row.quotaBytes, "number");
+  } finally {
+    process.env.HOMECLOUD_BACKEND_INTERNAL_URL = original;
+  }
 });
 
-test("usedBytes prefers homecloud-backend's own answer when it IS reachable", async () => {
+test("usedBytes reflects homecloud-backend's real answer when it's reachable", async () => {
   // A lightweight stand-in for apps/homecloud-backend's real
   // GET /internal/users/usage — not the full service (that contract is
   // already covered by apps/homecloud-backend/test/internalUsage.test.js
   // against the real thing). This test is specifically about admin.js's
-  // OWN calling/parsing/merging logic: given a real response shaped like
-  // the contract, does it use it instead of falling back?
+  // OWN calling/parsing/merging logic against a real HTTP response shaped
+  // like the contract.
   const http = require("node:http");
   const target = await registerUser(baseUrl, { username: "reachable_usage_user" });
 
@@ -68,9 +79,6 @@ test("usedBytes prefers homecloud-backend's own answer when it IS reachable", as
       return;
     }
     res.writeHead(200, { "Content-Type": "application/json" });
-    // A value that could only have come from the stub, not the (empty,
-    // for this user) local files table — proves this path was actually
-    // taken, not silently ignored in favor of the fallback.
     res.end(JSON.stringify({ usage: [{ userId: target.user.id, usedBytes: 999999 }] }));
   });
   await new Promise((resolve) => stub.listen(0, "127.0.0.1", resolve));
@@ -80,6 +88,7 @@ test("usedBytes prefers homecloud-backend's own answer when it IS reachable", as
   process.env.HOMECLOUD_BACKEND_INTERNAL_URL = `http://127.0.0.1:${port}`;
   try {
     const res = await admin.client.get("/api/admin/users");
+    assert.equal(res.body.usageError, null);
     const row = res.body.users.find((u) => u.username === "reachable_usage_user");
     assert.equal(row.usedBytes, 999999);
   } finally {
@@ -131,7 +140,7 @@ test("disable: an admin can't disable themselves, but can disable someone else",
   assert.equal(reEnable.status, 200);
 });
 
-test("quota override: set, reflected on /me, then cleared back to default", async () => {
+test("quota override: set, reflected on /me as quotaOverride, then cleared back to default", async () => {
   const target = await registerUser(baseUrl, { username: "quota_target" });
 
   const invalid = await admin.client.post(`/api/admin/users/${target.user.id}/quota`, { quotaBytes: -5 });
@@ -140,14 +149,19 @@ test("quota override: set, reflected on /me, then cleared back to default", asyn
   const set = await admin.client.post(`/api/admin/users/${target.user.id}/quota`, { quotaBytes: 12345 });
   assert.equal(set.status, 200);
 
+  // /me's quotaBytes/usedBytes moved to apps/homecloud-backend's own
+  // GET /api/homecloud/files/quota as of MIGRATION_PLAN.md's Phase 5 (see
+  // homecore/test/auth.test.js's own updated /me test). quotaOverride —
+  // the raw override value alone, which is genuinely HomeCore's to know —
+  // stays here, and is what homecloud-backend's own quota check reads.
   const meAfterSet = await target.client.get("/api/auth/me");
-  assert.equal(meAfterSet.body.quotaBytes, 12345);
+  assert.equal(meAfterSet.body.quotaOverride, 12345);
 
   const clear = await admin.client.post(`/api/admin/users/${target.user.id}/quota`, { quotaBytes: null });
   assert.equal(clear.status, 200);
 
   const meAfterClear = await target.client.get("/api/auth/me");
-  assert.notEqual(meAfterClear.body.quotaBytes, 12345);
+  assert.equal(meAfterClear.body.quotaOverride, null);
 });
 
 test("role: promote/demote works, and the last remaining admin can't be demoted", async () => {
@@ -210,9 +224,19 @@ test("force-disable 2FA on a target account", async () => {
 
 test("activity feed: cross-user, admin-only, most recent first", async () => {
   const target = await registerUser(baseUrl, { username: "activity_target" });
-  const form = new FormData();
-  form.append("file", new Blob(["hi"], { type: "text/plain" }), "hi.txt");
-  await target.client.post("/api/files/upload", form, { raw: true });
+
+  // Simulates exactly what apps/homecloud-backend's real logActivity()
+  // sends over HTTP (see homecore/src/internalEvents.js) — the old route
+  // this test used to upload a real file through (/api/files/upload) no
+  // longer exists here at all as of MIGRATION_PLAN.md's Phase 5; that
+  // upload, and the "upload" activity entry it caused, both genuinely
+  // happen on apps/homecloud-backend now.
+  const emit = await fetch(`${baseUrl}/internal/events`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Internal-Secret": internalSecret },
+    body: JSON.stringify({ userId: target.user.id, applicationSlug: "homecloud", action: "upload", targetName: "hi.txt" })
+  });
+  assert.equal(emit.status, 202);
 
   const forbidden = await target.client.get("/api/admin/activity");
   assert.equal(forbidden.status, 403);

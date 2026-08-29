@@ -15,20 +15,16 @@ router.use(requireAuth, requireAdmin);
 
 const defaultQuota = () => Number(process.env.QUOTA_BYTES || 5 * 1024 ** 3);
 
-// TEMPORARY, see MIGRATION_PLAN.md's Phase 4 → Phase 5 gap: usage now
-// genuinely lives on apps/homecloud-backend, fetched via its
-// GET /internal/users/usage — but that service isn't wired into
-// docker-compose.yml/the gateway yet (that's Phase 5), so in every real
-// deployment today it simply isn't running. Falling back to the local
-// `files` table (still present — Phase 2 explicitly didn't delete it,
-// "don't delete until the commit that flips the switch") keeps this
-// route's live behavior completely unchanged until that switch actually
-// flips, while the new path is already fully built and tested
-// (apps/homecloud-backend/test/internalUsage.test.js) ahead of when it's
-// needed. Phase 5 or 6 removes this fallback once homecore/src/db.js's
-// own `files` table is actually dropped — at that point this function
-// should throw on failure instead of quietly falling back to a table
-// that no longer exists.
+// apps/homecloud-backend is now genuinely wired into docker-compose.yml
+// and the gateway (MIGRATION_PLAN.md's Phase 5) — the local `files` table
+// this used to fall back to no longer exists in this database at all (see
+// this file's git history for the removed fallback, and CHANGELOG.md's
+// [0.9.0]). A failure here degrades gracefully instead of failing the
+// whole route: the user list, and every other admin action (disable,
+// role, quota, 2FA reset), stays fully usable even if HomeCloud's storage
+// service is briefly down — only the usage numbers go missing, matching
+// docs/ARCHITECTURE.md's "graceful degradation" principle rather than an
+// all-or-nothing failure over one field.
 const USAGE_FETCH_TIMEOUT_MS = 2000;
 
 async function fetchUsageFromHomecloudBackend() {
@@ -40,21 +36,14 @@ async function fetchUsageFromHomecloudBackend() {
       headers: { "X-Internal-Secret": process.env.HOMECORE_INTERNAL_SECRET || "" },
       signal: controller.signal
     });
-    if (!res.ok) return null;
+    if (!res.ok) throw new Error(`homecloud-backend responded with HTTP ${res.status}`);
     const body = await res.json();
     const byUserId = new Map();
     for (const row of body.usage) byUserId.set(row.userId, row.usedBytes);
     return byUserId;
-  } catch {
-    return null; // unreachable, timed out, or malformed — caller falls back
   } finally {
     clearTimeout(timeout);
   }
-}
-
-function usageFromLocalFilesTable() {
-  const rows = db.prepare("SELECT user_id AS userId, SUM(size) AS usedBytes FROM files GROUP BY user_id").all();
-  return new Map(rows.map((r) => [r.userId, r.usedBytes]));
 }
 
 // List every account, with how much storage each is using and their
@@ -70,17 +59,28 @@ router.get(
       )
       .all();
 
-    const usageByUserId = (await fetchUsageFromHomecloudBackend()) || usageFromLocalFilesTable();
+    let usageByUserId = null;
+    let usageError = null;
+    try {
+      usageByUserId = await fetchUsageFromHomecloudBackend();
+    } catch (err) {
+      usageError = err.message;
+      console.error("[homecore] Couldn't fetch storage usage from homecloud-backend:", usageError);
+    }
 
     const result = users.map((u) => ({
       ...u,
       disabled: Boolean(u.disabled),
       totpEnabled: Boolean(u.totpEnabled),
       quotaBytes: u.quotaOverride ?? defaultQuota(),
-      usedBytes: usageByUserId.get(u.id) ?? 0
+      // null (not 0) when homecloud-backend was unreachable — genuinely
+      // unknown is a different fact than genuinely zero, and the
+      // frontend/StorageGauge-equivalent here should say "unavailable,"
+      // not falsely claim nobody's using any storage.
+      usedBytes: usageByUserId ? usageByUserId.get(u.id) ?? 0 : null
     }));
 
-    res.json({ users: result, defaultQuotaBytes: defaultQuota() });
+    res.json({ users: result, defaultQuotaBytes: defaultQuota(), usageError });
   })
 );
 

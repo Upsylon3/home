@@ -29,10 +29,6 @@ async function startTestApp({ disableRateLimit = true } = {}) {
   process.env.DATA_DIR = dataDir;
   process.env.JWT_SECRET = `test_secret_${Math.random().toString(36).slice(2)}_${Date.now()}`;
   process.env.JWT_EXPIRES_IN = "1h";
-  // Deliberately small so quota-enforcement tests don't need to upload
-  // huge files to trip the limit.
-  process.env.QUOTA_BYTES = String(2 * 1024 * 1024); // 2 MB
-  process.env.TRASH_RETENTION_DAYS = "30";
   process.env.CORS_ORIGIN = "*";
   process.env.DISABLE_RATE_LIMIT_FOR_TESTS = disableRateLimit ? "true" : "false";
   // Shared secret for POST /internal/events (see ../internalEvents.js).

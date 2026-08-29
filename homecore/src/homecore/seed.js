@@ -40,29 +40,37 @@ function grantPermissions(applicationId, keys) {
   }
 }
 
+// Every one of these four apps — HomeCloud included, as of
+// MIGRATION_PLAN.md's Phase 5 — is a genuinely separate service (own
+// container, own backend, own database) with no access to this database
+// of its own to self-register into. Pre-seeding each one's registry entry
+// here, from the one process that owns hc_applications, is the smallest
+// way to get a working card in Home out of the box; a proper self-hosted
+// "install an application" admin flow (§45's lifecycle: discover ->
+// install -> register -> enable) is real future work, not a v0
+// requirement. This is a deliberate, documented shortcut, not an
+// architectural pattern to repeat for every future application without
+// reconsidering it.
+//
+// Before Phase 5, HomeCloud was the one exception — it shared this same
+// process, so it could look up its own package.json version and register
+// itself, the way HomeCore's own health/system routes still report on
+// themselves today. That's gone now that it's a real separate service
+// with its own package.json apps/homecloud-backend can't reach from here
+// any more than HomeMedia's ever could — so it's a fixed version literal
+// below, exactly like its three siblings, not a special case anymore.
 function seedHomecloudApplication() {
-  // eslint-disable-next-line global-require -- read lazily so this file has no import-time dependency on package.json's exact shape
-  const pkg = require("../../package.json");
-  const version = pkg.version || "0.0.0";
-  // base_url is where HomeCloud's own frontend is served — what Home's
-  // "Launch" links actually navigate to. docker-compose.yml sets
-  // HOMECLOUD_FRONTEND_URL=/cloud/ (a *path*, not a full URL) because the
-  // gateway now puts every app behind one origin — see gateway/nginx.conf.
-  // The fallback below only kicks in when this file runs OUTSIDE Docker
-  // (§4 of docs/SETUP.md, e.g. `npm run dev` inside homecore/ directly), where
-  // there is no gateway in front of it yet, so a real host:port is needed
-  // instead of a path. IMPORTANT: this must stay a *path-shaped* default
-  // ("/cloud") to match the gateway once you *do* run behind it — a bare
-  // "http://localhost:8080" fallback here would be silently wrong in
-  // Docker if the env var were ever unset, since the gateway (not this
-  // service) owns port 8080.
+  // Path-shaped fallback for the same reason as its siblings below —
+  // matches the gateway's /cloud/ route rather than the old pre-gateway
+  // port. See docs/SETUP.md §4 for when the fallback actually applies.
   const baseUrl = process.env.HOMECLOUD_FRONTEND_URL || "/cloud";
 
   const existing = db.prepare("SELECT id FROM hc_applications WHERE slug = 'homecloud'").get();
   if (existing) {
-    db.prepare(
-      "UPDATE hc_applications SET version = ?, base_url = ?, updated_at = datetime('now') WHERE id = ?"
-    ).run(version, baseUrl, existing.id);
+    db.prepare("UPDATE hc_applications SET base_url = ?, updated_at = datetime('now') WHERE id = ?").run(
+      baseUrl,
+      existing.id
+    );
     grantPermissions(existing.id, ["files.read", "files.write", "files.delete", "files.share"]);
     return existing.id;
   }
@@ -70,26 +78,13 @@ function seedHomecloudApplication() {
   const info = db
     .prepare(
       `INSERT INTO hc_applications (slug, name, description, version, icon, base_url, health_url, enabled)
-       VALUES ('homecloud', 'HomeCloud', 'Personal file storage', ?, '/icons/homecloud.svg', ?, '/api/health', 1)`
+       VALUES ('homecloud', 'HomeCloud', 'Personal file storage', '0.1.0', '/icons/homecloud.svg', ?, '/api/homecloud/health', 1)`
     )
-    .run(version, baseUrl);
+    .run(baseUrl);
   grantPermissions(info.lastInsertRowid, ["files.read", "files.write", "files.delete", "files.share"]);
   return info.lastInsertRowid;
 }
 
-// HomeMedia is a genuinely separate service (its own container, its own
-// backend — see docker-compose.yml and homemedia-backend/), unlike
-// HomeCore itself which still lives embedded in this process (§39's
-// pragmatic v0 compromise). Because of that, HomeMedia can't self-register
-// the way HomeCore's own health/system routes can report on themselves —
-// it has no access to this database. Pre-seeding its registry entry here,
-// from the one process that *does* already seed HomeCloud's own entry, is
-// the smallest way to get a working "HomeMedia" card in Home out of the
-// box; a proper self-hosted "install an application" admin flow (§45's
-// lifecycle: discover → install → register → enable) is real future work,
-// not a v0 requirement. This is a deliberate, documented shortcut, not an
-// architectural pattern to repeat for every future application without
-// reconsidering it.
 function seedHomeMediaApplication() {
   // Path-shaped fallback for the same reason as seedHomecloudApplication above —
   // matches the gateway's /media/ route rather than the old pre-gateway port.

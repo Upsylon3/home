@@ -209,33 +209,21 @@ router.post(
 );
 
 router.get("/me", requireAuth, (req, res) => {
+  // Used to also compute quotaBytes/usedBytes here with a direct query
+  // against a local `files` table — that table (and the query) is gone as
+  // of MIGRATION_PLAN.md's Phase 5: apps/homecloud's and apps/home's
+  // frontends both now call apps/homecloud-backend's own
+  // GET /api/homecloud/files/quota instead (see CHANGELOG.md's [0.9.0]).
+  // quotaOverride stays — it's the one piece of this that's genuinely a
+  // HomeCore/identity concern (the raw per-user limit override), which
+  // homecloud-backend's own quota check reads from here.
   const row = db.prepare("SELECT quota_override, totp_enabled FROM users WHERE id = ?").get(req.user.id);
-  const defaultQuota = Number(process.env.QUOTA_BYTES || 5 * 1024 ** 3);
-  const quotaBytes = row.quota_override ?? defaultQuota;
-
-  // Storage usage includes trashed files (until they're permanently purged),
-  // same as most consumer cloud storage: emptying the trash is what actually
-  // frees up space.
-  const usedRow = db
-    .prepare("SELECT COALESCE(SUM(size), 0) AS used FROM files WHERE user_id = ?")
-    .get(req.user.id);
 
   res.json({
     id: req.user.id,
     username: req.user.username,
     role: req.user.role,
-    quotaBytes,
-    usedBytes: usedRow.used,
     totpEnabled: Boolean(row.totp_enabled),
-    // Additive, not a replacement for quotaBytes/usedBytes above — this
-    // service's own frontend (apps/homecloud) still reads those two as
-    // the combined answer. quotaOverride is the raw per-user limit
-    // override alone (or null, meaning "use the default"), specifically
-    // for apps/homecloud-backend (see MIGRATION_PLAN.md's Phase 2) to
-    // compute its own quota check locally — it knows its own usedBytes
-    // from its own files table, and now gets the limit from here instead
-    // of a database join that can't work once files/folders/shares live
-    // in a different database entirely.
     quotaOverride: row.quota_override ?? null
   });
 });

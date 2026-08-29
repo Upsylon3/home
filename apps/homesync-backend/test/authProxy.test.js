@@ -3,12 +3,12 @@ const assert = require("node:assert/strict");
 const { startTestApp, stopTestApp } = require("./helpers/app");
 const { makeClient, registerHomeSyncUser } = require("./helpers/client");
 
-let homesyncUrl, homecloud;
+let homesyncUrl, homecore;
 
 before(async () => {
   const started = await startTestApp();
   homesyncUrl = started.baseUrl;
-  homecloud = started.homecloud;
+  homecore = started.homecore;
 });
 
 after(async () => {
@@ -24,7 +24,7 @@ test("login works entirely through HomeSync's proxy, with no direct call to Home
   // Register directly against HomeCloud first (there's no register proxy —
   // account creation happens once, from a browser; only login needs to
   // work from the phone with just one address).
-  const { username, password } = await registerHomeSyncUser(homecloud, homesyncUrl, {
+  const { username, password } = await registerHomeSyncUser(homecore, homesyncUrl, {
     username: "proxy_login_user"
   });
 
@@ -40,22 +40,22 @@ test("login works entirely through HomeSync's proxy, with no direct call to Home
 
 test("a wrong password proxies through HomeCloud's real 401, not a generic error", async () => {
   const client = makeClient(homesyncUrl);
-  const { username } = await registerHomeSyncUser(homecloud, homesyncUrl, { username: "proxy_wrongpass_user" });
+  const { username } = await registerHomeSyncUser(homecore, homesyncUrl, { username: "proxy_wrongpass_user" });
 
   const res = await client.post("/api/homesync/auth/login", { username, password: "TotallyWrongPassword1" });
   assert.equal(res.status, 401);
 });
 
 test("2FA verify proxies through correctly for an account with 2FA enabled", async () => {
-  const { username, password } = await registerHomeSyncUser(homecloud, homesyncUrl, {
+  const { username, password } = await registerHomeSyncUser(homecore, homesyncUrl, {
     username: "proxy_2fa_user"
   });
 
   // Set up 2FA directly against HomeCloud — an authenticated
   // account-management action a phone wouldn't be doing on first login
   // anyway, so it doesn't need to go through the proxy.
-  const directLogin = await makeClient(homecloud.baseUrl).post("/api/auth/login", { username, password });
-  const hc = makeClient(homecloud.baseUrl);
+  const directLogin = await makeClient(homecore.baseUrl).post("/api/auth/login", { username, password });
+  const hc = makeClient(homecore.baseUrl);
   hc.setToken(directLogin.body.token);
 
   const { TOTP, Secret } = require("otpauth");

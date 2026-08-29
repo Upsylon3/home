@@ -1,32 +1,41 @@
-// Boots two real, isolated services for a test file: a genuine HomeCloud
-// instance (reusing HomeCloud's own test helper — same monorepo, so this
-// is a real integration test against real HomeCloud code, not a mock of
-// it) and HomeNotes pointed at it via HOMECLOUD_INTERNAL_URL. Both get
-// their own fresh temp data directories; nothing here touches a real
-// deployment or another test file's data.
+// Boots real, isolated services for a test file: apps/homecloud-backend
+// (which, as part of its own setup, boots a real HomeCore instance too —
+// see its test helper) and HomeNotes pointed at both: HOMECLOUD_INTERNAL_URL
+// for identity verification (HomeCore, via @home/homecore-client) and
+// HOMECLOUD_BACKEND_INTERNAL_URL for actual file operations
+// (apps/homecloud-backend, via src/homecloudClient.js) — two different
+// services as of MIGRATION_PLAN.md's Phase 5, not one. Reusing
+// homecloud-backend's already-booted `homecore` reference (rather than
+// separately require()-ing and booting homecore/test/helpers/app.js a
+// second time here) relies on that module being require()'d from the
+// exact same resolved path either way, so Node's module cache hands back
+// the same singleton `started` state — verified, not assumed: booting
+// three services with two independent HomeCore instances would silently
+// break auth (a token from one wouldn't verify against the other).
 //
-// As with HomeCloud's own test helper, this relies on `node --test`
-// running each test file in its own child process (verified once, see
-// backend/README.md's testing section) — env vars are set sequentially
-// and each app is require()'d immediately after, so each one's db.js
-// captures the right DATA_DIR at the moment it's first loaded.
+// This relies on `node --test` running each test file in its own child
+// process — env vars are set sequentially and each app is require()'d
+// immediately after, so each one's db.js captures the right DATA_DIR at
+// the moment it's first loaded.
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const http = require("http");
 
-const homecloudTestApp = require("../../../../homecore/test/helpers/app");
+const homecloudBackendTestApp = require("../../../homecloud-backend/test/helpers/app");
 
 let started = null;
 
 async function startTestApp() {
   if (started) return started;
 
-  const homecloud = await homecloudTestApp.startTestApp();
+  const homecloudBackend = await homecloudBackendTestApp.startTestApp();
+  const homecore = homecloudBackend.homecore;
 
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "homenotes-test-"));
   process.env.DATA_DIR = dataDir;
-  process.env.HOMECLOUD_INTERNAL_URL = homecloud.baseUrl;
+  process.env.HOMECLOUD_INTERNAL_URL = homecore.baseUrl;
+  process.env.HOMECLOUD_BACKEND_INTERNAL_URL = homecloudBackend.baseUrl;
   process.env.CORS_ORIGIN = "*";
   delete process.env.PORT; // avoid ever accidentally colliding with a fixed port in tests
 
@@ -43,7 +52,8 @@ async function startTestApp() {
     server,
     baseUrl: `http://127.0.0.1:${port}`,
     dataDir,
-    homecloud
+    homecore,
+    homecloudBackend
   };
   return started;
 }
@@ -57,7 +67,7 @@ async function stopTestApp() {
     // already closed, fine
   }
   fs.rmSync(started.dataDir, { recursive: true, force: true });
-  await homecloudTestApp.stopTestApp();
+  await homecloudBackendTestApp.stopTestApp(); // also stops the homecore instance it booted
   started = null;
 }
 

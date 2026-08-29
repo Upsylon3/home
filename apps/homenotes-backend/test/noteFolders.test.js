@@ -3,12 +3,12 @@ const assert = require("node:assert/strict");
 const { startTestApp, stopTestApp } = require("./helpers/app");
 const { makeClient, registerHomeNotesUser } = require("./helpers/client");
 
-let homenotesUrl, homecloud;
+let homenotesUrl, homecore;
 
 before(async () => {
   const started = await startTestApp();
   homenotesUrl = started.baseUrl;
-  homecloud = started.homecloud;
+  homecore = started.homecore;
 });
 
 after(async () => {
@@ -16,7 +16,7 @@ after(async () => {
 });
 
 function register(overrides) {
-  return registerHomeNotesUser(homecloud, homenotesUrl, overrides);
+  return registerHomeNotesUser(homecore, homenotesUrl, overrides);
 }
 
 test("note-folder routes require auth", async () => {

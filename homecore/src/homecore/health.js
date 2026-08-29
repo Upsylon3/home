@@ -4,7 +4,7 @@
 const express = require("express");
 const fs = require("fs");
 const path = require("path");
-const { db, UPLOADS_DIR } = require("../db");
+const { db, DATA_DIR } = require("../db");
 
 const router = express.Router();
 
@@ -17,8 +17,14 @@ router.get("/", (req, res) => {
     checks.database = "unhealthy";
   }
 
+  // "storage" here means this service's own data directory (where its
+  // SQLite file lives) is writable — a distinct signal from a successful
+  // query below (a full disk or permissions issue can block writes while
+  // reads still succeed). Not a check on file uploads — those belong to
+  // apps/homecloud-backend's own health check as of MIGRATION_PLAN.md's
+  // Phase 5, not this one.
   try {
-    fs.accessSync(UPLOADS_DIR, fs.constants.W_OK);
+    fs.accessSync(DATA_DIR, fs.constants.W_OK);
   } catch {
     checks.storage = "unhealthy";
   }

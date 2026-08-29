@@ -4,12 +4,13 @@ const assert = require("node:assert/strict");
 const { startTestApp, stopTestApp } = require("./helpers/app");
 const { makeClient, registerHomeSyncUser } = require("./helpers/client");
 
-let homesyncUrl, homecloud;
+let homesyncUrl, homecore, homecloudBackend;
 
 before(async () => {
   const started = await startTestApp();
   homesyncUrl = started.baseUrl;
-  homecloud = started.homecloud;
+  homecore = started.homecore;
+  homecloudBackend = started.homecloudBackend;
 });
 
 after(async () => {
@@ -21,8 +22,8 @@ function hashOf(content) {
 }
 
 async function setUpUserWithDevice(overrides) {
-  const media = await registerHomeSyncUser(homecloud, homesyncUrl, overrides);
-  const homecloudClient = makeClient(homecloud.baseUrl);
+  const media = await registerHomeSyncUser(homecore, homesyncUrl, overrides);
+  const homecloudClient = makeClient(homecloudBackend.baseUrl);
   homecloudClient.setToken(media.token);
   const deviceRes = await media.client.post("/api/homesync/devices", { name: "Test Phone" });
   return { ...media, homecloudClient, deviceId: deviceRes.body.device.id };
@@ -106,7 +107,7 @@ test("upload: lands the file in HomeCloud under Category/Year/Month, creating fo
   assert.ok(res.body.homecloudFileId);
   assert.ok(res.body.folderId);
 
-  const folders = await homecloudClient.get("/api/folders/all");
+  const folders = await homecloudClient.get("/api/homecloud/folders/all");
   const photosFolder = folders.body.folders.find((f) => f.name === "Photos" && f.parentId === null);
   assert.ok(photosFolder, "expected a top-level Photos folder to have been created");
   const yearFolder = folders.body.folders.find((f) => f.name === "2026" && f.parentId === photosFolder.id);
@@ -117,7 +118,7 @@ test("upload: lands the file in HomeCloud under Category/Year/Month, creating fo
 
   // The actual file is really there, with the real content — this went
   // through HomeCloud's real upload endpoint, not just a database row.
-  const download = await homecloudClient.get(`/api/files/${res.body.homecloudFileId}/download`);
+  const download = await homecloudClient.get(`/api/homecloud/files/${res.body.homecloudFileId}/download`);
   assert.equal(download.status, 200);
   assert.equal(Buffer.from(download.body).toString("utf8"), "a real photo");
 });
@@ -135,7 +136,7 @@ test("uploading the same content twice is idempotent — no duplicate file in Ho
   assert.equal(second.body.deduped, true);
   assert.equal(second.body.homecloudFileId, first.body.homecloudFileId);
 
-  const list = await homecloudClient.get("/api/files/all");
+  const list = await homecloudClient.get("/api/homecloud/files/all");
   const matching = list.body.files.filter((f) => f.id === first.body.homecloudFileId);
   assert.equal(matching.length, 1);
 });

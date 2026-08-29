@@ -29,6 +29,157 @@ recovered.
   from HomeCloud (files/folders/sharing) into two independent services —
   see `MIGRATION_PLAN.md`.
 
+## [0.9.0] — Phase 5 of `MIGRATION_PLAN.md`: the switch actually flips
+
+The biggest single change in this project's tracked history. Wired
+`apps/homecloud-backend` into real infrastructure, deleted the old
+duplicated code, and — critically — found and fixed four real problems
+the original plan didn't anticipate, each caught by actually running
+things rather than assumed away. See `MIGRATION_PLAN.md`'s Phase 5 for
+the full account; this entry covers what changed, file by file.
+
+### Added
+- `scripts/migrate-legacy-homecloud-data.js` — a real, tested one-time
+  migration for any deployment with existing data: copies (never moves)
+  file/folder/share rows and the actual uploaded bytes from HomeCore's
+  old storage into `apps/homecloud-backend`'s own, preserving every row
+  id exactly. Verified with SHA-256 byte comparison on real file bytes,
+  confirmed idempotent-by-refusal, confirmed the source is left
+  completely untouched by three separate real runs (populated legacy db,
+  re-run against an already-migrated destination, empty legacy db).
+- `scripts/Dockerfile` + a new `migrate-legacy-data` Compose service
+  (`profiles: [tools]`, never starts with a normal `docker compose up`)
+  — packages the migration script with its own minimal image, since it
+  lives at the repo root, outside any one service's own build context.
+- `docs/SETUP.md` §6, "Upgrading an existing install past v0.9.0" — the
+  real, followable steps using the new service above.
+- `GET /api/homecloud/files/quota` is now the only source of usage/quota
+  data anywhere in the frontend (see Changed, below).
+- A second internal URL, `HOMECLOUD_BACKEND_INTERNAL_URL`, distinct from
+  `HOMECLOUD_URL`/`HOMECLOUD_INTERNAL_URL` — see "What Phase 5's own plan
+  didn't anticipate" below for why this exists.
+
+### Changed — infrastructure
+- `docker-compose.yml`: added the `homecloud-backend` service (own
+  volume `homecloud_backend_data`, own healthcheck); `homecloud`
+  (frontend) now depends on it instead of `homecore`; `homecore` and all
+  three sibling backends (`homemedia-backend`, `homesync-backend`,
+  `homenotes-backend`) gained `HOMECLOUD_BACKEND_INTERNAL_URL` and,
+  for the siblings, a `depends_on: homecloud-backend` alongside their
+  existing `depends_on: homecore`.
+- `gateway/nginx.conf`: added `/api/homecloud/` → `homecloud-backend`
+  and `/api/share/` → `homecloud-backend` (the latter deliberately
+  unprefixed and unauthenticated — see Phase 2's original reasoning,
+  restated in `apps/homecloud-backend/src/publicShare.js`).
+- `services/backup/backup.sh` generalized from one hardcoded volume to
+  any number of named sources — `homemedia_data`/`homenotes_data`/
+  `homesync_data` (including HomeNotes' actual note content, not just a
+  cache) were silently never backed up before this. `docker-compose.yml`'s
+  `backup` service now mounts all five app volumes.
+- `docs/SETUP.md` §5's restore instructions corrected — still referenced
+  the pre-`name: home` volume prefix from before `v0.1.0`'s Compose
+  project-name pin, and only covered one of what's now five sources.
+- `MIGRATION.md` rewritten — its central claim ("`homecore/` ... deliberately
+  embedded in the former HomeCloud backend for v0") described exactly what
+  this phase fixed; left saying so would have been the same mistake this
+  project keeps flagging elsewhere.
+
+### Changed — HomeCore
+- `homecore/src/auth.js`'s `/api/auth/me` simplified: `quotaBytes`/
+  `usedBytes` removed (the local `files` table they queried no longer
+  exists); `quotaOverride` stays, now the only quota-related field here.
+- `homecore/src/admin.js`'s Phase 4 fallback removed the right way, not
+  just deleted: an unreachable `homecloud-backend` now means
+  `usedBytes: null` — a genuinely different fact from "zero" — while
+  every other admin action (disable, role, quota, 2FA reset) keeps
+  working, matching `docs/ARCHITECTURE.md`'s graceful-degradation
+  principle instead of an all-or-nothing failure over one field.
+  `apps/homecloud/src/pages/Admin.jsx` shows "Usage unavailable" for
+  that case instead of passing `null` through `formatBytes`.
+- `homecore/src/db.js`: `files`/`folders`/`shares` table definitions and
+  `UPLOADS_DIR` removed. **Deliberately not dropped** for an existing
+  install, unlike `activity_log` in Phase 3 — this held real file
+  ownership records, not an audit trail with an already-accepted
+  "acceptable to lose some history" precedent. Simply never created on a
+  fresh install; left inert (unused, untouched) on an existing one until
+  the person manually reclaims that space once confident their migration
+  succeeded.
+- `homecore/src/files.js`, `folders.js`, `publicShare.js` deleted, along
+  with their tests (`homecore/test/files.test.js`, `folders.test.js`,
+  `publicShare.test.js`) and the dead trash-purge scheduling left over in
+  `homecore/src/server.js` (that responsibility moved to
+  `apps/homecloud-backend/src/server.js` back in Phase 2).
+- `homecore/src/homecore/health.js`: its "storage" health check pointed
+  at the now-removed `UPLOADS_DIR` — repointed to check `DATA_DIR`
+  writability instead (this service's own database directory, a
+  genuinely distinct signal from a successful query, not a check on file
+  uploads anymore).
+- `homecore/src/homecore/seed.js`: `seedHomecloudApplication()`'s special
+  self-registration case (reading this process's own `package.json`
+  version, since HomeCloud used to share it) collapsed into the same
+  pre-seeded pattern as its three siblings — HomeCloud is a genuinely
+  separate service now, with no more access to this database than
+  HomeMedia ever had.
+- Three tests that generated activity by calling now-deleted local routes
+  (`homecore/test/activity.test.js`, two tests each in `admin.test.js`
+  and `homecore.test.js`) rewritten to simulate exactly what
+  `apps/homecloud-backend`'s real `logActivity()` sends over HTTP — the
+  actual cross-service boundary being tested, tested more directly than
+  booting a second whole service just to generate one event would.
+
+### What Phase 5's own plan didn't anticipate (all four found by actually
+running things, not by re-reading the plan more carefully)
+1. **Existing real data needed a real migration mechanism.** `MIGRATION.md`
+   flagged the risk back at `v0.1.0` but never built the fix — see Added,
+   above.
+2. **`/api/auth/me` needed simplifying, not just extending.** Every real
+   consumer (`apps/homecloud/src/pages/Dashboard.jsx`, `apps/home/src/pages/Dashboard.jsx`'s
+   quota widget) found by grepping every `usedBytes`/`quotaBytes`
+   reference across the whole frontend tree before touching anything —
+   including one hardcoded path in `apps/homecloud/src/components/UploadZone.jsx`
+   that a path-only search of `api.js` would have missed entirely.
+3. **`admin.js`'s fallback removal needed real thought**, not a delete —
+   see Changed — HomeCore, above.
+4. **The big one: HomeMedia, HomeSync, and HomeNotes were all about to
+   break in production.** Each fetches real HomeCloud files through its
+   own `homecloudClient.js`, which used the *same* URL for identity
+   verification and file operations — correct before the split (same
+   server), silently wrong after it. `apps/homemedia-backend`'s test
+   suite failing immediately after the old routes were deleted is what
+   surfaced this. Fixed across all three: `apps/homemedia-backend/src/homecloudClient.js`,
+   `apps/homesync-backend/src/homecloudClient.js`, and
+   `apps/homenotes-backend/src/homecloudClient.js` now use the new
+   `HOMECLOUD_BACKEND_INTERNAL_URL`, distinct from `HOMECLOUD_URL`
+   (identity, still HomeCore) — and every one of their test harnesses now
+   boots the real `apps/homecloud-backend` service (which itself boots a
+   real HomeCore), verified via Node's `require()` module cache to
+   correctly reuse one HomeCore instance across all three rather than
+   silently booting three divergent ones (a token from one wouldn't have
+   verified against another).
+
+### Verified
+- **Real end-to-end, not just isolated test suites**: actual HomeCore and
+  `homecloud-backend` processes, actual nginx running the real gateway
+  config (Docker service names substituted for `127.0.0.1`, everything
+  else identical), actual `curl` calls through that gateway — register,
+  upload, list files, check quota, download (byte-for-byte diff against
+  the original), create a share, download it anonymously via the
+  unprefixed route (byte-for-byte diff again), and confirm HomeCore can
+  reach `homecloud-backend`'s internal usage endpoint for real (caught
+  and fixed one test-setup mistake this way: forgetting to set
+  `HOMECLOUD_BACKEND_INTERNAL_URL` correctly fell back rather than
+  silently passing).
+- 145 tests across the whole ecosystem, all actually run from a clean
+  install: `homecore` 44, `apps/homecloud-backend` 39,
+  `homemedia-backend` 18, `homesync-backend` 20, `homenotes-backend` 24.
+- Both edited frontends (`apps/homecloud`, `apps/home`) rebuilt clean
+  with `npm run build` after every change, not just read through.
+- Confirmed directly: `docker-compose.yml` and `scripts/Dockerfile`
+  parse as valid YAML/Dockerfile syntax; the migration script's exact
+  `npm install better-sqlite3` packaging approach verified working
+  outside Docker (this sandbox has no Docker daemon to build the real
+  image against).
+
 ## [0.8.0] — Phase 4 of `MIGRATION_PLAN.md`: admin panel's cross-service usage field
 
 ### Added

@@ -4,12 +4,13 @@ const sharp = require("sharp");
 const { startTestApp, stopTestApp } = require("./helpers/app");
 const { makeClient, registerHomeMediaUser } = require("./helpers/client");
 
-let homemediaUrl, homecloud;
+let homemediaUrl, homecore, homecloudBackend;
 
 before(async () => {
   const started = await startTestApp();
   homemediaUrl = started.baseUrl;
-  homecloud = started.homecloud;
+  homecore = started.homecore;
+  homecloudBackend = started.homecloudBackend;
 });
 
 after(async () => {
@@ -24,10 +25,10 @@ async function plainJpegBlob() {
 }
 
 async function setUpUserWithPhotos(overrides, count = 2) {
-  const { username, password, user, token } = await registerHomeMediaUser(homecloud, homemediaUrl, overrides);
+  const { username, password, user, token } = await registerHomeMediaUser(homecore, homemediaUrl, overrides);
   const client = makeClient(homemediaUrl);
   client.setToken(token);
-  const homecloudClient = makeClient(homecloud.baseUrl);
+  const homecloudClient = makeClient(homecloudBackend.baseUrl);
   homecloudClient.setToken(token);
 
   const photos = [];
@@ -35,7 +36,7 @@ async function setUpUserWithPhotos(overrides, count = 2) {
     const form = new FormData();
     form.append("file", await plainJpegBlob(), `photo-${i}.jpg`);
     // eslint-disable-next-line no-await-in-loop
-    const res = await homecloudClient.post("/api/files/upload", form, { raw: true });
+    const res = await homecloudClient.post("/api/homecloud/files/upload", form, { raw: true });
     photos.push(res.body.file);
   }
   return { username, password, user, token, client, homecloudClient, photos };
@@ -113,7 +114,7 @@ test("deleting an album never touches the underlying HomeCloud files", async () 
 
   await client.delete(`/api/homemedia/albums/${create.body.album.id}`);
 
-  const stillThere = await homecloudClient.get("/api/files/");
+  const stillThere = await homecloudClient.get("/api/homecloud/files/");
   assert.equal(stillThere.body.files.some((f) => f.id === photos[0].id), true);
 });
 

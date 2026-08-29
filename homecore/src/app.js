@@ -1,22 +1,3 @@
-// ============================================================================
-// TRANSITIONAL FILE — read this before changing anything below.
-//
-// This directory is named `homecore/`, but it is NOT yet the real,
-// separated Tier 0 HomeCore described in docs/ARCHITECTURE.md. It is still the
-// original HomeCloud file-storage backend (authRoutes, fileRoutes,
-// folderRoutes, adminRoutes, activityRoutes, publicShareRoutes below) with
-// the real HomeCore platform code (`./homecore`, mounted at /api/core)
-// living inside it. One process, one database, one deploy — the rename
-// happened, the architectural split has not.
-//
-// The plan to actually separate these into two independent services (own
-// process, own database each, HomeCloud calling HomeCore for identity the
-// same way HomeMedia/HomeSync/HomeNotes already do) is written down in
-// MIGRATION_PLAN.md at the repo root. Do the split there, in a dedicated
-// branch, with the test suite as your guardrail — not as a drive-by change
-// while working on something else.
-// ============================================================================
-//
 // Express app construction, split out from server.js so it can be
 // required by the test suite (test/helpers/app.js) without starting a
 // real network listener, trash-purge timer, or process-level signal/error
@@ -30,6 +11,15 @@
 // test process, where a developer's real backend/.env sitting on disk
 // should not silently leak into what's supposed to be an isolated test
 // database/config.
+//
+// This is the real, separated Tier 0 HomeCore described in
+// docs/ARCHITECTURE.md — identity, sessions, permissions, the application
+// registry, and cross-app events/audit. File/folder/share storage lives
+// in apps/homecloud-backend, its own independent service with its own
+// database, as of MIGRATION_PLAN.md's Phase 5. See CHANGELOG.md's [0.9.0]
+// for exactly what moved and how it was verified before this file's own
+// "transitional, not yet split" notice — accurate through Phases 0-4 —
+// was finally removed here.
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -37,14 +27,11 @@ const helmet = require("helmet");
 const { db } = require("./db"); // ensures tables + data directories exist before anything else runs
 
 const authRoutes = require("./auth");
-const fileRoutes = require("./files");
-const folderRoutes = require("./folders");
 const adminRoutes = require("./admin");
 // Moved into ./homecore/ in MIGRATION_PLAN.md's Phase 3 — same route
 // (/api/activity), now backed by hc_activity_events instead of the
 // now-dropped activity_log. See that file's header comment.
 const activityRoutes = require("./homecore/homecloudActivity");
-const publicShareRoutes = require("./publicShare");
 // HomeCore v0 — shared platform (identity extras, application registry,
 // permissions catalog, cross-app events/audit, health, notifications). See
 // HOME_MASTER_SPECIFICATION.md §39-40. Required after HomeCloud's own
@@ -95,11 +82,8 @@ app.use(express.json());
 
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 app.use("/api/auth", authRoutes);
-app.use("/api/files", fileRoutes);
-app.use("/api/folders", folderRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/activity", activityRoutes);
-app.use("/api/share", publicShareRoutes);
 app.use("/api/core", homecoreRoutes);
 // Deliberately not under /api — see internalEvents.js's header comment for
 // why this is machine-to-machine (shared-secret) rather than user-facing.

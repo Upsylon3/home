@@ -3,12 +3,13 @@ const assert = require("node:assert/strict");
 const { startTestApp, stopTestApp } = require("./helpers/app");
 const { makeClient, registerHomeNotesUser } = require("./helpers/client");
 
-let homenotesUrl, homecloud;
+let homenotesUrl, homecore, homecloudBackend;
 
 before(async () => {
   const started = await startTestApp();
   homenotesUrl = started.baseUrl;
-  homecloud = started.homecloud;
+  homecore = started.homecore;
+  homecloudBackend = started.homecloudBackend;
 });
 
 after(async () => {
@@ -16,7 +17,7 @@ after(async () => {
 });
 
 function register(overrides) {
-  return registerHomeNotesUser(homecloud, homenotesUrl, overrides);
+  return registerHomeNotesUser(homecore, homenotesUrl, overrides);
 }
 
 test("note routes require auth", async () => {
@@ -219,21 +220,21 @@ test("attachments: upload a new file straight through to HomeCloud, list it, rem
 
   // The underlying HomeCloud file itself is untouched by removing the
   // reference — confirmed by downloading it directly from HomeCloud.
-  const homecloudClient = makeClient(homecloud.baseUrl);
+  const homecloudClient = makeClient(homecloudBackend.baseUrl);
   homecloudClient.setToken(token);
-  const stillThere = await homecloudClient.get(`/api/files/${upload.body.fileId}/download`);
+  const stillThere = await homecloudClient.get(`/api/homecloud/files/${upload.body.fileId}/download`);
   assert.equal(stillThere.status, 200);
   assert.equal(Buffer.from(stillThere.body).toString("utf8"), "attachment bytes");
 });
 
 test("attachments: linking an existing HomeCloud file works; a made-up file id is rejected", async () => {
   const { client, token } = await register({ username: "note_attachment_link_user" });
-  const homecloudClient = makeClient(homecloud.baseUrl);
+  const homecloudClient = makeClient(homecloudBackend.baseUrl);
   homecloudClient.setToken(token);
 
   const uploadForm = new FormData();
   uploadForm.append("file", new Blob(["already in homecloud"], { type: "text/plain" }), "existing.txt");
-  const existing = await homecloudClient.post("/api/files/upload", uploadForm, { raw: true });
+  const existing = await homecloudClient.post("/api/homecloud/files/upload", uploadForm, { raw: true });
   assert.equal(existing.status, 201);
 
   const note = await client.post("/api/homenotes/notes", { title: "Linking existing files" });
@@ -255,11 +256,11 @@ test("attachments cannot be linked from another user's HomeCloud files", async (
   const owner = await register({ username: "note_attachment_owner" });
   const attacker = await register({ username: "note_attachment_attacker" });
 
-  const homecloudOwnerClient = makeClient(homecloud.baseUrl);
+  const homecloudOwnerClient = makeClient(homecloudBackend.baseUrl);
   homecloudOwnerClient.setToken(owner.token);
   const uploadForm = new FormData();
   uploadForm.append("file", new Blob(["owner's private file"], { type: "text/plain" }), "private.txt");
-  const ownerFile = await homecloudOwnerClient.post("/api/files/upload", uploadForm, { raw: true });
+  const ownerFile = await homecloudOwnerClient.post("/api/homecloud/files/upload", uploadForm, { raw: true });
 
   const attackerNote = await attacker.client.post("/api/homenotes/notes", { title: "Attacker's note" });
   const attempt = await attacker.client.post(`/api/homenotes/notes/${attackerNote.body.note.id}/attachments/link`, {

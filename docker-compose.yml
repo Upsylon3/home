@@ -27,6 +27,11 @@ services:
       HOMEMEDIA_FRONTEND_URL: /media/
       HOMESYNC_INFO_URL: /sync/
       HOMENOTES_FRONTEND_URL: /notes/
+      # For admin.js's usage lookup (MIGRATION_PLAN.md's Phase 4) — no
+      # depends_on needed for this one: the fetch has its own short
+      # timeout and a fallback if homecloud-backend isn't reachable yet,
+      # so homecore doesn't need to wait for it at startup.
+      HOMECLOUD_BACKEND_INTERNAL_URL: http://homecloud-backend:4500
     volumes: [homecloud_data:/data]
     expose: ["4000"]
     healthcheck:
@@ -45,16 +50,41 @@ services:
   homecloud:
     build: ./apps/homecloud
     restart: unless-stopped
-    depends_on: { homecore: { condition: service_healthy } }
+    depends_on: { homecloud-backend: { condition: service_healthy } }
     expose: ["80"]
+
+  homecloud-backend:
+    build: ./apps/homecloud-backend
+    restart: unless-stopped
+    # Shares homecore's own .env file specifically to get the exact same
+    # HOMECORE_INTERNAL_SECRET value on both sides without a second file to
+    # keep in sync — see MIGRATION_PLAN.md's Phase 4/5 notes. A Tier 1 app
+    # reading Tier 0's env file directly isn't the cleanest possible
+    # separation; introducing a proper root-level shared .env convention
+    # instead is real, separate work (ROADMAP.md's item #2, patching
+    # setup.sh, is the natural place for it), not something to fold into
+    # this change as a side effect.
+    env_file: [./homecore/.env]
+    environment:
+      DATA_DIR: /data
+      HOMECLOUD_INTERNAL_URL: http://homecore:4000
+    volumes: [homecloud_backend_data:/data]
+    expose: ["4500"]
+    depends_on: { homecore: { condition: service_healthy } }
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:4500/api/homecloud/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
 
   homemedia-backend:
     build: ./apps/homemedia-backend
     restart: unless-stopped
-    environment: { DATA_DIR: /data, HOMECLOUD_INTERNAL_URL: http://homecore:4000 }
+    environment: { DATA_DIR: /data, HOMECLOUD_INTERNAL_URL: http://homecore:4000, HOMECLOUD_BACKEND_INTERNAL_URL: http://homecloud-backend:4500 }
     volumes: [homemedia_data:/data]
     expose: ["4200"]
-    depends_on: { homecore: { condition: service_healthy } }
+    depends_on: { homecore: { condition: service_healthy }, homecloud-backend: { condition: service_healthy } }
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:4200/api/homemedia/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
@@ -70,10 +100,10 @@ services:
   homenotes-backend:
     build: ./apps/homenotes-backend
     restart: unless-stopped
-    environment: { DATA_DIR: /data, HOMECLOUD_INTERNAL_URL: http://homecore:4000 }
+    environment: { DATA_DIR: /data, HOMECLOUD_INTERNAL_URL: http://homecore:4000, HOMECLOUD_BACKEND_INTERNAL_URL: http://homecloud-backend:4500 }
     volumes: [homenotes_data:/data]
     expose: ["4400"]
-    depends_on: { homecore: { condition: service_healthy } }
+    depends_on: { homecore: { condition: service_healthy }, homecloud-backend: { condition: service_healthy } }
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:4400/api/homenotes/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
@@ -89,10 +119,10 @@ services:
   homesync-backend:
     build: ./apps/homesync-backend
     restart: unless-stopped
-    environment: { DATA_DIR: /data, HOMECLOUD_INTERNAL_URL: http://homecore:4000 }
+    environment: { DATA_DIR: /data, HOMECLOUD_INTERNAL_URL: http://homecore:4000, HOMECLOUD_BACKEND_INTERNAL_URL: http://homecloud-backend:4500 }
     volumes: [homesync_data:/data]
     expose: ["4300"]
-    depends_on: { homecore: { condition: service_healthy } }
+    depends_on: { homecore: { condition: service_healthy }, homecloud-backend: { condition: service_healthy } }
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:4300/api/homesync/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
@@ -100,14 +130,61 @@ services:
       start_period: 10s
       retries: 3
 
+  # Not part of normal `docker compose up` — the `profiles: [tools]` line
+  # means Compose only ever starts this on explicit request:
+  #   docker compose run --rm migrate-legacy-data
+  # See docs/SETUP.md's "Upgrading an existing install past v0.9.0"
+  # section and scripts/migrate-legacy-homecloud-data.js's own header
+  # comment for what this does and why it's a real, tested script instead
+  # of a one-line warning in a doc nobody reads before upgrading. Own tiny
+  # Dockerfile (context: repo root, not ./apps/homecloud-backend) because
+  # the script itself lives at the repo root, not inside any one service's
+  # own build context.
+  migrate-legacy-data:
+    build:
+      context: .
+      dockerfile: scripts/Dockerfile
+    profiles: ["tools"]
+    volumes:
+      - homecloud_data:/legacy:ro
+      - homecloud_backend_data:/data
+    environment:
+      LEGACY_DATA_DIR: /legacy
+      DATA_DIR: /data
+
   backup:
     build: ./services/backup
     restart: unless-stopped
     environment: { BACKUP_INTERVAL_SECONDS: 86400, BACKUP_RETENTION_DAYS: 14 }
-    volumes: [homecloud_data:/data:ro, ./backups:/backups]
+    # One named source per app data volume — see services/backup/backup.sh's
+    # header comment. Previously only homecloud_data was ever backed up;
+    # homemedia_data/homenotes_data/homesync_data (including HomeNotes'
+    # actual note content, not just a cache) were silently never covered.
+    # Fixed here rather than left as a separate backlog item.
+    #
+    # homecloud_data keeps its historically-preserved name (see MIGRATION.md)
+    # but isn't a "legacy" volume going forward — it's HomeCore's own
+    # ongoing data (users, sessions, identity). Named "homecore" here to
+    # describe what it actually holds now, not what it was first called.
+    # homecloud_backend_data named "homecloud-backend" here (matching the
+    # actual service directory), not the shorter "homecloud" — avoids any
+    # naming collision with backup archives from BEFORE this migration,
+    # which used the single name "homecloud-backup-*.tar.gz" for
+    # structurally different content (the old merged users+files data).
+    # Keeping the names distinct means nobody restoring an old backup
+    # later mistakes it for this new, files-only one just because the
+    # filename pattern happened to match.
+    volumes:
+      - homecloud_data:/sources/homecore:ro
+      - homecloud_backend_data:/sources/homecloud-backend:ro
+      - homemedia_data:/sources/homemedia:ro
+      - homenotes_data:/sources/homenotes:ro
+      - homesync_data:/sources/homesync:ro
+      - ./backups:/backups
 
 volumes:
   homecloud_data:
+  homecloud_backend_data:
   homemedia_data:
   homenotes_data:
   homesync_data:

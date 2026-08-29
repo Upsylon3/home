@@ -28,7 +28,7 @@ export default function UploadZone({ onUploaded, onError, onActivity, folderId }
     if (folderId) formData.append("folderId", folderId);
 
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", "/api/files/upload");
+    xhr.open("POST", "/api/homecloud/files/upload");
     const token = getToken();
     if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
 

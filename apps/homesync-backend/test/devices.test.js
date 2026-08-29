@@ -3,12 +3,12 @@ const assert = require("node:assert/strict");
 const { startTestApp, stopTestApp } = require("./helpers/app");
 const { makeClient, registerHomeSyncUser } = require("./helpers/client");
 
-let homesyncUrl, homecloud;
+let homesyncUrl, homecore;
 
 before(async () => {
   const started = await startTestApp();
   homesyncUrl = started.baseUrl;
-  homecloud = started.homecloud;
+  homecore = started.homecore;
 });
 
 after(async () => {
@@ -21,7 +21,7 @@ test("device routes require auth", async () => {
 });
 
 test("register rejects an empty or overlong name, defaults platform to android", async () => {
-  const { client } = await registerHomeSyncUser(homecloud, homesyncUrl, { username: "device_validate_user" });
+  const { client } = await registerHomeSyncUser(homecore, homesyncUrl, { username: "device_validate_user" });
 
   const empty = await client.post("/api/homesync/devices", { name: "  " });
   assert.equal(empty.status, 400);
@@ -36,7 +36,7 @@ test("register rejects an empty or overlong name, defaults platform to android",
 });
 
 test("list, and delete a device (which does not touch anything in HomeCloud)", async () => {
-  const { client, homecloudClient } = await registerAndGetHomeCloudClient({ username: "device_lifecycle_user" });
+  const { client } = await registerHomeSyncUser(homecore, homesyncUrl, { username: "device_lifecycle_user" });
 
   const create = await client.post("/api/homesync/devices", { name: "My Phone" });
   const deviceId = create.body.device.id;
@@ -56,8 +56,8 @@ test("list, and delete a device (which does not touch anything in HomeCloud)", a
 });
 
 test("devices are isolated per user", async () => {
-  const owner = await registerHomeSyncUser(homecloud, homesyncUrl, { username: "device_owner" });
-  const stranger = await registerHomeSyncUser(homecloud, homesyncUrl, { username: "device_stranger" });
+  const owner = await registerHomeSyncUser(homecore, homesyncUrl, { username: "device_owner" });
+  const stranger = await registerHomeSyncUser(homecore, homesyncUrl, { username: "device_stranger" });
 
   const create = await owner.client.post("/api/homesync/devices", { name: "Owner's Phone" });
   const strangerDelete = await stranger.client.delete(`/api/homesync/devices/${create.body.device.id}`);
@@ -67,9 +67,4 @@ test("devices are isolated per user", async () => {
   assert.equal(strangerList.body.devices.length, 0);
 });
 
-async function registerAndGetHomeCloudClient(overrides) {
-  const media = await registerHomeSyncUser(homecloud, homesyncUrl, overrides);
-  const homecloudClient = makeClient(homecloud.baseUrl);
-  homecloudClient.setToken(media.token);
-  return { ...media, homecloudClient };
-}
+

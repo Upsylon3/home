@@ -31,6 +31,12 @@ export default function Dashboard({ user, onLogout }) {
   const [shares, setShares] = useState([]);
   const [tab, setTab] = useState("files"); // "files" | "trash" | "shares"
   const [me, setMe] = useState(user);
+  // Usage/quota used to just be extra fields on /api/auth/me's response.
+  // Once homecloud-backend split out (see MIGRATION_PLAN.md's Phase 2/5),
+  // that data lives there instead — kept as its own state, matching
+  // App.jsx's existing convention of treating identity (id/username/role)
+  // and everything else as genuinely separate concerns.
+  const [quota, setQuota] = useState(null);
   const [error, setError] = useState("");
   const [ledOn, setLedOn] = useState(false);
   const [search, setSearch] = useState("");
@@ -52,16 +58,18 @@ export default function Dashboard({ user, onLogout }) {
     const folderIdAtRequestTime = currentFolderId;
     setError("");
     try {
-      const [filesRes, foldersRes, meRes] = await Promise.all([
+      const [filesRes, foldersRes, meRes, quotaRes] = await Promise.all([
         api.listFiles(folderIdAtRequestTime),
         api.folders.list(folderIdAtRequestTime),
-        api.me()
+        api.me(),
+        api.quota()
       ]);
       if (requestId !== latestRequestId.current) return; // superseded by a newer request
       setFiles(filesRes.data.files);
       setFolders(foldersRes.data.folders);
       setBreadcrumb(filesRes.data.breadcrumb || []);
       setMe(meRes.data);
+      setQuota(quotaRes.data);
     } catch (err) {
       if (requestId === latestRequestId.current) setError(err.message);
     }
@@ -111,7 +119,7 @@ export default function Dashboard({ user, onLogout }) {
 
   function handleUploaded(file) {
     setFiles((prev) => [file, ...prev]);
-    setMe((prev) => (prev ? { ...prev, usedBytes: prev.usedBytes + file.size } : prev));
+    setQuota((prev) => (prev ? { ...prev, usedBytes: prev.usedBytes + file.size } : prev));
   }
 
   async function handleDelete(id) {
@@ -146,7 +154,7 @@ export default function Dashboard({ user, onLogout }) {
       blinkLED();
       setTrash((prev) => prev.filter((f) => f.id !== id));
       if (item) {
-        setMe((prev) => (prev ? { ...prev, usedBytes: Math.max(0, prev.usedBytes - item.size) } : prev));
+        setQuota((prev) => (prev ? { ...prev, usedBytes: Math.max(0, prev.usedBytes - item.size) } : prev));
       }
     } catch (err) {
       setError(err.message);
@@ -342,7 +350,7 @@ export default function Dashboard({ user, onLogout }) {
     return sorted;
   }, [activeList, search, sortKey, sortDir]);
 
-  const pctUsed = me && me.quotaBytes > 0 ? (me.usedBytes / me.quotaBytes) * 100 : 0;
+  const pctUsed = quota && quota.quotaBytes > 0 ? (quota.usedBytes / quota.quotaBytes) * 100 : 0;
 
   return (
     <div className="dashboard">
@@ -356,7 +364,7 @@ export default function Dashboard({ user, onLogout }) {
           <strong>{me?.username}</strong>
         </div>
 
-        {me && <StorageGauge usedBytes={me.usedBytes} quotaBytes={me.quotaBytes} />}
+        {quota && <StorageGauge usedBytes={quota.usedBytes} quotaBytes={quota.quotaBytes} />}
 
         <div className="sidebar-spacer" />
 
@@ -394,7 +402,7 @@ export default function Dashboard({ user, onLogout }) {
 
         {pctUsed >= 90 && (
           <div className="error-banner" style={{ background: "rgba(232,163,61,0.1)", borderColor: "rgba(232,163,61,0.4)", color: "var(--amber)" }}>
-            You're using {formatBytes(me.usedBytes)} of your {formatBytes(me.quotaBytes)} quota
+            You're using {formatBytes(quota.usedBytes)} of your {formatBytes(quota.quotaBytes)} quota
             ({Math.round(pctUsed)}%). Delete or empty Trash to free up space.
           </div>
         )}

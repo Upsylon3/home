@@ -5,12 +5,13 @@ const sharp = require("sharp");
 const { startTestApp, stopTestApp } = require("./helpers/app");
 const { makeClient, registerHomeMediaUser } = require("./helpers/client");
 
-let homemediaUrl, homecloud;
+let homemediaUrl, homecore, homecloudBackend;
 
 before(async () => {
   const started = await startTestApp();
   homemediaUrl = started.baseUrl;
-  homecloud = started.homecloud;
+  homecore = started.homecore;
+  homecloudBackend = started.homecloudBackend;
 });
 
 after(async () => {
@@ -20,7 +21,7 @@ after(async () => {
 async function uploadToHomeCloud(homecloudClient, { name = "photo.jpg", blob }) {
   const form = new FormData();
   form.append("file", blob, name);
-  const res = await homecloudClient.post("/api/files/upload", form, { raw: true });
+  const res = await homecloudClient.post("/api/homecloud/files/upload", form, { raw: true });
   assert.equal(res.status, 201, `upload failed: ${JSON.stringify(res.body)}`);
   return res.body.file;
 }
@@ -43,8 +44,8 @@ async function jpegWithExifBlob() {
 }
 
 async function setUpUserWithUploads(overrides) {
-  const media = await registerHomeMediaUser(homecloud, homemediaUrl, overrides);
-  const homecloudClient = makeClient(homecloud.baseUrl);
+  const media = await registerHomeMediaUser(homecore, homemediaUrl, overrides);
+  const homecloudClient = makeClient(homecloudBackend.baseUrl);
   homecloudClient.setToken(media.token);
   return { ...media, homecloudClient };
 }
@@ -71,7 +72,7 @@ test("library merges HomeCloud's images and videos, ignoring other file types, f
   await uploadToHomeCloud(homecloudClient, { name: "photo.jpg", blob: await plainJpegBlob() });
   const textForm = new FormData();
   textForm.append("file", new Blob(["not media"], { type: "text/plain" }), "notes.txt");
-  const textUpload = await homecloudClient.post("/api/files/upload", textForm, { raw: true });
+  const textUpload = await homecloudClient.post("/api/homecloud/files/upload", textForm, { raw: true });
   assert.equal(textUpload.status, 201);
 
   const all = await client.get("/api/homemedia/library");
@@ -184,7 +185,7 @@ test("thumbnail for a non-image file 404s instead of erroring", async () => {
   const { client, homecloudClient } = await setUpUserWithUploads({ username: "media_thumb_textfile_user" });
   const form = new FormData();
   form.append("file", new Blob(["not an image"], { type: "text/plain" }), "notes.txt");
-  const upload = await homecloudClient.post("/api/files/upload", form, { raw: true });
+  const upload = await homecloudClient.post("/api/homecloud/files/upload", form, { raw: true });
 
   const res = await client.get(`/api/homemedia/${upload.body.file.id}/thumbnail`);
   assert.equal(res.status, 404);

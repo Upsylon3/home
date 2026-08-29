@@ -102,7 +102,7 @@ test("a disabled account cannot log in", async () => {
   assert.equal(loginRes.status, 403);
 });
 
-test("GET /api/auth/me requires a valid token and returns quota/usage", async () => {
+test("GET /api/auth/me requires a valid token and returns identity + quotaOverride", async () => {
   const noToken = await makeClient(baseUrl).get("/api/auth/me");
   assert.equal(noToken.status, 401);
 
@@ -110,8 +110,14 @@ test("GET /api/auth/me requires a valid token and returns quota/usage", async ()
   const me = await client.get("/api/auth/me");
   assert.equal(me.status, 200);
   assert.equal(me.body.username, username);
-  assert.equal(typeof me.body.quotaBytes, "number");
-  assert.equal(me.body.usedBytes, 0);
+  // quotaBytes/usedBytes moved to apps/homecloud-backend's own
+  // GET /api/homecloud/files/quota as of MIGRATION_PLAN.md's Phase 5 —
+  // see apps/homecloud-backend/test/files.test.js for that endpoint's own
+  // coverage. quotaOverride (the raw limit, not the computed usage) stays
+  // here — it's the one piece of this that's genuinely HomeCore's.
+  assert.equal(me.body.quotaOverride, null);
+  assert.equal("quotaBytes" in me.body, false);
+  assert.equal("usedBytes" in me.body, false);
   assert.equal(me.body.totpEnabled, false);
 });
 

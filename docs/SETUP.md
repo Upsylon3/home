@@ -252,22 +252,29 @@ rm -rf backend/data homemedia-backend/data homesync-backend/data
 
 ## 5. Backups, and getting to it from outside your home
 
-The backup service (Docker path only) snapshots the whole data volume to
+The backup service (Docker path only) snapshots every app's data volume to
 `backups/` on the host once a day, keeping 14 days by default
-(`BACKUP_RETENTION_DAYS`). **This only protects you from in-app mistakes**
-(an accidental permanent delete) — it does not protect you from the
-whole machine failing, since the backup lives on the same disk. Copy
-`backups/` somewhere else periodically (external drive, another machine,
-cloud sync) for that.
+(`BACKUP_RETENTION_DAYS`) — one archive per app
+(`homecore-backup-<timestamp>.tar.gz`, `homecloud-backend-backup-<timestamp>.tar.gz`,
+`homemedia-backup-...`, `homenotes-backup-...`, `homesync-backup-...`), not
+one combined archive. **This only protects you from in-app mistakes** (an
+accidental permanent delete) — it does not protect you from the whole
+machine failing, since the backup lives on the same disk. Copy `backups/`
+somewhere else periodically (external drive, another machine, cloud sync)
+for that.
 
-**Restoring:**
+**Restoring one app's data:** find the volume name Compose actually gave
+it — `docker volume ls` (they're prefixed with the pinned project name,
+`home_`, e.g. `home_homecloud_backend_data`) — then:
 ```bash
 docker compose down
-docker run --rm -v homecloud_homecloud_data:/data -v ./backups:/backups alpine \
-  sh -c "rm -rf /data/* && tar xzf /backups/<file>.tar.gz -C /data"
+docker run --rm -v home_homecloud_backend_data:/data -v ./backups:/backups alpine \
+  sh -c "rm -rf /data/* && tar xzf /backups/homecloud-backend-backup-<timestamp>.tar.gz -C /data"
 docker compose up
 ```
-Test this occasionally — an untested backup isn't one you can count on.
+Swap the volume name and backup filename for whichever app you're
+restoring. Test this occasionally — an untested backup isn't one you can
+count on.
 
 **Reaching it away from home:** the simplest safe option is a private
 mesh network like [Tailscale](https://tailscale.com/) (free for personal
@@ -275,7 +282,50 @@ use) — no port-forwarding, nothing exposed to the public internet. Set
 this up before considering any form of remote access, and definitely
 before HomeVault (see `SECURITY.md`) is ever exposed this way.
 
-## 6. Troubleshooting
+## 6. Upgrading an existing install past v0.9.0
+
+**Skip this section if you're setting up fresh, or if you've never
+actually uploaded a real file to HomeCloud yet.** It only matters for a
+deployment with real existing data.
+
+Before `v0.9.0` (see `MIGRATION_PLAN.md`'s Phase 5), HomeCloud's file
+storage lived inside `homecore`'s own database. `v0.9.0` moves that to a
+genuinely separate service, `homecloud-backend`, with its own empty
+database and its own volume — which means your existing files' metadata
+(filenames, folders, share links) and the actual uploaded bytes need to
+be copied across once, deliberately, before upgrading. Skipping this step
+doesn't delete anything — your old data stays completely intact in its
+original volume — but it *would* make every existing file silently
+disappear from view, since nothing would be reading that volume anymore.
+
+```bash
+# 1. Stop everything (without -v — you want to KEEP the volumes)
+docker compose down
+
+# 2. Pull/checkout the new version, then start just enough to create
+#    homecloud-backend's own empty database and schema (this also starts
+#    homecore, since homecloud-backend depends on it):
+docker compose up -d homecloud-backend
+docker compose down
+
+# 3. Run the migration — a real, tested, one-time script (see
+#    scripts/migrate-legacy-homecloud-data.js for exactly what it does
+#    and the safety guarantees it makes: it only ever COPIES, never
+#    moves or deletes anything from your original data):
+docker compose run --rm migrate-legacy-data
+
+# 4. Start everything normally
+docker compose up --build -d
+```
+
+Step 3 prints a summary of what it copied. Once you've confirmed your
+files, folders, and share links all show up correctly in HomeCloud, the
+old data is still sitting in the original `homecloud_data` volume,
+untouched — reclaiming that disk space is a separate, manual step
+whenever you're confident enough to take it, not something the migration
+does for you.
+
+## 7. Troubleshooting
 
 - **Frontend loads but login fails:** almost always CORS or a wrong
   address. Docker handles this via nginx; in dev mode check

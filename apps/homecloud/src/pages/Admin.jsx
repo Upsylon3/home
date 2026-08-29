@@ -144,7 +144,12 @@ export default function Admin({ user }) {
                 <td className="file-meta">{u.disabled ? "Disabled" : "Active"}</td>
                 <td className="file-meta">{u.totpEnabled ? "On" : "—"}</td>
                 <td className="file-meta">
-                  {formatBytes(u.usedBytes)} / {formatBytes(u.quotaBytes)}
+                  {/* null (not 0) means homecloud-backend couldn't be reached
+                      for this request — a genuinely different fact from
+                      "using zero storage," see homecore/src/admin.js's
+                      comment. Everything else on this page (disable, role,
+                      quota, 2FA reset) still works regardless. */}
+                  {u.usedBytes === null ? "Usage unavailable" : `${formatBytes(u.usedBytes)} / ${formatBytes(u.quotaBytes)}`}
                 </td>
                 <td>
                   <div className="file-actions" style={{ flexWrap: "wrap", justifyContent: "flex-end" }}>

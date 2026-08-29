@@ -72,50 +72,63 @@ export const api = {
 
   logoutEverywhere: () => request("/auth/logout-everywhere", { method: "POST" }),
 
-  listFiles: (folderId) => request(`/files${folderId ? `?folderId=${folderId}` : ""}`),
+  // Everything below talks to apps/homecloud-backend (a real, separate
+  // service as of MIGRATION_PLAN.md's Phase 5) rather than HomeCore —
+  // still same-origin through the gateway, so still just `/api/...` paths
+  // from this file's point of view, now under the /homecloud/ prefix the
+  // gateway routes to that service. See docs/ARCHITECTURE.md §5's routing
+  // table.
 
-  listTrash: () => request("/files/trash"),
+  quota: () => request("/homecloud/files/quota"),
 
-  deleteFile: (id) => request(`/files/${id}`, { method: "DELETE" }),
+  listFiles: (folderId) => request(`/homecloud/files${folderId ? `?folderId=${folderId}` : ""}`),
 
-  restoreFile: (id) => request(`/files/${id}/restore`, { method: "POST" }),
+  listTrash: () => request("/homecloud/files/trash"),
 
-  permanentlyDeleteFile: (id) => request(`/files/${id}/permanent`, { method: "DELETE" }),
+  deleteFile: (id) => request(`/homecloud/files/${id}`, { method: "DELETE" }),
 
-  moveFile: (id, folderId) => request(`/files/${id}/move`, { method: "POST", body: JSON.stringify({ folderId }) }),
+  restoreFile: (id) => request(`/homecloud/files/${id}/restore`, { method: "POST" }),
 
-  downloadUrl: (id) => `/api/files/${id}/download`,
+  permanentlyDeleteFile: (id) => request(`/homecloud/files/${id}/permanent`, { method: "DELETE" }),
 
-  thumbnailUrl: (id) => `/api/files/${id}/thumbnail`,
+  moveFile: (id, folderId) => request(`/homecloud/files/${id}/move`, { method: "POST", body: JSON.stringify({ folderId }) }),
+
+  downloadUrl: (id) => `/api/homecloud/files/${id}/download`,
+
+  thumbnailUrl: (id) => `/api/homecloud/files/${id}/thumbnail`,
 
   createShare: (fileId, expiresInDays) =>
-    request(`/files/${fileId}/share`, { method: "POST", body: JSON.stringify({ expiresInDays }) }),
+    request(`/homecloud/files/${fileId}/share`, { method: "POST", body: JSON.stringify({ expiresInDays }) }),
 
-  listShares: () => request("/files/shares"),
+  listShares: () => request("/homecloud/files/shares"),
 
-  revokeShare: (shareId) => request(`/files/shares/${shareId}`, { method: "DELETE" }),
+  revokeShare: (shareId) => request(`/homecloud/files/shares/${shareId}`, { method: "DELETE" }),
 
+  // Deliberately NOT under /homecloud/ — kept at the same unprefixed
+  // /api/share/:token it always was, for link stability (a share link
+  // already sent to someone has to keep working). See
+  // apps/homecloud-backend/src/publicShare.js's header comment.
   shareUrl: (token) => `${window.location.origin}/api/share/${token}`,
 
   // Batch zip download returns binary data, not JSON, so it bypasses the
   // generic request() helper and is handled directly where it's used
   // (Dashboard.jsx) via fetch + blob().
-  downloadBatchUrl: () => `/api/files/download-batch`,
+  downloadBatchUrl: () => `/api/homecloud/files/download-batch`,
 
   myActivity: () => request("/activity"),
 
   folders: {
-    list: (parentId) => request(`/folders${parentId ? `?parentId=${parentId}` : ""}`),
+    list: (parentId) => request(`/homecloud/folders${parentId ? `?parentId=${parentId}` : ""}`),
 
-    listAll: () => request("/folders/all"),
+    listAll: () => request("/homecloud/folders/all"),
 
-    create: (name, parentId) => request("/folders", { method: "POST", body: JSON.stringify({ name, parentId }) }),
+    create: (name, parentId) => request("/homecloud/folders", { method: "POST", body: JSON.stringify({ name, parentId }) }),
 
-    rename: (id, name) => request(`/folders/${id}`, { method: "PATCH", body: JSON.stringify({ name }) }),
+    rename: (id, name) => request(`/homecloud/folders/${id}`, { method: "PATCH", body: JSON.stringify({ name }) }),
 
-    move: (id, parentId) => request(`/folders/${id}/move`, { method: "POST", body: JSON.stringify({ parentId }) }),
+    move: (id, parentId) => request(`/homecloud/folders/${id}/move`, { method: "POST", body: JSON.stringify({ parentId }) }),
 
-    remove: (id, force) => request(`/folders/${id}${force ? "?force=true" : ""}`, { method: "DELETE" })
+    remove: (id, force) => request(`/homecloud/folders/${id}${force ? "?force=true" : ""}`, { method: "DELETE" })
   },
 
   // Upload uses XHR directly (in UploadZone) so we can report progress;

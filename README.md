@@ -409,7 +409,7 @@ the account isn't disabled), then issues a fresh JWT.
 
 **Uploading a file.**
 1. You drag a file onto the upload zone (or click to browse).
-2. The frontend sends `POST /api/files/upload` with the file's raw bytes
+2. The frontend sends `POST /api/homecloud/files/upload` with the file's raw bytes
    attached, plus your JWT in the `Authorization` header.
 3. The backend verifies your JWT is genuine, not expired, and not
    invalidated (middleware — see below), then a library called **multer**
@@ -422,14 +422,14 @@ the account isn't disabled), then issues a fresh JWT.
 5. The frontend adds the new file to the list you see, and the little
    "drive activity" LED blinks.
 
-**Deleting a file (soft delete).** The frontend calls `DELETE /api/files/:id`.
+**Deleting a file (soft delete).** The frontend calls `DELETE /api/homecloud/files/:id`.
 The backend doesn't touch the actual file on disk — it just stamps a
 `deleted_at` timestamp on that row. The file disappears from your main list
 and reappears in the **Trash** tab. It still counts against your quota.
 
 **Restoring, or emptying trash.** From the Trash tab, "Restore" clears that
 timestamp (the file reappears in your main list, nothing on disk ever
-moved). "Delete forever" (`DELETE /api/files/:id/permanent`) actually
+moved). "Delete forever" (`DELETE /api/homecloud/files/:id/permanent`) actually
 removes the row and the file from disk, and frees up your quota. Anything
 left untouched in Trash for 30 days gets this same treatment automatically,
 via a check the backend runs once a day.
@@ -447,7 +447,7 @@ the password — useful if you just want to kick every session (e.g. a lost
 phone) without needing to also pick a new password.
 
 **Sharing a file.** Clicking "Share" and picking an expiration calls
-`POST /api/files/:id/share`, which generates a long random token and stores
+`POST /api/homecloud/files/:id/share`, which generates a long random token and stores
 it in a `shares` table pointing at that file, then hands back a URL like
 `https://your-server/api/share/<token>`. Anyone who opens that URL hits a
 completely separate, unauthenticated route — no JWT, no login — that looks
@@ -457,7 +457,7 @@ that row, which the lookup checks on every request from then on.
 
 **Selecting several files and downloading them together.** Checking boxes
 next to multiple files and clicking "Download as zip" sends
-`POST /api/files/download-batch` with the list of ids. The backend verifies
+`POST /api/homecloud/files/download-batch` with the list of ids. The backend verifies
 every id actually belongs to you, then streams a zip archive back
 containing all of them (renaming any duplicate filenames so nothing gets
 silently overwritten inside the archive), which your browser then saves as
@@ -469,23 +469,23 @@ changing the sort dropdown doesn't talk to the backend at all — the full
 list of your files is already sitting in the browser's memory, so filtering
 and reordering it happens instantly, client-side.
 
-**Opening a folder.** Clicking a folder tile calls `GET /api/files` and
-`GET /api/folders` again, both with that folder's id attached, so you get
+**Opening a folder.** Clicking a folder tile calls `GET /api/homecloud/files` and
+`GET /api/homecloud/folders` again, both with that folder's id attached, so you get
 back only what's directly inside it (not everything nested further down).
 Both responses also include a fresh breadcrumb trail for wherever you just
 navigated to.
 
-**Creating a folder.** `POST /api/folders` with a name and (optionally) a
+**Creating a folder.** `POST /api/homecloud/folders` with a name and (optionally) a
 parent folder id creates one row in the `folders` table. Two folders can't
 share a name inside the same parent — the backend checks for that and
 rejects a duplicate before it's created.
 
 **Moving a file (or several) into a folder.** The "Move to…" dialog fetches
-your entire folder tree in one request (`GET /api/folders/all`) to build
-its picker, then calls `POST /api/files/:id/move` once per file with the
+your entire folder tree in one request (`GET /api/homecloud/folders/all`) to build
+its picker, then calls `POST /api/homecloud/files/:id/move` once per file with the
 chosen destination — updating just that one column on each file's row.
 
-**Deleting a folder.** If it's completely empty, `DELETE /api/folders/:id`
+**Deleting a folder.** If it's completely empty, `DELETE /api/homecloud/folders/:id`
 just removes it. If it still has files anywhere inside it (including
 nested subfolders), the backend refuses and tells you how many files are
 in the way, unless you confirm and it's retried with `?force=true` — at
@@ -771,6 +771,23 @@ homecloud/
             └── ActivityLED.jsx  # the little blinking dot that reacts to activity
 ```
 
+> **This next block is stale as of `v0.9.0` — flagged rather than rushed.**
+> `files.js`, `folders.js`, `activity.js`, and `publicShare.js` described
+> below no longer live in this backend at all: `files.js`/`folders.js`/
+> `publicShare.js` moved to `apps/homecloud-backend` (its own server,
+> own `db.js`, own `app.js`/`server.js` split) back in
+> `MIGRATION_PLAN.md`'s Phase 2/5, and `activity.js` was replaced by
+> `homecore/src/homecore/homecloudActivity.js` reading `hc_activity_events`
+> instead of the now-retired `activity_log` table (Phase 3). The backup
+> service below also changed — it covers five volumes now, not one. This
+> section needs a real rewrite describing two backends where this still
+> describes one; until that happens, `docs/SERVICES.md` and
+> `docs/DEVELOPER_GUIDE.md` are the accurate, current references, and
+> the code itself is the ground truth. Left in place below rather than
+> deleted, since the *concepts* it explains (soft delete, the JWT
+> lifecycle, 2FA, rate limiting) are all still accurate — only which
+> file each one lives in has changed.
+
 **Backend, in more detail:**
 
 - `server.js` — The switchboard. Starts the web server, turns on `helmet`
@@ -1010,37 +1027,46 @@ All routes except register/login/2fa-verify/public shares require an
 `Authorization: Bearer <token>` header (the "wristband" from Part 1). Admin
 routes additionally require the account to have the `admin` role.
 
+**As of `v0.9.0`, the routes below span two separate processes**, not
+one — everything under `/api/homecloud/` (and the unprefixed
+`/api/share/:token`) is served by `apps/homecloud-backend`; everything
+else in this table is served by `homecore`. Same gateway, same origin,
+same experience from a browser's point of view — see `docs/ARCHITECTURE.md`
+§5 for the real routing table.
+
 | Method | Path                              | What it does                                |
 |--------|------------------------------------|----------------------------------------------|
 | POST   | `/api/auth/register`              | Create an account (first ever = admin)       |
 | POST   | `/api/auth/login`                 | Log in (or start 2FA if it's enabled)        |
 | POST   | `/api/auth/2fa/verify`            | Complete login with a 2FA/recovery code      |
-| GET    | `/api/auth/me`                    | Current user + storage usage/quota/2FA status |
+| GET    | `/api/auth/me`                    | Current user + quota override + 2FA status (storage usage moved to `/api/homecloud/files/quota`, `v0.9.0`) |
 | POST   | `/api/auth/change-password`       | Change your password, revokes other sessions |
 | POST   | `/api/auth/logout-everywhere`     | Revoke every session (incl. this one)        |
 | POST   | `/api/auth/2fa/setup`             | Start enabling 2FA (returns QR/secret)       |
 | POST   | `/api/auth/2fa/confirm`           | Confirm setup, enables 2FA, returns recovery codes |
 | POST   | `/api/auth/2fa/disable`           | Turn off 2FA (requires password)             |
 | POST   | `/api/auth/2fa/recovery-codes`    | Regenerate recovery codes (requires password) |
-| GET    | `/api/files`                       | List active files in a folder (`?folderId=`) |
-| GET    | `/api/files/trash`                 | List your trashed files                      |
-| GET    | `/api/files/shares`                | List your active share links                 |
-| POST   | `/api/files/upload`                | Upload a file (multipart, field `file`)      |
-| POST   | `/api/files/download-batch`        | Download several files as one zip           |
-| GET    | `/api/files/:id/download`          | Download a file                              |
-| GET    | `/api/files/:id/thumbnail`         | Get an image file's small preview            |
-| POST   | `/api/files/:id/share`             | Create a share link for a file               |
-| POST   | `/api/files/:id/move`              | Move a file to a different folder            |
-| DELETE | `/api/files/shares/:shareId`       | Revoke a share link                          |
-| DELETE | `/api/files/:id`                   | Move a file to trash                         |
-| POST   | `/api/files/:id/restore`           | Restore a file out of trash                  |
-| DELETE | `/api/files/:id/permanent`         | Permanently delete a trashed file            |
-| GET    | `/api/folders`                     | List subfolders in a folder (`?parentId=`)   |
-| GET    | `/api/folders/all`                 | Your whole folder tree, flat                 |
-| POST   | `/api/folders`                     | Create a folder                              |
-| PATCH  | `/api/folders/:id`                 | Rename a folder                              |
-| POST   | `/api/folders/:id/move`            | Move a folder under a different parent       |
-| DELETE | `/api/folders/:id`                 | Delete a folder (`?force=true` if non-empty) |
+| GET    | `/api/homecloud/files`                       | List active files in a folder (`?folderId=`) |
+| GET    | `/api/homecloud/files/all`                   | Cross-folder listing, filterable by mime type (`?type=image\|video`) — added for HomeMedia |
+| GET    | `/api/homecloud/files/quota`                 | Your storage usage + effective quota (added when this became a separate service, `v0.9.0`) |
+| GET    | `/api/homecloud/files/trash`                 | List your trashed files                      |
+| GET    | `/api/homecloud/files/shares`                | List your active share links                 |
+| POST   | `/api/homecloud/files/upload`                | Upload a file (multipart, field `file`)      |
+| POST   | `/api/homecloud/files/download-batch`        | Download several files as one zip           |
+| GET    | `/api/homecloud/files/:id/download`          | Download a file                              |
+| GET    | `/api/homecloud/files/:id/thumbnail`         | Get an image file's small preview            |
+| POST   | `/api/homecloud/files/:id/share`             | Create a share link for a file               |
+| POST   | `/api/homecloud/files/:id/move`              | Move a file to a different folder            |
+| DELETE | `/api/homecloud/files/shares/:shareId`       | Revoke a share link                          |
+| DELETE | `/api/homecloud/files/:id`                   | Move a file to trash                         |
+| POST   | `/api/homecloud/files/:id/restore`           | Restore a file out of trash                  |
+| DELETE | `/api/homecloud/files/:id/permanent`         | Permanently delete a trashed file            |
+| GET    | `/api/homecloud/folders`                     | List subfolders in a folder (`?parentId=`)   |
+| GET    | `/api/homecloud/folders/all`                 | Your whole folder tree, flat                 |
+| POST   | `/api/homecloud/folders`                     | Create a folder                              |
+| PATCH  | `/api/homecloud/folders/:id`                 | Rename a folder                              |
+| POST   | `/api/homecloud/folders/:id/move`            | Move a folder under a different parent       |
+| DELETE | `/api/homecloud/folders/:id`                 | Delete a folder (`?force=true` if non-empty) |
 | GET    | `/api/share/:token`                | *(no auth)* Download a shared file           |
 | GET    | `/api/activity`                    | Your own recent activity                     |
 | GET    | `/api/admin/users`                 | *(admin)* List all accounts + usage          |
@@ -1300,16 +1326,25 @@ The first real test of HOME_MASTER_SPECIFICATION.md's platform promise: "Install
 ### What changed in HomeCloud to make this possible
 
 - **The photo gallery, lightbox, and their thumbnail viewer are gone from HomeCloud's own frontend.** `GalleryGrid.jsx`, `Lightbox.jsx`, and `Thumbnail.jsx` are deleted; the grid/list view toggle is gone too. HomeCloud is back to being what §2 of the spec calls it: a file manager, not a photo viewer. That's HomeMedia's job now, and having both apps offer a photo-browsing experience was exactly the overlap this build was told to remove.
-- **HomeCloud's backend gained one new endpoint: `GET /api/files/all?type=image|video`.** A flat, cross-folder listing, filtered by top-level mime type — since HomeMedia needs to discover "all my photos" without walking the folder tree itself. It's still just "list my files" from HomeCloud's point of view, gated by the same `requireAuth` as every other route; HomeCloud doesn't know or care that HomeMedia is the one calling it.
+- **HomeCloud's backend gained one new endpoint: `GET /api/homecloud/files/all?type=image|video`.** A flat, cross-folder listing, filtered by top-level mime type — since HomeMedia needs to discover "all my photos" without walking the folder tree itself. It's still just "list my files" from HomeCloud's point of view, gated by the same `requireAuth` as every other route; HomeCloud doesn't know or care that HomeMedia is the one calling it.
 - **Nothing else about HomeCloud changed.** No new tables, no new relationship to HomeMedia's data. If HomeMedia's container is stopped entirely, HomeCloud doesn't notice.
 
 ### How HomeMedia is actually built
 
-Unlike HomeCore (which still lives embedded inside HomeCloud's own backend process — a deliberate v0 shortcut documented back in the HomeCore section), **HomeMedia is a genuinely separate service**: its own `homemedia-backend/` (Express, its own small SQLite database, its own container) and its own `homemedia/` frontend. This was a deliberate choice, not an oversight — Phase 5 of the spec exists specifically to prove a second application *can* be bolted onto the platform without touching HomeCloud, and embedding it the way HomeCore is embedded would have quietly sidestepped that proof.
+**HomeMedia is a genuinely separate service**: its own `homemedia-backend/`
+(Express, its own small SQLite database, its own container) and its own
+`homemedia/` frontend — the same shape HomeCore and HomeCloud themselves
+eventually took too (`v0.9.0` — see `MIGRATION_PLAN.md`), though at the
+time HomeMedia was first built, HomeCore and HomeCloud still shared one
+process, making HomeMedia the *first* proof that a second application
+could be bolted onto the platform without touching HomeCloud. That
+discipline held up well enough that it's exactly the pattern HomeCore and
+HomeCloud themselves were eventually split apart to match, rather than
+the other way around.
 
 A few things that fall out of that separation:
 
-- **HomeMedia has no identity of its own.** Every request to `homemedia-backend` is authenticated by calling HomeCloud's own `/api/auth/me` (see `homemedia-backend/src/homecloudClient.js`) — so a disabled account, a password change, or "sign out everywhere" on HomeCloud takes effect on HomeMedia too, automatically, with no duplicated logic. There's a 5-second cache purely so a gallery page loading a few dozen thumbnails at once doesn't fire a few dozen simultaneous verification calls — not to compromise on how fresh "signed out" actually is.
+- **HomeMedia has no identity of its own.** Every request to `homemedia-backend` is authenticated by calling HomeCore's own `/api/auth/me` (see `homemedia-backend/src/homecloudClient.js`) — so a disabled account, a password change, or "sign out everywhere" on HomeCloud takes effect on HomeMedia too, automatically, with no duplicated logic. There's a 5-second cache purely so a gallery page loading a few dozen thumbnails at once doesn't fire a few dozen simultaneous verification calls — not to compromise on how fresh "signed out" actually is.
 - **HomeMedia stores no photos or videos.** Its own database (`homemedia.db`) holds only albums, favorites, and a cached EXIF extraction per file — every actual byte is fetched from HomeCloud on demand. Deleting HomeMedia's entire volume and starting fresh loses your albums and favorites, never a single photo.
 - **One shared front door per app, not two origins to configure.** Same pattern `home/` already established: each frontend's nginx proxies `/api/` to HomeCloud's backend, so the browser never deals with CORS. HomeMedia's `nginx.conf` adds one more, more specific rule first — `/api/homemedia/` goes to its own backend, everything else falls through to HomeCloud's.
 - **Thumbnails aren't duplicated wastefully.** HomeMedia generates and caches its *own* larger, gallery-quality thumbnails (640px, vs. HomeCloud's own 320px file-manager icon) — but only the first time a given photo is actually viewed in the gallery, not for everything ever uploaded to HomeCloud. A photo nobody's opened in HomeMedia never gets a HomeMedia-side thumbnail at all.
@@ -1356,7 +1391,7 @@ Everything backend-side — `homesync-backend/` — is tested exactly like every
 
 The person only ever enters *one* address on the login screen — HomeSync's, not HomeCloud's. `homesync-backend/src/authProxy.js` is a small, genuine proxy (forward the request, forward the response, nothing more) that exists purely so this is true: it forwards `/api/homesync/auth/login`, `/2fa/verify`, and `/me` straight through to HomeCloud. This mirrors exactly what `home/nginx.conf` and `homemedia/nginx.conf` already do for their browser frontends (proxy `/api/` to the shared backend) — there's just no nginx layer in front of a plain Node API service, so `authProxy.js` does the same job by hand. Three tests in `homesync-backend/test/authProxy.test.js` confirm login, a wrong password, and the full 2FA flow all work end-to-end through the proxy alone.
 
-Every other HomeSync-specific route (`/devices`, `/check`, `/upload`, `/history`) follows the exact same pattern as HomeMedia's backend: no identity or storage of its own, every request verified against HomeCloud's `/api/auth/me`, every file actually stored by uploading it through to HomeCloud's own `/api/files/upload`. Files land in HomeCloud under `Category/Year/Month` (e.g. `Photos/2026/August`) — `homesync-backend/src/pathPlanner.js` decides the path (pure function, unit tested), `homecloudClient.js`'s `resolveFolderPath` creates any missing folders via HomeCloud's own folder API. HomeMedia already scans every folder for images/videos regardless of location, so anything HomeSync backs up shows up there automatically — the two were never explicitly wired together; it falls out of both following the same spec.
+Every other HomeSync-specific route (`/devices`, `/check`, `/upload`, `/history`) follows the exact same pattern as HomeMedia's backend: no identity or storage of its own, every request verified against HomeCore's `/api/auth/me`, every file actually stored by uploading it through to HomeCloud's own `/api/homecloud/files/upload`. Files land in HomeCloud under `Category/Year/Month` (e.g. `Photos/2026/August`) — `homesync-backend/src/pathPlanner.js` decides the path (pure function, unit tested), `homecloudClient.js`'s `resolveFolderPath` creates any missing folders via HomeCloud's own folder API. HomeMedia already scans every folder for images/videos regardless of location, so anything HomeSync backs up shows up there automatically — the two were never explicitly wired together; it falls out of both following the same spec.
 
 ### Deliberately not in v1
 
@@ -1386,9 +1421,9 @@ The Markdown notes app (§15) — a quiet, editorial writing space, and the firs
 §2.2 of the spec is explicit: "do not build a second file storage system for HomeNotes." That's about file *storage* specifically — and note text is small, structured data, genuinely at home in a database row, not the kind of thing that warning is about. So the split here is:
 
 - **Note content, folders, tags, and version history live in HomeNotes' own database** (`homenotes-backend`'s SQLite file) — the same reasoning HomeMedia already established for albums/favorites and HomeSync for devices/dedup records.
-- **Attachments are real HomeCloud files.** Uploading an attachment goes straight through to HomeCloud's own `/api/files/upload`; HomeNotes only remembers which file ids are attached to which note. Removing an attachment from a note only removes that reference — same "never destroy the underlying file as a side effect" principle as removing a photo from a HomeMedia album.
+- **Attachments are real HomeCloud files.** Uploading an attachment goes straight through to HomeCloud's own `/api/homecloud/files/upload`; HomeNotes only remembers which file ids are attached to which note. Removing an attachment from a note only removes that reference — same "never destroy the underlying file as a side effect" principle as removing a photo from a HomeMedia album.
 
-Architecturally this is now a well-worn pattern: own backend, own frontend, own small database, no identity of its own (every request verified against HomeCloud's `/api/auth/me`), same dual-proxy nginx setup HomeMedia already uses so the browser only ever talks to one origin.
+Architecturally this is now a well-worn pattern: own backend, own frontend, own small database, no identity of its own (every request verified against HomeCore's `/api/auth/me`), same dual-proxy nginx setup HomeMedia already uses so the browser only ever talks to one origin.
 
 ### What's actually in it
 
@@ -1412,7 +1447,7 @@ Nested folders, Markdown notes with a Write/Preview toggle (rendered with `marke
 A quick-reference for terms used throughout this document.
 
 - **API** — a fixed set of requests one program can make to another.
-- **Endpoint** — a specific URL an API responds to, e.g. `/api/files`.
+- **Endpoint** — a specific URL an API responds to, e.g. `/api/homecloud/files`.
 - **HTTP method** — the "verb" of a request: `GET` (read), `POST` (create),
   `DELETE` (remove), etc.
 - **Status code** — a 3-digit number in a response summarizing what
@@ -1512,17 +1547,24 @@ codes. Some natural next steps if you want to keep growing this:
 ## Tiered architecture
 
 The repository is laid out as `gateway/` (Tier 0 routing), `homecore/`
-(intended Tier 0 platform), `apps/` (Tier 1 applications — `home`,
-`homecloud`, `homemedia` + `homemedia-backend`, `homenotes` +
-`homenotes-backend`, `homesync-backend`, `homesync-android`), and `services/`
-(operational/Tier 2 — currently just nightly backups). **Home** is the main
-application at `/`; **HomeCloud** is mounted at `/cloud/`.
+(Tier 0 platform), `apps/` (Tier 1 applications — `home`, `homecloud` +
+`homecloud-backend`, `homemedia` + `homemedia-backend`, `homenotes` +
+`homenotes-backend`, `homesync-backend`, `homesync-android`), and
+`services/` (operational — nightly backups, plus an on-demand migration
+tool; see below). **Home** is the main application at `/`; **HomeCloud**
+is mounted at `/cloud/`.
 
-**Honest current-state caveat:** `homecore/` is named for its intended role
-but has not actually been split apart yet — it still runs HomeCloud's own
-file/folder/admin/activity routes in the same process, on the same database,
-as the real HomeCore identity/permissions/registry code. See
-`MIGRATION_PLAN.md` at the repo root for the concrete plan to separate them
-into two independently-deployable services, matching how HomeMedia, HomeSync,
-and HomeNotes already call HomeCloud's identity API instead of sharing its
-database.
+**`homecore/` is a real, separate service** — identity, sessions,
+permissions, the application registry, and cross-app events/audit, own
+process and own database, nothing else. File/folder/share storage lives
+entirely in `apps/homecloud-backend`, its own separate service with its
+own database, calling HomeCore for identity the same way HomeMedia,
+HomeSync, and HomeNotes always have. This wasn't always true — `homecore/`
+spent several versions (`v0.1.0` through `v0.8.0`) as a folder rename
+without the actual split behind it, still running HomeCloud's own file
+routes in the same process. `MIGRATION_PLAN.md` at the repo root has the
+full account of how the real separation happened, phase by phase, and
+`CHANGELOG.md`'s `[0.9.0]` entry covers exactly what changed. If you have
+an existing deployment with real uploaded files from before `v0.9.0`, see
+`docs/SETUP.md`'s "Upgrading an existing install past v0.9.0" — that
+data doesn't move on its own.

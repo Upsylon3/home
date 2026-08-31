@@ -334,7 +334,7 @@ actually run: `homecore` 44, `homecloud-backend` 39, `homemedia-backend`
 18, `homesync-backend` 20, `homenotes-backend` 24. See `CHANGELOG.md`
 `[0.9.0]` for the complete account.
 
-## Phase 6 — cleanup and doc sync
+## Phase 6 — cleanup and doc sync ✅ done (`v0.9.1`)
 
 - ~~Delete the now-unused route files, table definitions, and the
   TRANSITIONAL notice at the top of `homecore/src/app.js`.~~ **Already
@@ -349,8 +349,47 @@ actually run: `homecore` 44, `homecloud-backend` 39, `homemedia-backend`
   separation, not a folder rename. Matches this project's own stated
   standard of verifying claims against the repo rather than carrying
   forward stale ones.
-- Bump to a new **MINOR** version per `VERSIONING.md` (this is a real new
-  capability, verified working) and tag it.
+- ~~Bump to a new **MINOR** version per `VERSIONING.md` (this is a real
+  new capability, verified working) and tag it.~~ **Corrected**: per
+  `VERSIONING.md`'s own rule ("PATCH — bug fixes, doc corrections, no new
+  capability"), a doc-sync phase is PATCH-sized, not MINOR — this plan's
+  own earlier draft got that wrong. `v0.9.1`, not `v0.10.0`.
+
+**Done, plus one real bug found and fixed along the way, not just
+docs.** Writing an accurate description of the real routing (for
+`docs/ARCHITECTURE.md` §5) meant actually reading every frontend's own
+`nginx.conf`, not just the top-level `gateway/nginx.conf` already fixed
+in Phase 5 — and all four (`apps/home`, `apps/homecloud`,
+`apps/homemedia`, `apps/homenotes`) still proxied to a Docker service
+named `backend`, which hasn't existed since `homecore`'s rename at
+`v0.1.0`. In the real deployed topology this is currently harmless (only
+the gateway publishes a host port; individual frontend containers are
+never reached directly, so these rules are a fallback, not something
+live browser traffic hits today) — but `apps/homecloud/nginx.conf` and
+`apps/home/nginx.conf` were also both missing any rule at all for
+`/api/homecloud/`, which would matter the moment anything ever did reach
+them directly. Fixed all four: renamed `backend` → `homecore`, added the
+missing `/api/homecloud/` (and, for HomeCloud's own frontend,
+`/api/share/`) rules mirroring the gateway's own routing exactly, and
+corrected each file's stale comments. Verified with `nginx -t` against
+all four (hostnames substituted with a resolvable dummy, since this
+sandbox has no Docker network to resolve the real service names against)
+— syntax confirmed valid, not just visually inspected.
+
+Also fixed in the same pass, all genuinely stale claims caught while
+reading closely rather than left for "someone will notice eventually":
+`MIGRATION.md`'s central claim (rewritten — it described exactly what
+this phase fixed), the root `README.md`'s API reference table (paths,
+plus two missing routes: `/api/homecloud/files/quota` from Phase 2 and
+the pre-existing `/api/homecloud/files/all`), and three instances of
+"HomeCloud's `/api/auth/me`" that should have said "HomeCore's" (a real
+factual imprecision, not just branding — auth verification was never
+HomeCloud's job). One large section of `README.md` (`**Backend, in more
+detail:**` and the following backup-service paragraphs) was judged too
+large and too detailed to safely rewrite in the same pass without risking
+new inaccuracies — flagged clearly in place instead, pointing to
+`docs/SERVICES.md`/`docs/DEVELOPER_GUIDE.md` as the accurate current
+reference, rather than either left silently wrong or rushed.
 
 ## What this unlocks, concretely
 

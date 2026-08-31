@@ -29,6 +29,73 @@ recovered.
   from HomeCloud (files/folders/sharing) into two independent services —
   see `MIGRATION_PLAN.md`.
 
+## [0.9.1] — Phase 6 of `MIGRATION_PLAN.md`: doc sync, plus a real bug found while doing it
+
+The last phase of the HomeCore/HomeCloud migration. Documentation only
+by plan — but writing an accurate routing table meant actually reading
+every frontend's own `nginx.conf`, which surfaced a real, systemic bug
+outside the scope of "just update the docs."
+
+### Fixed
+- **All four frontends' own `nginx.conf`** (`apps/home`, `apps/homecloud`,
+  `apps/homemedia`, `apps/homenotes`) still proxied to a Docker service
+  named `backend`, which hasn't existed since `homecore`'s rename at
+  `v0.1.0`. Currently harmless in the real deployed topology — only the
+  gateway publishes a host port, so these are a fallback nothing hits
+  today, not something live — but `apps/homecloud/nginx.conf` and
+  `apps/home/nginx.conf` were also missing any `/api/homecloud/` rule at
+  all, which would matter the moment anything ever did reach them
+  directly. Renamed `backend` → `homecore` in all four; added the
+  missing `/api/homecloud/` (and, for HomeCloud's own frontend,
+  `/api/share/`) rules mirroring the gateway's own routing; corrected
+  each file's stale comments. Verified with `nginx -t` against all four
+  (hostnames substituted with a resolvable dummy — no Docker network in
+  this sandbox to resolve the real ones), not just visually inspected.
+
+### Changed — documentation
+- `docs/ARCHITECTURE.md` §1/§3/§4/§5/§6/§7/§8: HomeCore now correctly
+  described as a real separate service, not embedded; the gateway
+  routing table gained `/api/homecloud/`, `/api/homenotes/`,
+  `/api/share/`, and `/notes/`; the "known v0 shortcuts" section's
+  embedded-HomeCore item marked resolved (struck through, not deleted —
+  the item below it was directly caused by this one); HomeNotes moved
+  out of the "future" parenthetical everywhere it was still listed
+  there; a new shortcut item added documenting why the old
+  `files`/`folders`/`shares` tables are deliberately left inert rather
+  than dropped for an existing install.
+- `MIGRATION.md` rewritten — its central claim described exactly what
+  this migration fixed.
+- Root `README.md`: the "Tiered architecture" section rewritten; every
+  `/api/files`/`/api/folders` path outside one large, deliberately
+  flagged section fixed to `/api/homecloud/...`; the API reference table
+  gained two missing routes (`/api/homecloud/files/quota` from Phase 2,
+  `/api/homecloud/files/all` which existed before but was missing from
+  this table); three instances of "HomeCloud's `/api/auth/me`" corrected
+  to "HomeCore's" (a real factual imprecision — auth verification was
+  never HomeCloud's job, not just an internal branding conflation like
+  the rest of this document's known "homecloud vs Home" looseness); the
+  HomeMedia section's claim that HomeCore "still lives embedded" fixed.
+- **Deliberately not rewritten**: `README.md`'s `**Backend, in more
+  detail:**` section and the following backup-service paragraphs —
+  several hundred words of detailed, specific technical narrative
+  describing a single merged backend that no longer exists as one.
+  Judged too large to safely rewrite accurately in this pass without
+  real risk of introducing new inaccuracies faster than fixing old ones.
+  Flagged clearly and specifically in place instead (which file each
+  concept actually lives in now, and where to find the accurate current
+  version — `docs/SERVICES.md`, `docs/DEVELOPER_GUIDE.md`), rather than
+  either left silently wrong or rushed. A real rewrite of this section is
+  legitimate follow-up work, not something this entry claims is done.
+
+### Verified
+- All four fixed `nginx.conf` files pass `nginx -t` (syntax-checked
+  directly, hostnames substituted since this sandbox can't resolve real
+  Docker service names).
+- Every remaining `/api/files`/`/api/folders` reference in `README.md`
+  outside the flagged section checked and confirmed fixed; the one
+  reference still inside the flagged section confirmed still there on
+  purpose, not missed.
+
 ## [0.9.0] — Phase 5 of `MIGRATION_PLAN.md`: the switch actually flips
 
 The biggest single change in this project's tracked history. Wired

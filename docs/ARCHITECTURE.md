@@ -13,8 +13,8 @@ Build a coherent, self-hosted personal/family software ecosystem called
 **Home** — not a pile of unrelated web apps that happen to share a login.
 At the center is **HomeCore**, a shared platform providing identity,
 sessions, permissions, an application registry, and an event bus.
-Individual products (HomeCloud, HomeMedia, HomeSync, and future ones)
-consume those capabilities instead of reinventing them.
+Individual products (HomeCloud, HomeMedia, HomeSync, HomeNotes, and
+future ones) consume those capabilities instead of reinventing them.
 
 > Build the infrastructure once, then build applications on top of it.
 
@@ -39,34 +39,45 @@ consume those capabilities instead of reinventing them.
 
 ## 3. HomeCore
 
-The shared platform. Not necessarily its own website — v0 lives embedded
-inside HomeCloud's backend process (see §6).
+The shared platform — identity (users, sessions, 2FA, recovery),
+authorization (roles, permissions, ownership), events (activity feed,
+notifications), the application registry (install/enable/health), and
+system health. **A real, separate service as of `v0.9.0`** (see
+`MIGRATION_PLAN.md`'s Phases 0-5, and `CHANGELOG.md` for exactly how):
+own process (`homecore/`), own database, own deploy — not embedded
+inside anything else. File/folder/share storage is deliberately *not*
+one of HomeCore's responsibilities; that's `apps/homecloud-backend`'s
+job, a Tier 1 app like any other, which happens to be the one every
+other Tier 1 app currently has a hard dependency on (see §4).
 
-Planned responsibilities: identity (users, sessions, 2FA, recovery),
-authorization (roles, permissions, ownership), storage abstractions
-(files, folders, quotas), events (activity feed, notifications), the
-application registry (install/enable/health), and system health.
+**Database tables** (prefixed `hc_`, a naming choice that predates the
+real separation and was kept for continuity rather than renamed for its
+own sake): `hc_applications`, `hc_permissions`,
+`hc_application_permissions`, `hc_activity_events`, `hc_notifications`,
+`hc_sessions`.
 
-**Database tables** (implemented, prefixed `hc_` to avoid colliding with
-HomeCloud's own tables since they currently share one SQLite file):
-`hc_applications`, `hc_permissions`, `hc_application_permissions`,
-`hc_activity_events`, `hc_notifications`, `hc_sessions`.
-
-**[current state]** Three applications are actually registered:
-`homecloud`, `homemedia`, `homesync` (seeded in `backend/src/homecore/
-seed.js` on every startup). HomeVault, HomeNotes, HomeTasks, HomeMonitor,
-and HomeAI are **not** registered — they don't exist yet.
+**[current state]** Four applications are actually registered:
+`homecloud`, `homemedia`, `homesync`, `homenotes` — all pre-seeded the
+same way (seeded in `homecore/src/homecore/seed.js` on every startup;
+see §6 on why this is a deliberate shortcut, not a real install flow).
+HomeVault, HomeTasks, HomeMonitor, and HomeAI are **not** registered —
+they don't exist yet.
 
 ## 4. The three-tier layering rule
 
 Two pieces of real evidence shaped this, not just theory:
 
-- **What went right:** `homemedia-backend` and `homesync-backend` were
-  built independently and both arrived at the same discipline without
-  being told twice — no identity or database of their own for anything
-  HomeCloud already owns, every request authenticated by asking HomeCloud,
-  every file byte actually stored by HomeCloud. Strong evidence the
-  underlying idea holds up in practice, not just on paper.
+- **What went right:** `homemedia-backend`, `homesync-backend`, and
+  `homenotes-backend` were all built independently and every one of them
+  arrived at the same discipline without being told twice — no identity
+  or database of their own for anything HomeCore/HomeCloud already own,
+  every request authenticated by asking HomeCore, every file byte
+  actually stored by `apps/homecloud-backend`. Strong evidence the
+  underlying idea holds up in practice, not just on paper — including
+  when the same discipline eventually got applied to the split between
+  HomeCore and HomeCloud themselves (`v0.9.0`; the two used to share one
+  process, exactly the kind of thing this tier rule exists to prevent
+  from staying that way indefinitely).
 - **What went wrong, and why it's instructive:** the gateway was dropped
   entirely for a period — each app ended up back on its own directly
   published port, and single-login stopped working. Nobody removed it on
@@ -89,12 +100,13 @@ Tier 0 — Foundation
   session — only registered against.
 
 Tier 1 — Independent apps
-  HomeCloud, HomeMedia, HomeSync, (future: HomeNotes, HomeTasks,
+  HomeCloud, HomeMedia, HomeSync, HomeNotes (future: HomeTasks,
   HomeMonitor, HomeVault)
   Each has its own database, own process, own deploy. May declare a
   small number of HARD dependencies on another app's STABLE PUBLIC API
-  (never its database) — HomeMedia → HomeCloud is the one that exists
-  today. Contains ZERO optional/enhancement cross-app behavior.
+  (never its database) — HomeMedia, HomeSync, and HomeNotes each declare
+  exactly one: HomeCloud's file-storage API (`apps/homecloud-backend`).
+  Contains ZERO optional/enhancement cross-app behavior.
 
 Tier 2 — HomeBridge
   One separate, optional service (not yet built). Contains every
@@ -137,9 +149,10 @@ decision before HomeBridge's first background-triggered bridge is built.
 
 **[current state — restored]** A single public entry point
 (`gateway/nginx.conf`, published at container port 8080) that puts Home,
-HomeCloud, HomeMedia, and HomeSync behind one browser origin, which is
-what makes shared login real — every frontend reads/writes the same
-`homecloud_token` key in `localStorage`, and that only works same-origin.
+HomeCloud, HomeMedia, HomeSync, and HomeNotes behind one browser origin,
+which is what makes shared login real — every frontend reads/writes the
+same `homecloud_token` key in `localStorage`, and that only works
+same-origin.
 
 Routing, as actually implemented:
 
@@ -148,10 +161,14 @@ Routing, as actually implemented:
 | `/` | Home (the dashboard) |
 | `/cloud/` | HomeCloud's frontend |
 | `/media/` | HomeMedia's frontend |
+| `/notes/` | HomeNotes' frontend |
 | `/sync/` | HomeSync's plain info page (no real UI — it's the Android app) |
 | `/api/homemedia/` | HomeMedia's backend |
 | `/api/homesync/` | HomeSync's backend |
-| `/api/` | The shared HomeCloud/HomeCore backend (catch-all, must stay registered after the two more specific rules above) |
+| `/api/homenotes/` | HomeNotes' backend |
+| `/api/homecloud/` | HomeCloud's backend (`apps/homecloud-backend`) |
+| `/api/share/` | HomeCloud's backend too — deliberately unprefixed and outside `requireAuth` (a share link has to work for someone with no account at all); see `apps/homecloud-backend/src/publicShare.js` |
+| `/api/` | HomeCore (catch-all — identity, admin, activity, the application registry; must stay registered after every more-specific rule above) |
 
 Every other Tier 1 service now uses `expose` (internal-only) instead of
 `ports` in `docker-compose.yml` — only the gateway publishes a host port.
@@ -164,14 +181,21 @@ for anything beyond a trusted home LAN.
 Worth naming explicitly so they don't get "fixed" by accident later
 without the context of why they were made:
 
-- **HomeCore lives embedded in HomeCloud's backend**, not as its own
-  service. Reasonable for v0 — extracting it is real future work, not a
-  bug.
-- **HomeMedia and HomeSync's registry entries are pre-seeded** by
-  HomeCloud's own startup code (`seed.js`), rather than through a real
-  admin-driven install flow. Works because it's one more `INSERT OR
+- ~~**HomeCore lives embedded in HomeCloud's backend**, not as its own
+  service.~~ **Resolved in `v0.9.0`** — see `MIGRATION_PLAN.md`'s Phases
+  0-5 for the real separation, and §3 above for the current state. Left
+  here, struck through rather than deleted, since the next item below
+  was directly caused by this one and the connection is worth keeping
+  visible.
+- **HomeMedia's, HomeSync's, HomeNotes', and — as of `v0.9.0` —
+  HomeCloud's own registry entries are all pre-seeded** by HomeCore's
+  startup code (`homecore/src/homecore/seed.js`), rather than through a
+  real admin-driven install flow. Works because it's one more `INSERT OR
   IGNORE` in the same seeding step — not a pattern to keep copy-pasting
-  for every future app without reconsidering it.
+  for every future app without reconsidering it. (HomeCloud used to be a
+  special case here, self-registering from the same process it shared
+  with HomeCore — collapsed into the same pattern as its siblings once
+  it became a real separate service, a net simplification.)
 - **HomeCloud's file authorization is strictly owner-only** — no shared
   files, no shared folders yet. This will block any genuinely multi-user
   feature (a shared album, a shared life-event bundle) until solved once
@@ -181,6 +205,14 @@ without the context of why they were made:
   currently checks a permission before granting access to another
   app's resource. This matters more than it sounds — see
   `SECURITY.md` §"sibling application overreach."
+- **An existing deployment's old `files`/`folders`/`shares` tables are
+  left inert in `homecore`'s database, not dropped**, once migrated to
+  `apps/homecloud-backend` (`v0.9.0`) — unlike `activity_log` (`v0.7.0`),
+  which was safe to drop outright. These held real file-ownership
+  records with no "acceptable to lose some history" precedent, so
+  reclaiming that space is a deliberate, manual, later step for the
+  person who ran the migration, not something automatic. See
+  `homecore/src/db.js`'s comment and `scripts/migrate-legacy-homecloud-data.js`.
 
 ## 7. Development phases (as originally planned)
 
@@ -188,12 +220,13 @@ without the context of why they were made:
 1. Stabilize HomeCloud — remove crashes, add tests, security baseline.
    *(done)*
 2. Introduce HomeCore internally — extract identity/permissions/events
-   from HomeCloud. *(done, embedded)*
+   from HomeCloud. *(done — embedded through `v0.8.0`, a real separate
+   service as of `v0.9.0`; see `MIGRATION_PLAN.md`)*
 3. Build Home against HomeCore. *(done)*
 4. Build HomeSync (Android backup client). *(backend done; Android app
    incomplete — see SERVICES.md)*
 5. Build HomeMedia. *(done)*
-6. HomeNotes / HomeTasks. *(not started)*
+6. Build HomeNotes. *(done)* / HomeTasks. *(not started)*
 7. HomeMonitor. *(not started)*
 8. HomeVault — dedicated security design before any code. *(design done,
    no code — see SECURITY.md)*
@@ -211,8 +244,8 @@ without the context of why they were made:
   HomeCloud       HomeMedia      HomeNotes      HomeTasks      HomeMonitor
        └──────────────┴──────────────┼──────────────┴──────────────┘
                                ┌─────▼─────┐
-                               │ HomeCore  │   Identity · Storage · Events
-                               │           │   Auth · ACL · Audit · Notify
+                               │ HomeCore  │   Identity · Registry · Events
+                               │           │   Auth · Permissions · Audit · Notify
                                └─────┬─────┘
                     ┌────────────────┼────────────────┐
                     ▼                ▼                ▼

@@ -113,7 +113,6 @@ what each layer covers.
 
 ## License
 
-This repository does not currently include a license file. Until one is
-added, no license is granted to use, copy, modify, or distribute this
-code. Add a `LICENSE` file before treating this as open source or
-sharing it outside your organization.
+Proprietary — all rights reserved. See [LICENSE](LICENSE). This is a
+deliberately conservative default, chosen to be easy to relax later
+(open source, or a different license) rather than hard to undo.

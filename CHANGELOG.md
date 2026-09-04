@@ -5,6 +5,59 @@ All notable changes to this project are documented here. Format follows
 [SemVer](https://semver.org/): one version number for the whole
 ecosystem (see root `package.json`), bumped on any meaningful release.
 
+## [Unreleased]
+
+Resolved every open decision flagged during the [1.0.0] handoff cleanup
+in one pass, so future work isn't blocked re-litigating them. No code
+behavior changed; this is documentation plus one new file.
+
+### Added
+- `LICENSE` — proprietary, all rights reserved. Deliberately the most
+  restrictive default (easy to relax later, hard to undo the other way).
+
+### Fixed
+- A moderate-severity `qs` advisory, pulled in transitively through
+  every backend's `express`/`body-parser`, patched via an `overrides`
+  pin rather than a breaking Express 5 upgrade — see root
+  `package.json`'s comment. `npm audit`: 5 vulnerabilities → 1
+  (moderate, dev-server-only — see below).
+
+### Known, not fixed here
+- `vite`/`esbuild`'s moderate dev-server advisory remains — fixing it
+  needs `vite@8`, a breaking upgrade across all four frontends. Flagged
+  in `docs/ROADMAP.md` and `docs/SECURITY.md` rather than forced through
+  without dedicated testing time.
+
+### Decided (see the linked doc for each; recorded so the reasoning isn't lost)
+- Version stays 1.0.0.
+- TLS: private overlay network (Tailscale/WireGuard) is the supported
+  path to remote access, not a public reverse-proxy cert — `SECURITY.md`.
+- HomeVault stays on the shared origin, hardened with a strict CSP,
+  rather than a separate origin — `SECURITY.md`.
+- HomeBridge's background-trigger auth: a scoped service credential
+  HomeCore mints, not per-app shared-secret endpoints — `ARCHITECTURE.md`.
+- Permission enforcement: deferred until HomeVault actually needs it,
+  not built speculatively ahead of a consumer — `SECURITY.md`.
+- Shared secrets between services stay as a shared `.env` file; no
+  secrets manager introduced at this scale — `ARCHITECTURE.md`.
+- Build order: HomeVault → HomeTasks → HomeBridge → HomeMonitor →
+  HomeAI — `ROADMAP.md`.
+- HomeCloud's owner-only file sharing stays as-is until a feature
+  forces a real multi-user ACL model — `ARCHITECTURE.md`.
+- Account deletion stays disable-only, permanently — no hard delete
+  flow planned — `ARCHITECTURE.md`.
+- Home's per-app dashboard stat stays hardcoded per app rather than a
+  generic manifest field, for now.
+- Design: the `#C99A3B` accent color and the current placeholder
+  sans-serif typeface are both final, not pending a future pick —
+  `DESIGN_SYSTEM.md`.
+- HomeSync: whole-file retry (not chunked/resumable upload) and
+  WorkManager's built-in battery constraint (not a numeric threshold)
+  are both final designs, not gaps — `ROADMAP.md`.
+- The still-missing `HOME_MASTER_SPECIFICATION.md` /
+  `HOME_ARTISTIC_DIRECTION.md` remain an open item, not resolved here —
+  `ARCHITECTURE.md`.
+
 ## [1.0.0] — Handoff cleanup pass
 
 A full audit pass with no new features: verified every claim in the docs

@@ -20,6 +20,11 @@
 
   "//version-policy": "One version number for the whole ecosystem, bumped on every meaningful release across any service — simplest thing that works for a project this size. Individual package.json files under apps/ and packages/ have their own version fields for npm/Docker tooling's sake, but this root version is the one that matters for release notes (see CHANGELOG.md).",
 
+  "//overrides": "express@4.x's own dependency tree pulls in a qs version with a known moderate-severity DoS/array-limit-bypass advisory (GHSA-x5fp-wj9c-mxmx, GHSA-4mjr-xmp4-gh2g) that a plain `npm audit fix` can't clear without a breaking Express 5 upgrade. Pinning the patched qs version directly here fixes it without that migration. Safe to remove once every backend's own express dependency naturally resolves to a version that no longer has this problem — check with `npm audit` before removing.",
+  "overrides": {
+    "qs": "^6.16.0"
+  },
+
   "scripts": {
     "//test": "Runs every workspace's own `test` script, one at a time, stopping at the first failure — homecore, apps/homecloud-backend, apps/homemedia-backend, apps/homenotes-backend, and apps/homesync-backend.",
     "test": "npm run test --workspaces --if-present",

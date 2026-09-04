@@ -111,18 +111,16 @@ every app needs to be reachable at all, same category as HomeCore.
 - Must be fully functional with every other Tier 1 app and HomeBridge
   absent.
 
-**HomeBridge's own open question, not yet decided:** most bridges react
+**HomeBridge's background-trigger auth — decided:** most bridges react
 to a live request that already carries a user's token. Some won't (a
 scheduled check firing with nobody browsing) and will need to call
-another app's API *as* a user with nothing to forward. Two options: (A) a
-scoped service credential HomeCore mints for HomeBridge, recognized for a
-narrow allow-list of actions; (B) small shared-secret-authenticated
-`/internal/...` endpoints on each Tier 1 app (the pattern already used
-between HomeCore and `apps/homecloud-backend` — see `homecore/src/internalEvents.js`
-and `apps/homecloud-backend/src/internalUsage.js`). (A) is favored — one
-new concept in one place instead of a second trust mechanism repeated in
-every app — but needs a real decision before HomeBridge's first
-background-triggered bridge is built.
+another app's API *as* a user with nothing to forward. **Decided: a
+scoped service credential HomeCore mints for HomeBridge**, recognized
+for a narrow allow-list of actions — one new concept in one place,
+instead of a second trust mechanism (shared-secret `/internal/...`
+endpoints) repeated in every app. Not yet implemented — this is the
+design to build against once HomeBridge's first scheduled bridge is
+started.
 
 ## 5. The gateway
 
@@ -169,16 +167,28 @@ problem:
   future work.
 - **HomeCloud's file authorization is strictly owner-only** — no shared
   files, no shared folders yet. This blocks any genuinely multi-user
-  feature (a shared album, a shared life-event bundle) until solved once
-  at the HomeCore/HomeCloud layer.
+  feature (a shared album, a shared life-event bundle). **Decided:**
+  deliberately punted rather than designed speculatively — share
+  *links* already cover the common "give one person one thing" case;
+  real multi-user ACLs wait until a specific feature actually needs
+  them.
 - **Permission enforcement is declarative, not enforced.** Applications
   declare what permissions they'd use in their manifest, but no code
   path currently checks a permission before granting access to another
-  app's resource. See `SECURITY.md`'s "sibling application overreach."
-- **No account-deletion flow exists yet**, only disable. When one is
-  added, it needs to also tell `apps/homecloud-backend` to clean up that
-  user's files — there's no foreign key across the two separate
-  databases to do it automatically. See `apps/homecloud-backend/src/db.js`.
+  app's resource. See `SECURITY.md`'s "sibling application overreach"
+  and its decision to defer this until HomeVault needs it.
+- **No account-deletion flow exists, only disable — decided permanent,**
+  not a gap waiting to be filled. Building real cross-service deletion
+  (there's no foreign key across the separate databases to cascade
+  automatically) was judged not worth the complexity for a personal/
+  family server; disable is considered the correct, permanent answer.
+  An admin with direct database access can still manually purge a
+  disabled account's data if truly necessary.
+- **Shared secrets between services** (e.g. `HOMECORE_INTERNAL_SECRET`,
+  read by `apps/homecloud-backend` directly from `homecore/.env`) are
+  kept simple on purpose — no root-level shared `.env`, no secrets
+  manager. Fine at this scale; revisit if it becomes a real operational
+  annoyance, not before.
 
 ## 7. Status by application
 

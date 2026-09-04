@@ -103,11 +103,12 @@ frontend that uses them. The next run of that script silently overwrites
 any local edit.
 
 **Not yet done:** PNG/ICO favicon exports (only HomeCloud's frontend has
-real PWA icon PNGs today), an Android adaptive-icon split for
-`apps/homesync-android`, and a final typeface decision (currently a
-placeholder sans-serif stack) — see `ROADMAP.md`.
+real PWA icon PNGs today) and an Android adaptive-icon split for
+`apps/homesync-android` — see `ROADMAP.md`.
 
 The accent color is a warm brass, `#C99A3B` (chosen specifically to
 avoid the terracotta/coral a lot of AI-assisted design defaults to) —
-a placeholder to swap freely, not a final decision, since nothing has
-used it beyond the icon set itself yet.
+**decided as final.** The typeface is the current placeholder
+sans-serif system-font stack — also **decided as final** rather than
+a placeholder waiting on a custom pick; revisit only if a real reason
+comes up, not by default.

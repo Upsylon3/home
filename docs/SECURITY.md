@@ -33,16 +33,32 @@ threat model — a design document with no implementation yet.
 - The batch-zip feature uses `yazl` (one small dependency) rather than
   a heavier alternative, specifically to avoid a larger transitive
   dependency tree.
+- A moderate-severity `qs` advisory (pulled in transitively through
+  every backend's `express`/`body-parser`) is patched via an `overrides`
+  pin in the root `package.json`, without needing a breaking Express 5
+  upgrade — see that file's own comment.
+
+**One known, open vulnerability, dev-only:** every frontend's `vite`
+(and its `esbuild` dependency) has a moderate advisory
+([GHSA-67mh-4wv8-2f99](https://github.com/advisories/GHSA-67mh-4wv8-2f99))
+— a malicious website a developer visits could send requests to their
+local `vite dev` server and read the response. It does not affect
+production (nginx serves pre-built static files, never the dev server).
+Fixing it means `vite@8`, a breaking major upgrade across all four
+frontends — deliberately not forced through as part of this pass; budget
+real time to test each frontend's dev and build modes before taking it.
 
 ## What's not covered yet
 
 - **No TLS anywhere in the request chain.** The gateway terminates plain
   HTTP only. Fine for a trusted home LAN; not fine for anything reachable
-  more broadly, and a **hard blocker** for HomeVault (see below). If
-  exposing this beyond a home LAN, put it behind a reverse proxy with
-  real TLS (Caddy/Traefik + Let's Encrypt), or use a private overlay
-  network (Tailscale/WireGuard) instead of public exposure — see
-  `DEPLOYMENT.md`.
+  more broadly, and a **hard blocker** for HomeVault (see below).
+  **Decided approach:** a private overlay network (Tailscale or
+  WireGuard) for remote access, not public exposure with a reverse-proxy
+  cert — simpler to operate correctly for a self-hosted family server,
+  and avoids the recurring cost of managing public certificates for
+  something that was never meant to be reachable by the open internet.
+  See `DEPLOYMENT.md`.
 - **Permission enforcement is declarative, not enforced.** Applications
   declare intended permissions in their manifest (HomeCore's application
   registry), but no code path currently checks a permission before
@@ -51,7 +67,10 @@ threat model — a design document with no implementation yet.
   user?" directly) are the only real enforcement today — fine for
   HomeCloud/HomeMedia/HomeSync/HomeNotes as built, but **not** something
   HomeVault, or any future security-sensitive app, should rely on as a
-  boundary — see "sibling application overreach" below.
+  boundary — see "sibling application overreach" below. **Decided:**
+  deliberately deferred until HomeVault actually needs it, rather than
+  built speculatively ahead of a real consumer — but it's a hard
+  prerequisite for HomeVault specifically, not indefinitely optional.
 - No email-based password reset (an admin-panel reset is the intentional
   substitute — no outgoing mail server to run).
 - No account-deletion flow — only disable. See
@@ -131,7 +150,7 @@ re-wrap, not an O(n) re-encryption of the whole vault.
 |---|---|
 | **Server/DB compromise** | Everything stored is ciphertext + minimal metadata — the core promise the whole design exists for, including making a leaked backup harmless as long as Argon2id parameters resist offline attack. |
 | **Network interception** | Blocking prerequisite: the gateway has no TLS yet. Not shippable for a password manager without it, even on a "trusted" home LAN. |
-| **Shared-origin XSS** | The gateway's SSO design means every app on the origin shares one security perimeter — a stored XSS bug in *any* app can read the shared session token. Mitigation: a strict CSP project-wide, no `dangerouslySetInnerHTML`/`innerHTML` with untrusted content anywhere, and the decrypted vault key kept tab-lifetime-only, never in `localStorage`. Worth an explicit decision before implementation: shared origin (with that CSP hardening) vs. a deliberately separate origin just for HomeVault. |
+| **Shared-origin XSS** | The gateway's SSO design means every app on the origin shares one security perimeter — a stored XSS bug in *any* app can read the shared session token. **Decided:** stay on the shared origin (simpler ops, one cert, consistent with every other app) rather than a separate origin just for HomeVault, on the condition that the mitigation is real, not aspirational: a strict CSP project-wide, no `dangerouslySetInnerHTML`/`innerHTML` with untrusted content anywhere, and the decrypted vault key kept tab-lifetime-only, never in `localStorage`. |
 | **Sibling application overreach via HomeCore** | HomeCore's permission system is declarative, not enforced (see above). Encryption itself — not HomeCore's authorization layer — is what actually stops this: a fully compromised sibling app still only gets ciphertext. |
 | **Malicious/compromised HomeVault backend code** | Structurally limited — the server is never sent plaintext to begin with, so there's nothing to exfiltrate unless the *client* is also compromised. |
 | **HomeCore admin overreach** | An admin can disable an account or force a full vault reset (destroying the wrapped key — the user loses their own vault too), but cannot decrypt existing items. No admin-only route should ever return decrypted contents, for any reason including support requests. |
@@ -144,14 +163,16 @@ re-wrap, not an O(n) re-encryption of the whole vault.
 
 In priority order:
 1. **TLS at the gateway** — the single largest gap between "sound on
-   paper" and "safe to actually use."
-2. **A decision** on shared-origin-with-CSP vs. deliberately separate
-   origin (see "Shared-origin XSS" above).
-3. **Concrete Argon2id parameters**, benchmarked against realistic
+   paper" and "safe to actually use." (Decided: a private overlay
+   network, not a public reverse-proxy cert — see Part A above.)
+2. **Concrete Argon2id parameters**, benchmarked against realistic
    minimum self-hosting hardware.
-4. **A designed recovery-kit UX**, reviewed before the first vault is
+3. **A designed recovery-kit UX**, reviewed before the first vault is
    ever created — it can't be retrofitted onto existing vaults without
    asking every user to re-derive and re-wrap their key.
+
+The shared-vs-separate-origin decision above is settled; it's no longer
+a blocking prerequisite.
 
 None of these are done yet.
 

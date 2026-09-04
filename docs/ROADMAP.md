@@ -3,40 +3,55 @@
 Two parts: concrete near-term work, and a longer-term cross-module ideas
 brainstorm — explicitly speculative, none of it committed.
 
+**Build order, decided:** HomeVault → HomeTasks → HomeBridge →
+HomeMonitor → HomeAI. HomeVault first because it's security-critical and
+already has a full threat model (`SECURITY.md`) — building it while that
+design context is fresh beats letting it go stale. HomeTasks next as
+the highest everyday-value, most conventional build (CRUD app, no new
+architectural pattern needed). HomeBridge after that, once there are
+enough real apps for its cross-app ideas (`ROADMAP.md`'s brainstorm
+below) to actually matter. HomeMonitor and HomeAI last — lower urgency,
+and HomeAI specifically benefits from permission enforcement landing
+first (see below).
+
 ## Near-term backlog
 
 1. **HomeSync Android's first real build.** The app (including the
    previously-missing `data/` package) is written and statically
    reviewed, but has never been through a real Gradle sync or run on a
-   device/emulator — see `DEVELOPMENT.md`. This is the single most
-   important next step for HomeSync.
-2. **Locate or recreate `HOME_MASTER_SPECIFICATION.md` and
+   device/emulator — see `DEVELOPMENT.md`. Not a blocker for anything
+   else — other apps can proceed in parallel while this is pending.
+2. **HomeVault**, per the decided build order above. Its own
+   prerequisites (`SECURITY.md`): Argon2id parameters benchmarked
+   against real self-host hardware, and a designed recovery-kit UX. TLS
+   and the shared-origin question are already decided — see
+   `SECURITY.md`.
+3. **Locate or recreate `HOME_MASTER_SPECIFICATION.md` and
    `HOME_ARTISTIC_DIRECTION.md`.** 25 files across this codebase cite
    specific sections of these two documents, and neither exists in this
    repository — see the callout at the top of `ARCHITECTURE.md`. If they
    exist elsewhere, add them at the repo root; if they're truly gone,
    the numbered citations in code comments should eventually be cleaned
    up to stop pointing at nothing.
-3. **TLS at the gateway.** Blocking prerequisite for HomeVault (per its
-   own threat model) and generally overdue for anything beyond a fully
-   trusted LAN — see `SECURITY.md`.
-4. **A real permission-enforcement pass.** HomeCore's permission system
-   is currently declarative only (apps state what they'd use; nothing
-   checks it before granting access to another app's resource). Several
-   of the bigger ideas below depend on this landing first.
-5. **A decision on HomeBridge's background-trigger auth** (scoped
-   service credential vs. per-app internal endpoints) — see
-   `ARCHITECTURE.md` §4's open question — before HomeBridge's first
-   scheduled (not request-triggered) bridge is built.
-6. **Icon system finishing touches**: PNG/ICO favicon exports for every
-   frontend but HomeCloud's, an Android adaptive-icon split, and a final
-   typeface decision (currently a placeholder sans-serif stack) — see
-   `DESIGN_SYSTEM.md`.
-7. **An account-deletion flow.** Only account *disable* exists today.
-   Adding deletion needs to also tell `apps/homecloud-backend` (and
-   every other Tier 1 app) to clean up that user's data — there's no
-   foreign key across the separate databases to do it automatically.
-   See `ARCHITECTURE.md` §6.
+4. **Icon system finishing touches**: PNG/ICO favicon exports for every
+   frontend but HomeCloud's, and an Android adaptive-icon split — see
+   `DESIGN_SYSTEM.md`. Typeface and accent color are now final, not
+   open questions.
+5. **Upgrade to `vite@8`** across all four frontends, to clear a
+   moderate, dev-server-only `esbuild` advisory — see `SECURITY.md`.
+   Breaking change; budget time to verify each app's dev and build
+   modes, not a drop-in bump.
+
+**Settled, not open questions anymore** (kept here so the reasoning
+isn't lost): TLS approach (private overlay, not public certs —
+`SECURITY.md`), HomeVault's origin (shared, with CSP — `SECURITY.md`),
+HomeBridge's background-trigger auth (scoped service credential —
+`ARCHITECTURE.md` §4), permission enforcement (deferred until HomeVault
+needs it — `SECURITY.md`), account deletion (disable-only, permanently —
+`ARCHITECTURE.md` §6), HomeCloud's owner-only sharing (staying
+owner-only until a feature forces it — `ARCHITECTURE.md` §6), and the
+generic per-app dashboard stat (staying hardcoded per app for now).
+
 
 ## Deferred features, by service (already decided, just not built)
 
@@ -45,8 +60,11 @@ brainstorm — explicitly speculative, none of it committed.
 - **HomeMedia:** video poster-frame thumbnails (needs ffmpeg), duplicate
   detection, shared/multi-user albums, mobile upload integration.
 - **HomeNotes:** real-time collaborative editing, note templates.
-- **HomeSync:** true resumable/chunked upload, a numeric
-  battery-percentage threshold, in-place-edit detection.
+- **HomeSync:** in-place-edit detection is deferred (not built, not
+  ruled out). True resumable/chunked upload and a numeric
+  battery-percentage threshold are **decided against** — whole-file
+  retry and WorkManager's built-in `requiresBatteryNotLow` constraint
+  stay as the permanent design, not gaps waiting to be filled.
 - **HomeVault:** everything — see `SECURITY.md` for the prerequisites
   that come before any of it.
 

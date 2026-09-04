@@ -67,6 +67,7 @@ apps/
   homesync-android/    The Android app itself (Kotlin)
 services/backup/       Nightly backup of every app's data volume
 design/                Icon set + wordmark, shared across every frontend
+scripts/               Windows dev launcher (see docs/DEVELOPMENT.md)
 docs/                  Architecture, security, API reference, deployment, roadmap
 ```
 

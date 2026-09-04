@@ -189,6 +189,15 @@ problem:
   kept simple on purpose — no root-level shared `.env`, no secrets
   manager. Fine at this scale; revisit if it becomes a real operational
   annoyance, not before.
+- **Registration UI is duplicated**: both `apps/homecloud/src/pages/Register.jsx`
+  and `apps/home/src/pages/Register.jsx` implement the same form against
+  the same `/api/auth/register` endpoint. Home's copy exists so a fresh
+  local dev stack can be bootstrapped without starting HomeCloud's
+  frontend too (see `docs/DEVELOPMENT.md`'s Windows launcher). A single
+  account-creation flow living in HomeCore itself, that every frontend
+  links to instead of reimplementing, would remove the duplication —
+  worth doing if a third frontend ever wants its own "create account"
+  link, not urgent before that.
 
 ## 7. Status by application
 

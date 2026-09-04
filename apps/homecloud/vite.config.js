@@ -9,8 +9,15 @@ import react from "@vitejs/plugin-react";
 // everything else (auth, admin, activity) goes to HomeCore (4000). The
 // more specific keys must be registered first — a broader /api prefix
 // would otherwise swallow them.
+// Gateway prefix only matters in production (that's the path nginx routes
+// this app under — see gateway/nginx.conf). In dev, this app's own Vite
+// server IS the origin (http://localhost:5173), so base stays "/" —
+// otherwise visiting localhost:5173 directly would 404 (Vite would expect
+// everything under /cloud/ instead, a prefix that only exists behind the
+// gateway). main.jsx's `basename={import.meta.env.BASE_URL}` picks this
+// up automatically either way.
 export default defineConfig({
-  base: "/cloud/",
+  base: process.env.NODE_ENV === "production" ? "/cloud/" : "/",
   plugins: [react()],
   server: {
     port: 5173,

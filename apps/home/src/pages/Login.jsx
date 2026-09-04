@@ -1,15 +1,18 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { api, setToken } from "../api.js";
 import Wordmark from "../components/Wordmark.jsx";
 import ThemeToggle from "../components/ThemeToggle.jsx";
 
-// Home signs in against the same /api/auth/login HomeCloud already uses —
-// there's one identity provider, not one per application (§27) — so there's
-// deliberately no separate "register" flow here. An account is created from
-// HomeCloud (or another application) today; Home just authenticates against
-// it. A dedicated account-creation flow living in HomeCore itself is a
-// reasonable next step once there's a second application, not before.
+// Home signs in against the same /api/auth/login HomeCore already exposes —
+// there's one identity provider, not one per application. Home also has its
+// own Register.jsx now (calling the same /api/auth/register HomeCloud's own
+// Register.jsx uses), specifically so a fresh local dev stack can be
+// bootstrapped from Home alone — see docs/DEVELOPMENT.md's Windows launcher
+// section. The two Register.jsx files are genuinely duplicated UI/logic
+// today; a single account-creation flow living in HomeCore itself (rather
+// than copied per frontend) is a reasonable thing to unify later, not
+// urgent enough to block on now.
 export default function Login({ onAuthed }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -146,6 +149,10 @@ export default function Login({ onAuthed }) {
             {loading ? "Signing in…" : "Sign in"}
           </button>
         </form>
+
+        <div className="switch-row">
+          No account yet? <Link to="/register">Create one</Link>
+        </div>
       </div>
     </div>
   );

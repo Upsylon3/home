@@ -59,6 +59,49 @@ override that for local dev.
 Nothing here is backed up automatically outside Docker — see
 [DEPLOYMENT.md](DEPLOYMENT.md) §Backups for the real mechanism.
 
+## Windows: one-click launch
+
+Everything in the section above, automated, for Windows specifically:
+
+```bat
+scripts\dev-home.bat
+```
+
+Opens a small picker UI. Home's own stack (HomeCore, HomeCloud's
+backend, Home's dashboard) always starts; HomeCloud's frontend,
+HomeMedia, HomeNotes, and HomeSync's backend are optional checkboxes.
+Each selected service opens in its own terminal window, already pointed
+at the others via the same env vars listed above — nothing extra to
+type per-service.
+
+| Service | Port |
+|---|---:|
+| HomeCore | `4000` |
+| HomeCloud backend | `4500` |
+| Home dashboard | `5174` |
+| HomeCloud frontend *(optional)* | `5173` |
+| HomeMedia backend + frontend *(optional)* | `4200` + `5175` |
+| HomeNotes backend + frontend *(optional)* | `4400` + `5176` |
+| HomeSync backend *(optional — Android app not launched by this)* | `4300` |
+
+It also creates any missing `.env` files (from each service's
+`.env.example`) and data directories on first run, and passes HomeCore
+absolute `http://localhost:<port>/` URLs for each app's frontend instead
+of the production gateway paths (`/cloud`, `/media`, `/notes`, `/sync`)
+— there's no gateway running in this mode, so Home's app cards need to
+link straight to each app's own dev server. This is exactly what
+`HOMECLOUD_FRONTEND_URL` and friends are for (see
+`homecore/.env.example`); nothing about `homecore/src/homecore/seed.js`
+needed to change to support it.
+
+The secret this script sets (`JWT_SECRET`, `HOMECORE_INTERNAL_SECRET`)
+is a fixed, published dev-only value — fine for a throwaway local
+database, **never reuse it for a real deployment**.
+
+Requires Node.js 20+ and npm in `PATH`; runs `npm install` automatically
+on first launch if `node_modules` is missing. macOS/Linux: use the
+manual commands above instead — this launcher is Windows-only.
+
 ## Running with Docker instead
 
 See [DEPLOYMENT.md](DEPLOYMENT.md) — `docker compose up --build -d` runs

@@ -35,6 +35,9 @@
     "//docker:up": "The actual way this whole ecosystem normally runs — see docs/DEPLOYMENT.md. This script is just a memorable shortcut.",
     "docker:up": "docker compose up --build -d",
     "docker:down": "docker compose down",
-    "docker:logs": "docker compose logs -f"
+    "docker:logs": "docker compose logs -f",
+
+    "//dev:home": "Windows-only convenience launcher — see docs/DEVELOPMENT.md's Windows section. Opens a small picker UI, then starts each chosen service in its own terminal with dev-mode env vars already set. Not needed on macOS/Linux; use the manual per-service commands in docs/DEVELOPMENT.md instead.",
+    "dev:home": "cmd /c scripts\\dev-home.bat"
   }
 }

@@ -59,6 +59,9 @@ export const api = {
   login: (username, password) =>
     request("/auth/login", { method: "POST", body: JSON.stringify({ username, password }) }),
 
+  register: (username, password) =>
+    request("/auth/register", { method: "POST", body: JSON.stringify({ username, password }) }),
+
   verify2fa: (pendingToken, code) =>
     request("/auth/2fa/verify", { method: "POST", body: JSON.stringify({ pendingToken, code }) }),
 

@@ -4,8 +4,7 @@ require("dotenv").config();
 // so it can be required by the test suite without side effects; this file
 // is only the actual running-process concerns: starting the listener, the
 // trash-purge schedule, and OS signal/crash handling — mirrors
-// homecore/src/server.js's split exactly (this service used to be part of
-// that same process; see MIGRATION_PLAN.md's Phase 2).
+// homecore/src/server.js's split exactly.
 const { app, db } = require("./app");
 const { purgeExpiredTrash } = require("./files");
 

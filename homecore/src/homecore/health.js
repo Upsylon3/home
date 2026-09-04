@@ -21,8 +21,7 @@ router.get("/", (req, res) => {
   // SQLite file lives) is writable — a distinct signal from a successful
   // query below (a full disk or permissions issue can block writes while
   // reads still succeed). Not a check on file uploads — those belong to
-  // apps/homecloud-backend's own health check as of MIGRATION_PLAN.md's
-  // Phase 5, not this one.
+  // apps/homecloud-backend's own health check, not this one.
   try {
     fs.accessSync(DATA_DIR, fs.constants.W_OK);
   } catch {

@@ -15,11 +15,8 @@
 // This is the real, separated Tier 0 HomeCore described in
 // docs/ARCHITECTURE.md — identity, sessions, permissions, the application
 // registry, and cross-app events/audit. File/folder/share storage lives
-// in apps/homecloud-backend, its own independent service with its own
-// database, as of MIGRATION_PLAN.md's Phase 5. See CHANGELOG.md's [0.9.0]
-// for exactly what moved and how it was verified before this file's own
-// "transitional, not yet split" notice — accurate through Phases 0-4 —
-// was finally removed here.
+// entirely in apps/homecloud-backend, its own independent service with
+// its own database.
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -28,9 +25,9 @@ const { db } = require("./db"); // ensures tables + data directories exist befor
 
 const authRoutes = require("./auth");
 const adminRoutes = require("./admin");
-// Moved into ./homecore/ in MIGRATION_PLAN.md's Phase 3 — same route
-// (/api/activity), now backed by hc_activity_events instead of the
-// now-dropped activity_log. See that file's header comment.
+// Same route (/api/activity), backed by the shared hc_activity_events
+// table rather than a HomeCloud-only log table. See that file's header
+// comment for the full picture of who writes to it.
 const activityRoutes = require("./homecore/homecloudActivity");
 // HomeCore v0 — shared platform (identity extras, application registry,
 // permissions catalog, cross-app events/audit, health, notifications). See
@@ -38,21 +35,21 @@ const activityRoutes = require("./homecore/homecloudActivity");
 // routes so its startup seeding (registering HomeCloud as the first
 // application) runs against an already-initialized database.
 const homecoreRoutes = require("./homecore");
-// New in Phase 3 — see internalEvents.js's header comment for why this is
-// a separate, shared-secret-authenticated mount rather than another route
-// under /api/core.
+// See internalEvents.js's header comment for why this is a separate,
+// shared-secret-authenticated mount rather than another route under
+// /api/core.
 const internalEventsRoutes = require("./internalEvents");
 
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET === "change_this_to_a_long_random_string") {
   console.warn(
-    "\n[homecloud] WARNING: JWT_SECRET is unset or using the example value.\n" +
+    "\n[homecore] WARNING: JWT_SECRET is unset or using the example value.\n" +
     "Set a real secret in your .env file before exposing this server beyond your LAN.\n"
   );
 }
 
 if (!process.env.HOMECORE_INTERNAL_SECRET || process.env.HOMECORE_INTERNAL_SECRET === "change_this_to_a_long_random_string") {
   console.warn(
-    "\n[homecloud] WARNING: HOMECORE_INTERNAL_SECRET is unset or using the example value.\n" +
+    "\n[homecore] WARNING: HOMECORE_INTERNAL_SECRET is unset or using the example value.\n" +
     "POST /internal/events will reject every request (fails closed by design) until this\n" +
     "is set to a real, matching value on both this server and the app calling it.\n"
   );

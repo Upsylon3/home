@@ -3,8 +3,7 @@ const { verifyUser } = require("./verify");
 // Every app that has no identity of its own (see verify.js's header
 // comment) needs exactly this: pull a Bearer token off the request, ask
 // HomeCore whether it's valid, and either attach the resulting user to
-// `req` or reject with 401. Originally three byte-for-byte identical
-// copies of this function — see CHANGELOG.md's Phase 0 entry.
+// `req` or reject with 401. Shared here instead of duplicated per app.
 //
 // Unlike HomeCore's own internal auth check (which owns the users table
 // directly and can check token_version/disabled locally — see

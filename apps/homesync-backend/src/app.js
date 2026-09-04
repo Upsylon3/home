@@ -3,7 +3,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 
 const { db } = require("./db");
-const { requireAuth, HOMECLOUD_URL } = require("@home/homecore-client");
+const { requireAuth, HOMECORE_URL } = require("@home/homecore-client");
 const deviceRoutes = require("./devices");
 const syncRoutes = require("./sync");
 const authProxyRoutes = require("./authProxy");
@@ -48,7 +48,7 @@ app.get("/", (req, res) => {
 // Public — lets the Android app (and a future HomeMonitor) confirm this
 // service itself is reachable, distinct from whether HomeCloud is.
 app.get("/api/homesync/health", (req, res) => {
-  res.json({ status: "ok", homecloudUrl: HOMECLOUD_URL });
+  res.json({ status: "ok", homecoreUrl: HOMECORE_URL });
 });
 
 app.use("/api/homesync", authProxyRoutes);

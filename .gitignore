@@ -9,12 +9,14 @@ dist/
 # matching .env.example instead of committing real values.
 .env
 homecore/.env
+apps/homecloud-backend/.env
 apps/homemedia-backend/.env
 apps/homenotes-backend/.env
 apps/homesync-backend/.env
 
 # Per-service SQLite data directories — local runtime state, not source.
 homecore/data/
+apps/homecloud-backend/data/
 apps/homemedia-backend/data/
 apps/homenotes-backend/data/
 apps/homesync-backend/data/

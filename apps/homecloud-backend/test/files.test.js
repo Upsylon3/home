@@ -1,15 +1,9 @@
-// Adapted from homecore/test/files.test.js per MIGRATION_PLAN.md's Phase
-// 2 — same assertions, same coverage, adapted for two real separate
-// services instead of one merged one:
-//   - /api/files -> /api/homecloud/files (this service's real prefix,
-//     see app.js's comment on why that decision got made here in Phase 2
-//     rather than staying deferred to Phase 5)
-//   - registerUser(baseUrl) -> registerHomecloudBackendUser(homecore,
-//     baseUrl) — registration happens against the real HomeCore instance,
-//     the resulting token is used against this service
-//   - the one /api/auth/me check now goes through a client pointed at
-//     homecore.baseUrl, not this service's baseUrl — that route lives on
-//     HomeCore, not here
+// Exercises this service's real /api/homecloud/files routes end-to-end.
+// registerHomecloudBackendUser(homecore, baseUrl) registers against the
+// real HomeCore instance in ./helpers/app.js, then uses the resulting
+// token against this service. Any /api/auth/me check goes through a
+// client pointed at homecore.baseUrl, not this service's baseUrl — that
+// route lives on HomeCore, not here.
 const { test, before, after } = require("node:test");
 const assert = require("node:assert/strict");
 const { startTestApp, stopTestApp } = require("./helpers/app");

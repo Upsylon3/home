@@ -5,7 +5,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 
 const { db } = require("./db"); // ensures the data directory + db file exist before anything else runs
-const { requireAuth, HOMECLOUD_URL } = require("@home/homecore-client");
+const { requireAuth, HOMECORE_URL } = require("@home/homecore-client");
 const filesRoutes = require("./files");
 const foldersRoutes = require("./folders");
 const publicShareRoutes = require("./publicShare");
@@ -15,7 +15,7 @@ if (!process.env.HOMECORE_INTERNAL_SECRET || process.env.HOMECORE_INTERNAL_SECRE
   console.warn(
     "\n[homecloud-backend] WARNING: HOMECORE_INTERNAL_SECRET is unset or using the example value.\n" +
     "GET /internal/users/usage will reject every request (fails closed by design) until this\n" +
-    "is set to a real, matching value on both this server and HomeCore (see MIGRATION_PLAN.md's Phase 4).\n"
+    "is set to a real, matching value on both this server and HomeCore.\n"
   );
 }
 
@@ -35,7 +35,7 @@ app.use(express.json());
 // from whether HomeCore (where auth delegation actually happens) is
 // reachable.
 app.get("/api/homecloud/health", (req, res) => {
-  res.json({ status: "ok", homecoreUrl: HOMECLOUD_URL });
+  res.json({ status: "ok", homecoreUrl: HOMECORE_URL });
 });
 
 // requireAuth applied once, here, at mount time — not inside files.js/
@@ -45,24 +45,18 @@ app.get("/api/homecloud/health", (req, res) => {
 // already use: this service has no identity of its own, so every request
 // past this point has already been verified against HomeCore.
 //
-// Path prefix decided here, not deferred to Phase 5 as originally
-// planned — Phase 2's own tests need something concrete to call. Chose
-// /api/homecloud/... to match the sibling apps' /api/<app>/... con-
-// vention (HomeMedia, HomeSync, HomeNotes) rather than keeping the old
-// bare /api/files, /api/folders paths — see MIGRATION_PLAN.md's Phase 5
-// section, updated to reflect this. Phase 5's job becomes "point the
-// frontend at the new prefixed paths," a concrete task, not an open
-// question anymore.
+// Routes live under /api/homecloud/... to match the sibling apps'
+// /api/<app>/... convention (HomeMedia, HomeSync, HomeNotes), rather
+// than bare /api/files, /api/folders paths — see gateway/nginx.conf for
+// how the gateway routes this prefix here.
 app.use("/api/homecloud/files", requireAuth, filesRoutes);
 app.use("/api/homecloud/folders", requireAuth, foldersRoutes);
 
 // Deliberately NOT under /api/homecloud/ and deliberately NOT behind
 // requireAuth — see publicShare.js's header comment. A share link is a
 // URL handed to someone with no account at all; keeping its path short
-// and stable (unchanged from the original /api/share/:token) matters
-// more here than internal API-prefix consistency, since links already
-// generated and sent to people need to keep working exactly as they do
-// today once this service actually goes live in Phase 5.
+// and stable matters more here than internal API-prefix consistency,
+// since a link already sent to someone needs to keep working.
 app.use("/api/share", publicShareRoutes);
 
 // Deliberately NOT under /api — same reasoning as HomeCore's own

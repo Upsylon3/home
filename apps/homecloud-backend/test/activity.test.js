@@ -1,9 +1,8 @@
-// Phase 3 of MIGRATION_PLAN.md: files.js/folders.js's logActivity() calls
-// used to be a no-op here (see db.js's CHANGELOG-documented gap). This
-// verifies the real replacement end-to-end — an action through this
-// service's own HTTP API genuinely reaches HomeCore's hc_activity_events,
-// over the network, through POST /internal/events — not a unit test of
-// logActivity() in isolation.
+// Verifies files.js/folders.js's logActivity() calls end-to-end — an
+// action through this service's own HTTP API genuinely reaches
+// HomeCore's hc_activity_events, over the network, through
+// POST /internal/events — not a unit test of logActivity() in
+// isolation.
 //
 // logActivity() is fire-and-forget by design (see db.js's comment): this
 // service's response to the original action comes back before the emit to

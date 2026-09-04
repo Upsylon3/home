@@ -40,29 +40,28 @@ function grantPermissions(applicationId, keys) {
   }
 }
 
-// Every one of these four apps — HomeCloud included, as of
-// MIGRATION_PLAN.md's Phase 5 — is a genuinely separate service (own
+// Every one of these four apps is a genuinely separate service (own
 // container, own backend, own database) with no access to this database
 // of its own to self-register into. Pre-seeding each one's registry entry
 // here, from the one process that owns hc_applications, is the smallest
 // way to get a working card in Home out of the box; a proper self-hosted
 // "install an application" admin flow (§45's lifecycle: discover ->
-// install -> register -> enable) is real future work, not a v0
+// install -> register -> enable) is real future work, not a v1
 // requirement. This is a deliberate, documented shortcut, not an
 // architectural pattern to repeat for every future application without
 // reconsidering it.
 //
-// Before Phase 5, HomeCloud was the one exception — it shared this same
-// process, so it could look up its own package.json version and register
-// itself, the way HomeCore's own health/system routes still report on
-// themselves today. That's gone now that it's a real separate service
-// with its own package.json apps/homecloud-backend can't reach from here
-// any more than HomeMedia's ever could — so it's a fixed version literal
-// below, exactly like its three siblings, not a special case anymore.
+// HomeCore can't reach any of these four apps' own package.json to read
+// their real version number the way its own health/system routes report
+// on themselves — each is a separate service in its own container — so
+// each one's version below is a fixed literal that needs updating by
+// hand when that app's version changes. Fine for now; a registry that
+// apps report their own version into is one of the things a real
+// "install an application" flow above would also solve.
 function seedHomecloudApplication() {
   // Path-shaped fallback for the same reason as its siblings below —
-  // matches the gateway's /cloud/ route rather than the old pre-gateway
-  // port. See docs/SETUP.md §4 for when the fallback actually applies.
+  // matches the gateway's /cloud/ route rather than a bare port. See
+  // docs/DEPLOYMENT.md for when the fallback actually applies.
   const baseUrl = process.env.HOMECLOUD_FRONTEND_URL || "/cloud";
 
   const existing = db.prepare("SELECT id FROM hc_applications WHERE slug = 'homecloud'").get();

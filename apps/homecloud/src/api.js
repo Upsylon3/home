@@ -72,12 +72,11 @@ export const api = {
 
   logoutEverywhere: () => request("/auth/logout-everywhere", { method: "POST" }),
 
-  // Everything below talks to apps/homecloud-backend (a real, separate
-  // service as of MIGRATION_PLAN.md's Phase 5) rather than HomeCore —
-  // still same-origin through the gateway, so still just `/api/...` paths
-  // from this file's point of view, now under the /homecloud/ prefix the
-  // gateway routes to that service. See docs/ARCHITECTURE.md §5's routing
-  // table.
+  // Everything below talks to apps/homecloud-backend (a separate
+  // service) rather than HomeCore — still same-origin through the
+  // gateway, so still just `/api/...` paths from this file's point of
+  // view, under the /homecloud/ prefix the gateway routes to that
+  // service. See docs/ARCHITECTURE.md's routing table.
 
   quota: () => request("/homecloud/files/quota"),
 

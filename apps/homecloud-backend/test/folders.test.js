@@ -1,7 +1,6 @@
-// Adapted from homecore/test/folders.test.js per MIGRATION_PLAN.md's
-// Phase 2 — same assertions, same coverage. See files.test.js's header
-// comment for the shape of the adaptation (route prefix, registration
-// helper); the same three changes apply here.
+// Exercises this service's real /api/homecloud/folders routes
+// end-to-end. See files.test.js's header comment for how registration
+// and auth work in these tests; the same pattern applies here.
 const { test, before, after } = require("node:test");
 const assert = require("node:assert/strict");
 const { startTestApp, stopTestApp } = require("./helpers/app");

@@ -1,8 +1,8 @@
 // Boots one isolated instance of the HomeCloud/HomeCore app for a test
-// file: a fresh temp directory (so its SQLite database and uploaded files
-// never touch a real deployment, or another test file's data) and a real
-// TCP listener on an OS-assigned port, so tests exercise the exact same
-// Express/multer/helmet stack a real client would hit.
+// file: a fresh temp directory (so its SQLite database never touches a
+// real deployment, or another test file's data) and a real TCP listener
+// on an OS-assigned port, so tests exercise the exact same Express/helmet
+// stack a real client would hit.
 //
 // This relies on `node --test` running each test file in its own child
 // process (verified: this is the default), since it sets env vars and
@@ -34,7 +34,7 @@ async function startTestApp({ disableRateLimit = true } = {}) {
   // Shared secret for POST /internal/events (see ../internalEvents.js).
   // apps/homecloud-backend/test/helpers/app.js reads this exact value back
   // out of process.env to configure its own test instance identically, the
-  // same way it reads back baseUrl for HOMECLOUD_INTERNAL_URL.
+  // same way it reads back baseUrl for HOMECORE_INTERNAL_URL.
   process.env.HOMECORE_INTERNAL_SECRET = `test_internal_secret_${Math.random().toString(36).slice(2)}`;
 
   // eslint-disable-next-line global-require -- must load after env vars are set

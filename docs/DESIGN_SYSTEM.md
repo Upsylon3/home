@@ -1,9 +1,8 @@
 # Design system
 
-Condensed from `HOME_ARTISTIC_DIRECTION.md`. Non-technical on purpose —
-this is the visual/emotional companion to `ARCHITECTURE.md`, meant to
-guide anyone designing a screen for Home, HomeCloud, or any future
-application.
+Non-technical on purpose — this is the visual/emotional companion to
+`ARCHITECTURE.md`, meant to guide anyone designing a screen for Home,
+HomeCloud, or any future application.
 
 ## The central idea
 
@@ -77,37 +76,38 @@ be quietly sophisticated, not loudly impressive.
 
 ## The five-second test
 
-A new user opens Home and thinks, in order: *"This is my stuff." → "Everything
-is here." → "I understand how it works." → "I trust it."* That emotional
-progression matters more than any individual visual trick.
+A new user opens Home and thinks, in order: *"This is my stuff." →
+"Everything is here." → "I understand how it works." → "I trust it."*
+That emotional progression matters more than any individual visual
+trick.
 
-## Icon system — status
+## Icon system
 
-**Designed, but not integrated into the repository.** A separate design
-pass produced a coherent icon language: every mark shares one frame (a
-rounded square with a doorway-notch cut into the bottom edge — the
-undecorated **Home** mark on its own), and every application icon reuses
-that exact frame with its own glyph inside — cloud outline (HomeCloud),
-lens ring + iris hexagon (HomeMedia), page with folded corner
-(HomeNotes), checkbox + list (HomeTasks), refresh arcs (HomeSync), pulse
-line (HomeMonitor), padlock (HomeVault), four connected nodes for HomeAI
-(deliberately *not* a sparkle/star, to avoid reading as "the AI app with
-purple gradients," per principle 4 above). All strokes use `currentColor`
-so one file works in both themes.
+**Built and integrated.** `design/` is the single source of truth — nine
+app icons plus a wordmark (`design/icons/*.svg`, `design/AppIcon.jsx`,
+`design/Wordmark.jsx`). Every mark shares one frame (a rounded square
+with a doorway-notch cut into the bottom edge — the undecorated **Home**
+mark on its own), and every application icon reuses that exact frame
+with its own glyph inside — cloud outline (HomeCloud), lens ring + iris
+hexagon (HomeMedia), page with folded corner (HomeNotes), checkbox +
+list (HomeTasks), refresh arcs (HomeSync), pulse line (HomeMonitor),
+padlock (HomeVault), four connected nodes for HomeAI (deliberately *not*
+a sparkle/star, to avoid reading as "the AI app with purple gradients,"
+per principle 4 above). All strokes use `currentColor` so one file works
+in both themes.
 
-**[current state]** None of this exists in the actual codebase — no
-`icons/` folder, no `wordmark/` folder, no `preview.html`, anywhere in the
-repository. `homecore/seed.js` already references icon paths like
-`/icons/homecloud.svg` for the application registry, but those files
-don't exist on disk. Home's and HomeMedia's frontends currently ship no
-icon assets at all; only HomeCloud's frontend has real PWA icon PNGs
-(unrelated placeholders, not this icon system). Regenerating and actually
-committing this icon set — plus an Android adaptive-icon split and
-favicon exports, both previously flagged as not yet done even in the
-original design pass — is tracked in `ROADMAP.md`.
+**Never hand-edit a copy inside `apps/*/public/icons/` or
+`apps/*/src/components/`** — run `./design/sync-assets.sh` after changing
+anything under `design/`, which copies the canonical files out to every
+frontend that uses them. The next run of that script silently overwrites
+any local edit.
 
-A starting accent color was proposed during that pass (a warm brass,
-`#C99A3B`, chosen specifically to avoid the terracotta/coral a lot of
-AI-assisted design defaults to) — flagged there as a placeholder to
-swap freely, not a final decision, and worth keeping that framing since
-nothing has actually used it yet.
+**Not yet done:** PNG/ICO favicon exports (only HomeCloud's frontend has
+real PWA icon PNGs today), an Android adaptive-icon split for
+`apps/homesync-android`, and a final typeface decision (currently a
+placeholder sans-serif stack) — see `ROADMAP.md`.
+
+The accent color is a warm brass, `#C99A3B` (chosen specifically to
+avoid the terracotta/coral a lot of AI-assisted design defaults to) —
+a placeholder to swap freely, not a final decision, since nothing has
+used it beyond the icon set itself yet.

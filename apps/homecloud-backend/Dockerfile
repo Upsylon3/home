@@ -16,10 +16,10 @@ COPY src ./src
 ENV DATA_DIR=/data
 VOLUME ["/data"]
 
-# Not published anywhere yet — see MIGRATION_PLAN.md's Phase 1: this
-# service isn't wired into docker-compose.yml or the gateway until Phase
-# 5, once it actually does something. Port chosen now (continuing the
-# existing 4000/4200/4300/4400 pattern) so nothing needs renumbering later.
+# Port 4500, continuing the 4000/4200/4300/4400 pattern used by
+# HomeCore/HomeMedia/HomeSync/HomeNotes. Not published to the host —
+# only the gateway does that (see docker-compose.yml's `expose` vs
+# `ports`).
 EXPOSE 4500
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \

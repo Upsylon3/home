@@ -209,14 +209,13 @@ router.post(
 );
 
 router.get("/me", requireAuth, (req, res) => {
-  // Used to also compute quotaBytes/usedBytes here with a direct query
-  // against a local `files` table — that table (and the query) is gone as
-  // of MIGRATION_PLAN.md's Phase 5: apps/homecloud's and apps/home's
-  // frontends both now call apps/homecloud-backend's own
-  // GET /api/homecloud/files/quota instead (see CHANGELOG.md's [0.9.0]).
-  // quotaOverride stays — it's the one piece of this that's genuinely a
-  // HomeCore/identity concern (the raw per-user limit override), which
-  // homecloud-backend's own quota check reads from here.
+  // Storage usage (quotaBytes/usedBytes) is NOT computed here — it lives
+  // entirely in apps/homecloud-backend's own database. apps/homecloud's
+  // and apps/home's frontends call apps/homecloud-backend's own
+  // GET /api/homecloud/files/quota for that.
+  // quotaOverride stays here — it's the one piece of this that's
+  // genuinely a HomeCore/identity concern (the raw per-user limit
+  // override), which homecloud-backend's own quota check reads from here.
   const row = db.prepare("SELECT quota_override, totp_enabled FROM users WHERE id = ?").get(req.user.id);
 
   res.json({

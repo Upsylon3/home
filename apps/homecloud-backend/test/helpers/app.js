@@ -1,7 +1,7 @@
 // Boots two real, isolated services for a test file: a genuine HomeCore
 // instance (reusing HomeCore's own test helper — same monorepo, so this
 // is a real integration test against real HomeCore code, not a mock of
-// it) and this service pointed at it via HOMECLOUD_INTERNAL_URL. Both get
+// it) and this service pointed at it via HOMECORE_INTERNAL_URL. Both get
 // their own fresh temp data directories; nothing here touches a real
 // deployment or another test file's data. Same pattern as
 // homemedia-backend/test/helpers/app.js — see its comment for why relying
@@ -23,7 +23,7 @@ async function startTestApp() {
 
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "homecloud-backend-test-"));
   process.env.DATA_DIR = dataDir;
-  process.env.HOMECLOUD_INTERNAL_URL = homecore.baseUrl;
+  process.env.HOMECORE_INTERNAL_URL = homecore.baseUrl;
   process.env.CORS_ORIGIN = "*";
   delete process.env.PORT; // avoid ever accidentally colliding with a fixed port in tests
 
@@ -37,7 +37,7 @@ async function startTestApp() {
   process.env.TRASH_RETENTION_DAYS = "30";
   // HOMECORE_INTERNAL_SECRET is NOT re-set here, unlike the above: it's
   // read directly from process.env at call-time by src/db.js's
-  // logActivity() (not baked in at require-time like HOMECLOUD_INTERNAL_URL
+  // logActivity() (not baked in at require-time like HOMECORE_INTERNAL_URL
   // is), so homecore's test harness setting it above is already sufficient
   // — there's no separate value to copy, just one shared env var.
 

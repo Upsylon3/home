@@ -6,7 +6,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 
 const { db } = require("./db"); // ensures tables + data directories exist before anything else runs
-const { requireAuth, HOMECLOUD_URL } = require("@home/homecore-client");
+const { requireAuth, HOMECORE_URL } = require("@home/homecore-client");
 const libraryRoutes = require("./library");
 const collectionsRoutes = require("./collections");
 
@@ -25,7 +25,7 @@ app.use(express.json());
 // they've even logged in) can confirm this service itself is up, distinct
 // from whether HomeCloud (its storage foundation) is reachable.
 app.get("/api/homemedia/health", (req, res) => {
-  res.json({ status: "ok", homecloudUrl: HOMECLOUD_URL });
+  res.json({ status: "ok", homecoreUrl: HOMECORE_URL });
 });
 
 app.use("/api/homemedia", requireAuth, libraryRoutes);

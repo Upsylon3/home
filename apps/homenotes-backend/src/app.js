@@ -3,7 +3,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 
 const { db } = require("./db");
-const { requireAuth, HOMECLOUD_URL } = require("@home/homecore-client");
+const { requireAuth, HOMECORE_URL } = require("@home/homecore-client");
 const noteFolderRoutes = require("./noteFolders");
 const noteRoutes = require("./notes");
 
@@ -19,7 +19,7 @@ app.use(
 app.use(express.json({ limit: "2mb" })); // notes can be long; the default express.json limit is comfortably smaller than a very long markdown document
 
 app.get("/api/homenotes/health", (req, res) => {
-  res.json({ status: "ok", homecloudUrl: HOMECLOUD_URL });
+  res.json({ status: "ok", homecoreUrl: HOMECORE_URL });
 });
 
 app.use("/api/homenotes", requireAuth, noteFolderRoutes);

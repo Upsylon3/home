@@ -1,14 +1,8 @@
-// HomeCloud's own database, once this service actually owns any data.
-//
-// Deliberately empty of tables for now — this is Phase 1 of
-// MIGRATION_PLAN.md: standing up the service shell (own process, own
-// database file, own auth delegation) before Phase 2 moves the real
-// files/folders/shares tables and logic here from homecore/src/db.js.
-// Opening a real SQLite connection now, even with nothing in it yet, is
-// what lets server.js's shutdown handler and the test harness treat this
-// service exactly like its already-real siblings (homemedia-backend,
-// homesync-backend, homenotes-backend) from day one, rather than needing
-// a special case removed later.
+// HomeCloud's own database — files, folders, and share links. HomeCloud
+// has no identity of its own; every row here is tagged with a plain
+// `user_id`/`created_by` integer that means "the HomeCore user with this
+// id," verified on every request via @home/homecore-client, never stored
+// or checked locally.
 const fs = require("fs");
 const path = require("path");
 const Database = require("better-sqlite3");
@@ -22,27 +16,23 @@ const db = new Database(path.join(DATA_DIR, "homecloud.db"));
 db.pragma("journal_mode = WAL");
 db.pragma("busy_timeout = 5000");
 
-// files/folders/shares, moved from homecore/src/db.js per MIGRATION_PLAN.md's
-// Phase 2. One real, deliberate schema change from the original: none of
-// these reference `users(id)` as a foreign key anymore. They used to
-// (`user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE`),
-// which worked when files/folders/shares and users all lived in one
-// SQLite file — a foreign key can't reach across two separate database
-// files/processes, so that constraint literally cannot be expressed here
-// anymore. `user_id`/`created_by` stay as plain INTEGER columns.
+// `user_id`/`created_by` are plain INTEGER columns, not foreign keys into
+// a `users` table — there is no `users` table in this database. Identity
+// lives entirely in HomeCore, a separate process with its own separate
+// database; a foreign key can't reach across two different SQLite files.
 //
-// Concretely, this means: if HomeCore ever deletes a user account outright
-// (not just disables it — checked directly: no such route exists in
-// homecore/src/admin.js today, only disable/quota/role/2FA-reset), that
-// user's rows here would NOT be automatically cleaned up the way
-// ON DELETE CASCADE used to guarantee. Not a live bug — there's nothing
-// for it to break yet — but a real, named gap: whoever adds account
-// deletion needs to also make HomeCore tell this service to clean up
-// (an event, or a direct call), not assume the database will do it.
+// One real consequence: if HomeCore ever deletes a user account outright
+// (today it only disables accounts — see homecore/src/admin.js — so this
+// doesn't happen yet), this service's rows for that user would NOT be
+// automatically cleaned up the way a real foreign key's ON DELETE CASCADE
+// would guarantee. Not a live bug — there's nothing for it to break yet —
+// but a real, named gap: whoever adds account deletion needs to also make
+// HomeCore tell this service to clean up (an event, or a direct call),
+// not assume the database will handle it.
 //
 // folders.parent_id -> folders.id and shares.file_id -> files.id both stay
-// as real foreign keys — both tables live in this same database, so
-// those constraints work exactly as before.
+// as real foreign keys — both tables live in this same database, so those
+// constraints work exactly as normal.
 db.exec(`
   CREATE TABLE IF NOT EXISTS files (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -84,15 +74,14 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_shares_created_by ON shares(created_by);
 `);
 
-// Phase 3 of MIGRATION_PLAN.md: emits into HomeCore's shared
-// hc_activity_events over HTTP, fire-and-forget, per the Tier 1 rule in
-// ARCHITECTURE.md §4 ("may emit events to the shared bus... your app must
-// work identically whether anything is listening or not"). Replaces the
-// no-op this used to be — see CHANGELOG.md for that gap's history.
+// Emits into HomeCore's shared hc_activity_events over HTTP, fire-and-
+// forget, per the Tier 1 rule in ARCHITECTURE.md §4 ("may emit events to
+// the shared bus... your app must work identically whether anything is
+// listening or not").
 //
-// Same 3-argument signature as before, and every files.js/folders.js call
-// site is still a bare, un-awaited statement — this only had to change
-// what the function DOES, not how (or how often) anything calls it.
+// Every files.js/folders.js call site is a bare, un-awaited statement —
+// a slow or unreachable HomeCore never blocks a file upload/move/delete
+// from completing; the activity feed just silently misses that entry.
 // That's deliberate: logActivity() never had a request's bearer token to
 // forward (only ever a plain userId — check any call site), so this
 // authenticates as HomeCloud's *backend itself* calling HomeCore, via a
@@ -101,12 +90,12 @@ db.exec(`
 // this and why that's the right shape for this specific call, not a
 // workaround.
 //
-// Reuses @home/homecore-client's HOMECLOUD_URL rather than re-deriving
-// HOMECLOUD_INTERNAL_URL a second time — that package already points at
+// Reuses @home/homecore-client's HOMECORE_URL rather than re-deriving
+// HOMECORE_INTERNAL_URL a second time — that package already points at
 // HomeCore (the name predates the Tier 0/1 rename; see its own comment).
-const { HOMECLOUD_URL } = require("@home/homecore-client");
+const { HOMECORE_URL } = require("@home/homecore-client");
 
-const INTERNAL_EVENTS_URL = `${HOMECLOUD_URL}/internal/events`;
+const INTERNAL_EVENTS_URL = `${HOMECORE_URL}/internal/events`;
 
 function logActivity(userId, action, targetName = null) {
   fetch(INTERNAL_EVENTS_URL, {

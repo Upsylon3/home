@@ -1,4 +1,4 @@
-const { verifyUser, HOMECLOUD_URL } = require("./verify");
+const { verifyUser, HOMECORE_URL } = require("./verify");
 const { requireAuth } = require("./middleware");
 
-module.exports = { verifyUser, requireAuth, HOMECLOUD_URL };
+module.exports = { verifyUser, requireAuth, HOMECORE_URL };

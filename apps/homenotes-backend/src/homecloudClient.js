@@ -2,7 +2,7 @@
 // HomeNotes has no identity of its own, and attachments are real
 // HomeCloud files, not something this service stores itself. Identity
 // verification lives in packages/homecore-client (this file doesn't need
-// HOMECLOUD_URL from there — that's HomeCore's address, for auth; this
+// HOMECORE_URL from there — that's HomeCore's address, for auth; this
 // file only ever talks to the separate file-storage service below),
 // shared with HomeMedia's and HomeSync's equivalents of this file.
 const HOMECLOUD_BACKEND_URL = (process.env.HOMECLOUD_BACKEND_INTERNAL_URL || "http://homecloud-backend:4500").replace(/\/$/, "");

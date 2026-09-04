@@ -1,5 +1,5 @@
 const express = require("express");
-const { HOMECLOUD_URL } = require("@home/homecore-client");
+const { HOMECORE_URL } = require("@home/homecore-client");
 
 const router = express.Router();
 
@@ -16,7 +16,7 @@ const router = express.Router();
 async function proxy(req, res, path, init) {
   let upstream;
   try {
-    upstream = await fetch(`${HOMECLOUD_URL}${path}`, init);
+    upstream = await fetch(`${HOMECORE_URL}${path}`, init);
   } catch {
     return res.status(502).json({ error: "Couldn't reach HomeCloud." });
   }

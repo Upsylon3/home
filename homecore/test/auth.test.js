@@ -110,9 +110,9 @@ test("GET /api/auth/me requires a valid token and returns identity + quotaOverri
   const me = await client.get("/api/auth/me");
   assert.equal(me.status, 200);
   assert.equal(me.body.username, username);
-  // quotaBytes/usedBytes moved to apps/homecloud-backend's own
-  // GET /api/homecloud/files/quota as of MIGRATION_PLAN.md's Phase 5 —
-  // see apps/homecloud-backend/test/files.test.js for that endpoint's own
+  // quotaBytes/usedBytes live on apps/homecloud-backend's own
+  // GET /api/homecloud/files/quota, not here — see
+  // apps/homecloud-backend/test/files.test.js for that endpoint's own
   // coverage. quotaOverride (the raw limit, not the computed usage) stays
   // here — it's the one piece of this that's genuinely HomeCore's.
   assert.equal(me.body.quotaOverride, null);

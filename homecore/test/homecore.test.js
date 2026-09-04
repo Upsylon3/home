@@ -161,9 +161,8 @@ test("activity bridge: a HomeCloud action shows up as a namespaced HomeCore even
   const { client, user } = await registerUser(baseUrl, { username: "core_activity_user" });
 
   // Simulates exactly what apps/homecloud-backend's real logActivity()
-  // sends over HTTP (see homecore/src/internalEvents.js) — the old
-  // /api/folders route this test used to create a real folder through no
-  // longer exists here at all as of MIGRATION_PLAN.md's Phase 5.
+  // sends over HTTP (see homecore/src/internalEvents.js) — there's no
+  // /api/folders route on this service to create a real folder through.
   const emit = await fetch(`${baseUrl}/internal/events`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Internal-Secret": internalSecret },

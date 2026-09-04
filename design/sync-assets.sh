@@ -5,11 +5,12 @@
 # directly, since the next run of this script will silently overwrite it.
 #
 # Why copies instead of an npm-workspace-linked shared package: these are
-# independent Vite builds (SETUP.md §4), and a raw .jsx file inside a
-# workspace package needs extra Vite config to be transformed correctly —
-# real, but fiddly, plumbing that isn't worth it for nine small icons and
-# one component. A plain copy, kept in sync by this script, is simpler and
-# just as safe as long as design/ stays the only place anyone edits.
+# independent Vite builds (see docs/DEVELOPMENT.md), and a raw .jsx file
+# inside a workspace package needs extra Vite config to be transformed
+# correctly — real, but fiddly, plumbing that isn't worth it for nine
+# small icons and one component. A plain copy, kept in sync by this
+# script, is simpler and just as safe as long as design/ stays the only
+# place anyone edits.
 #
 # Run this after changing anything under design/:
 #   ./design/sync-assets.sh
@@ -18,9 +19,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."   # repo root, regardless of where this is invoked from
 
 FRONTENDS=(apps/home apps/homecloud apps/homemedia apps/homenotes)
-# apps/homecloud has no shared branded Layout.jsx component yet (unlike its
-# three siblings) — see MIGRATION_PLAN.md-adjacent note in CHANGELOG.md —
-# but it still gets the icon files themselves for its favicon/manifest.
+# apps/homecloud has no shared branded Layout.jsx component yet (unlike
+# its three siblings) but it still gets the icon files themselves for
+# its favicon/manifest.
 
 for app in "${FRONTENDS[@]}"; do
   mkdir -p "$app/public/icons"

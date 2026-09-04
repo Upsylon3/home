@@ -1,8 +1,6 @@
-// Adapted from homecore/test/publicShare.test.js per MIGRATION_PLAN.md's
-// Phase 2 — same assertions, same coverage. `db` here is this service's
-// own database (started.db from the test harness), which now owns the
-// `shares` table being backdated directly below — same technique as the
-// original, just pointed at the new location that table actually lives.
+// `db` here is this service's own database (started.db from the test
+// harness), which owns the `shares` table being backdated directly
+// below.
 const { test, before, after } = require("node:test");
 const assert = require("node:assert/strict");
 const { startTestApp, stopTestApp } = require("./helpers/app");

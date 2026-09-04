@@ -1,6 +1,6 @@
 // GET /internal/users/usage — see src/internalUsage.js's header comment
-// for why this exists (MIGRATION_PLAN.md's Phase 4) and why it's
-// authenticated differently from every other route in this service.
+// for why it's authenticated differently from every other route in this
+// service.
 const { test, before, after } = require("node:test");
 const assert = require("node:assert/strict");
 const { startTestApp, stopTestApp } = require("./helpers/app");

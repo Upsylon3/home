@@ -1,7 +1,7 @@
 {
   "name": "homecore",
   "version": "1.0.0",
-  "description": "TRANSITIONAL: currently runs both HomeCore (identity/sessions/permissions/app registry) and HomeCloud's file-storage API in one process. See /MIGRATION_PLAN.md for the plan to split these apart.",
+  "description": "HomeCore — the shared Tier 0 platform every application depends on: identity, sessions, 2FA, the application registry, permissions, and the cross-app activity/event feed. Owns no files or app-specific data of its own; see docs/ARCHITECTURE.md.",
   "main": "src/server.js",
   "type": "commonjs",
   "scripts": {
@@ -18,9 +18,6 @@
     "express-rate-limit": "^7.4.0",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
-    "multer": "^2.0.0",
-    "otpauth": "^9.5.1",
-    "sharp": "^0.35.3",
-    "yazl": "^3.3.1"
+    "otpauth": "^9.5.1"
   }
 }

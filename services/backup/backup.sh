@@ -7,17 +7,10 @@ RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-14}"           # default: keep 2 weeks
 
 mkdir -p /backups
 
-# Generalized from a single hardcoded /data mount to one archive per named
-# source, each mounted under its own subdirectory of /sources — see
-# docker-compose.yml's `backup` service. This started as "just add
-# homecloud-backend's new volume alongside homecloud's" (MIGRATION_PLAN.md's
-# Phase 5), but the honest answer once actually looking was that
-# homemedia_data/homenotes_data/homesync_data were never backed up at all —
-# HomeNotes especially, whose database holds real note content, not just a
-# cache. Fixed here rather than left as a separate, easy-to-forget backlog
-# item, since it's the exact same code path either way. Adding a future
-# app's volume to this backup is now one docker-compose.yml mount line, not
-# a backup.sh change.
+# One archive per named source, each mounted under its own subdirectory
+# of /sources — see docker-compose.yml's `backup` service. Adding a
+# future app's volume to this backup is one docker-compose.yml mount
+# line, not a backup.sh change.
 run_backup() {
   timestamp=$(date +%Y-%m-%d_%H-%M-%S)
   any_failed=0

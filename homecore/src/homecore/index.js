@@ -1,14 +1,13 @@
 // HomeCore v0 entry point. Mounted at /api/core in server.js, alongside
-// (not instead of) HomeCloud's existing /api/auth, /api/files, /api/folders,
-// /api/admin, /api/activity, and /api/share — see HOME_MASTER_SPECIFICATION.md
-// §10 "Keep application APIs separate."
+// (not instead of) this service's own /api/auth, /api/admin, and
+// /api/activity — see HOME_MASTER_SPECIFICATION.md §10 "Keep application
+// APIs separate."
 //
 // Requiring ./db here — before any routes are set up — is what actually
 // creates the hc_ tables, adds the new users columns, seeds the permission
 // catalog, registers HomeCloud in the application registry, and wires the
-// onActivity -> hc_activity_events bridge (the activity_log table itself
-// is dropped as of MIGRATION_PLAN.md's Phase 3 — see ../db.js). Every
-// route module below assumes that's already happened.
+// onActivity -> hc_activity_events bridge. Every route module below
+// assumes that's already happened.
 const express = require("express");
 const { requireAuth } = require("../middleware/authMiddleware");
 require("./db");

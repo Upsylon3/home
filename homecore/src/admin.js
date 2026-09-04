@@ -4,9 +4,8 @@ const { db, logActivity } = require("./db");
 const { requireAuth, requireAdmin } = require("./middleware/authMiddleware");
 const { asyncHandler } = require("./asyncHandler");
 const { revokeAllSessions } = require("./homecore/sessions");
-// Phase 3 of MIGRATION_PLAN.md: the activity feed below now reads
-// hc_activity_events instead of the now-dropped activity_log — see the
-// route's own comment.
+// The activity feed below reads the shared hc_activity_events table —
+// see the route's own comment.
 const { getApplicationIdBySlug } = require("./homecore/db");
 const { listEvents, toAction } = require("./homecore/events");
 
@@ -15,14 +14,12 @@ router.use(requireAuth, requireAdmin);
 
 const defaultQuota = () => Number(process.env.QUOTA_BYTES || 5 * 1024 ** 3);
 
-// apps/homecloud-backend is now genuinely wired into docker-compose.yml
-// and the gateway (MIGRATION_PLAN.md's Phase 5) — the local `files` table
-// this used to fall back to no longer exists in this database at all (see
-// this file's git history for the removed fallback, and CHANGELOG.md's
-// [0.9.0]). A failure here degrades gracefully instead of failing the
-// whole route: the user list, and every other admin action (disable,
-// role, quota, 2FA reset), stays fully usable even if HomeCloud's storage
-// service is briefly down — only the usage numbers go missing, matching
+// There is no local `files` table in this database to fall back to — file
+// storage lives entirely in apps/homecloud-backend's own database. A
+// failure here degrades gracefully instead of failing the whole route:
+// the user list, and every other admin action (disable, role, quota, 2FA
+// reset), stays fully usable even if HomeCloud's storage service is
+// briefly down — only the usage numbers go missing, matching
 // docs/ARCHITECTURE.md's "graceful degradation" principle rather than an
 // all-or-nothing failure over one field.
 const USAGE_FETCH_TIMEOUT_MS = 2000;
@@ -190,13 +187,10 @@ router.post("/users/:id/2fa/disable", (req, res) => {
 });
 
 // Cross-family activity feed — every logged action, from every account, so
-// an admin can answer "who deleted this?" without guessing. Moved off
-// activity_log (dropped in Phase 3 of MIGRATION_PLAN.md) onto the shared
-// hc_activity_events table, scoped to just HomeCloud's own events —
-// exactly what activity_log always held anyway — and translated back into
-// the {action, targetName, createdAt, username} shape apps/homecloud's
-// Admin.jsx (via describeActivity()/ACTION_LABELS) has always expected, so
-// that frontend needed no changes here.
+// an admin can answer "who deleted this?" without guessing. Reads the
+// shared hc_activity_events table, scoped to just HomeCloud's own events,
+// and translated into the {action, targetName, createdAt, username} shape
+// apps/homecloud's Admin.jsx (via describeActivity()/ACTION_LABELS) expects.
 router.get("/activity", (req, res) => {
   const events = listEvents({
     limit: 200,

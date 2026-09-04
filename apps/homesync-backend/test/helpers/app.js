@@ -1,10 +1,10 @@
 // Boots real, isolated services for a test file: apps/homecloud-backend
 // (which, as part of its own setup, boots a real HomeCore instance too —
-// see its test helper) and HomeSync pointed at both: HOMECLOUD_INTERNAL_URL
+// see its test helper) and HomeSync pointed at both: HOMECORE_INTERNAL_URL
 // for identity verification (HomeCore, via @home/homecore-client) and
 // HOMECLOUD_BACKEND_INTERNAL_URL for actual file/folder operations
 // (apps/homecloud-backend, via src/homecloudClient.js) — two different
-// services as of MIGRATION_PLAN.md's Phase 5, not one. Reusing
+// services, not one. Reusing
 // homecloud-backend's already-booted `homecore` reference (rather than
 // separately require()-ing and booting homecore/test/helpers/app.js a
 // second time here) relies on that module being require()'d from the
@@ -34,7 +34,7 @@ async function startTestApp() {
 
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "homesync-test-"));
   process.env.DATA_DIR = dataDir;
-  process.env.HOMECLOUD_INTERNAL_URL = homecore.baseUrl;
+  process.env.HOMECORE_INTERNAL_URL = homecore.baseUrl;
   process.env.HOMECLOUD_BACKEND_INTERNAL_URL = homecloudBackend.baseUrl;
   process.env.CORS_ORIGIN = "*";
   delete process.env.PORT; // avoid ever accidentally colliding with a fixed port in tests

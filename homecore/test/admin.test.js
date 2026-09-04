@@ -149,9 +149,9 @@ test("quota override: set, reflected on /me as quotaOverride, then cleared back 
   const set = await admin.client.post(`/api/admin/users/${target.user.id}/quota`, { quotaBytes: 12345 });
   assert.equal(set.status, 200);
 
-  // /me's quotaBytes/usedBytes moved to apps/homecloud-backend's own
-  // GET /api/homecloud/files/quota as of MIGRATION_PLAN.md's Phase 5 (see
-  // homecore/test/auth.test.js's own updated /me test). quotaOverride —
+  // quotaBytes/usedBytes live on apps/homecloud-backend's own
+  // GET /api/homecloud/files/quota, not here (see
+  // homecore/test/auth.test.js's own /me test). quotaOverride —
   // the raw override value alone, which is genuinely HomeCore's to know —
   // stays here, and is what homecloud-backend's own quota check reads.
   const meAfterSet = await target.client.get("/api/auth/me");
@@ -226,10 +226,9 @@ test("activity feed: cross-user, admin-only, most recent first", async () => {
   const target = await registerUser(baseUrl, { username: "activity_target" });
 
   // Simulates exactly what apps/homecloud-backend's real logActivity()
-  // sends over HTTP (see homecore/src/internalEvents.js) — the old route
-  // this test used to upload a real file through (/api/files/upload) no
-  // longer exists here at all as of MIGRATION_PLAN.md's Phase 5; that
-  // upload, and the "upload" activity entry it caused, both genuinely
+  // sends over HTTP (see homecore/src/internalEvents.js) — there's no
+  // /api/files/upload route on this service to upload a real file
+  // through; that upload, and the "upload" activity entry it causes, both genuinely
   // happen on apps/homecloud-backend now.
   const emit = await fetch(`${baseUrl}/internal/events`, {
     method: "POST",

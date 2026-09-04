@@ -1,7 +1,6 @@
-// Moved from homecore/src/folders.js per MIGRATION_PLAN.md's Phase 2.
-// Only change from the original: auth is applied at mount time in app.js
-// instead of `router.use(requireAuth)` here — see files.js's header
-// comment for why. Every route body below is otherwise unchanged.
+// Folder create/rename/move/delete, tree, and breadcrumbs. Auth is
+// applied at mount time in app.js, not with `router.use(requireAuth)`
+// here — see files.js's header comment for why.
 const express = require("express");
 const { db, logActivity } = require("./db");
 

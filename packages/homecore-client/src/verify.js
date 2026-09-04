@@ -4,17 +4,14 @@
 // gallery grid, say) doesn't turn into a few dozen near-simultaneous
 // network round-trips for the exact same answer.
 //
-// Originally three copies of this exact logic — apps/homemedia-backend,
-// apps/homesync-backend, and apps/homenotes-backend each wrote their own
-// homecloudClient.js with an identical verifyUser()/meCache pair, differing
-// only in comments. Extracted here once those three copies were confirmed
-// byte-for-byte identical in behavior (see CHANGELOG.md's Phase 0 entry).
-// Each app's OWN homecloudClient.js still exists — it just no longer
-// contains this part, only the app-specific HomeCloud calls (listFiles,
-// uploadFile, resolveFolderPath, and so on) that are genuinely different
-// per app and were never candidates for sharing.
+// Shared by every app that has no identity of its own —
+// apps/homemedia-backend, apps/homesync-backend, and
+// apps/homenotes-backend all use this instead of each maintaining their
+// own copy. Each app's own homecloudClient.js still exists — it only
+// contains the app-specific HomeCloud calls (listFiles, uploadFile,
+// resolveFolderPath, and so on) that are genuinely different per app.
 
-const HOMECLOUD_URL = (process.env.HOMECLOUD_INTERNAL_URL || "http://backend:4000").replace(/\/$/, "");
+const HOMECORE_URL = (process.env.HOMECORE_INTERNAL_URL || "http://homecore:4000").replace(/\/$/, "");
 
 // Verifying every request against HomeCore's own /api/auth/me is what
 // makes every app that has no identity of its own respect exactly the
@@ -34,7 +31,7 @@ async function verifyUser(token) {
 
   let res;
   try {
-    res = await fetch(`${HOMECLOUD_URL}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+    res = await fetch(`${HOMECORE_URL}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
   } catch (err) {
     const wrapped = new Error("Couldn't reach HomeCore to verify this session.");
     wrapped.status = 502;
@@ -49,4 +46,4 @@ async function verifyUser(token) {
   return user;
 }
 
-module.exports = { verifyUser, HOMECLOUD_URL };
+module.exports = { verifyUser, HOMECORE_URL };

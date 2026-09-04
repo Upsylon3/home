@@ -31,11 +31,10 @@ export default function Dashboard({ user, onLogout }) {
   const [shares, setShares] = useState([]);
   const [tab, setTab] = useState("files"); // "files" | "trash" | "shares"
   const [me, setMe] = useState(user);
-  // Usage/quota used to just be extra fields on /api/auth/me's response.
-  // Once homecloud-backend split out (see MIGRATION_PLAN.md's Phase 2/5),
-  // that data lives there instead — kept as its own state, matching
-  // App.jsx's existing convention of treating identity (id/username/role)
-  // and everything else as genuinely separate concerns.
+  // Usage/quota comes from apps/homecloud-backend, not /api/auth/me —
+  // kept as its own state, matching App.jsx's convention of treating
+  // identity (id/username/role) and everything else as separate
+  // concerns.
   const [quota, setQuota] = useState(null);
   const [error, setError] = useState("");
   const [ledOn, setLedOn] = useState(false);

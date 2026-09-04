@@ -97,16 +97,15 @@ function getApplicationIdBySlug(slug) {
   return row ? row.id : null;
 }
 
-// The action->eventType map (and its exact inverse, toAction) used to live
-// here; moved to ./events in MIGRATION_PLAN.md's Phase 3 since toEventType
-// is now needed by a second caller (the new POST /internal/events route —
-// see ../internalEvents.js) and toAction by two more (the legacy
-// GET /api/activity / /api/admin/activity routes) — one shared home for
+// The action->eventType map (and its exact inverse, toAction) lives in
+// ./events, since it's needed by both this file's bridge below and
+// POST /internal/events (../internalEvents.js) as well as the
+// GET /api/activity / /api/admin/activity routes — one shared home for
 // the map beats redefining or re-deriving it per caller.
 
-// The bridge itself: every logActivity() call anywhere in HomeCloud now also
-// produces a HomeCore activity event, without files.js/folders.js/auth.js/
-// admin.js needing to know HomeCore exists.
+// The bridge itself: every logActivity() call anywhere in this process
+// (auth.js, admin.js) also produces a HomeCore activity event, without
+// those files needing to know HomeCore exists.
 onActivity((userId, action, targetName) => {
   emitEvent({
     actorUserId: userId,

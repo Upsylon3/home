@@ -8,16 +8,13 @@
 // packages/homecore-client, shared with HomeSync's and HomeNotes'
 // equivalents of this file — see that package's src/verify.js for why.
 //
-// Two separate URLs, not one, as of MIGRATION_PLAN.md's Phase 5: before
-// the split, "where do I verify a token" and "where do I fetch a file"
-// were the same server, so HOMECLOUD_URL (from packages/homecore-client)
-// correctly answered both. Now they're two different services —
-// HOMECLOUD_URL still answers the first (HomeCore), and
-// HOMECLOUD_BACKEND_URL below answers the second. Conflating them again
-// here would silently break every file operation the moment
-// apps/homecloud-backend's address differs from HomeCore's, which it
-// always does.
-const { HOMECLOUD_URL } = require("@home/homecore-client");
+// Two separate URLs, deliberately not one: "where do I verify a token"
+// and "where do I fetch a file" are two different services. HOMECORE_URL
+// (from packages/homecore-client) answers the first; HOMECLOUD_BACKEND_URL
+// below answers the second. Conflating them would silently break every
+// file operation the moment apps/homecloud-backend's address differs
+// from HomeCore's, which it always does.
+const { HOMECORE_URL } = require("@home/homecore-client");
 const HOMECLOUD_BACKEND_URL = (process.env.HOMECLOUD_BACKEND_INTERNAL_URL || "http://homecloud-backend:4500").replace(/\/$/, "");
 
 // type: "image" | "video" | undefined (undefined = both, requested as two

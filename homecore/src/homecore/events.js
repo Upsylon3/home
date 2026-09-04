@@ -14,8 +14,7 @@
 // (e.g. HomeMedia reacting to homecloud.file.created) actually needs it.
 const { db } = require("../db");
 
-// Translates HomeCloud's existing activity_log-era action strings (see
-// auth.js, admin.js, and — since MIGRATION_PLAN.md's Phase 2 —
+// Translates activity actions (see auth.js, admin.js, and
 // apps/homecloud-backend's files.js/folders.js) into namespaced HomeCore
 // event types, per HOME_MASTER_SPECIFICATION.md §7.6 / §11 (e.g.
 // "homecloud.file.uploaded"). Anything not explicitly listed still gets a
@@ -23,12 +22,11 @@ const { db } = require("../db");
 // a new HomeCloud action shows up in the HomeCore audit trail automatically
 // even before this map is updated.
 //
-// Moved here from ./db.js in MIGRATION_PLAN.md's Phase 3 — toEventType is
-// now needed by two callers (the in-process onActivity bridge below, and
-// the new POST /internal/events route apps/homecloud-backend's split-out
-// logActivity() calls into), and toAction's whole job is being the exact
-// inverse of this map, so both belong next to the map they're built from
-// rather than duplicated in each caller.
+// toEventType has two callers (the in-process onActivity bridge below,
+// and POST /internal/events, which apps/homecloud-backend's own
+// logActivity() calls into over HTTP), and toAction's whole job is being
+// the exact inverse of this map — both live next to the map they're
+// built from rather than being duplicated in each caller.
 const ACTION_EVENT_MAP = {
   upload: "homecloud.file.uploaded",
   move: "homecloud.file.moved",
@@ -102,14 +100,12 @@ function emitEvent({ actorUserId = null, applicationId = null, eventType, target
   );
 }
 
-// applicationId is new in Phase 3 — needed so ./homecloudActivity.js (the
-// old per-user GET /api/activity) and admin.js's GET /api/admin/activity
-// can both scope the shared, cross-app hc_activity_events table back down
-// to "just HomeCloud's own events," matching what activity_log always
-// held (only ever written by auth.js/files.js/folders.js/admin.js).
-// GET /api/core/activity(/me) deliberately keep passing no applicationId —
-// that feed is meant to be cross-app by design (see its own file's header
-// comment).
+// applicationId lets ./homecloudActivity.js (HomeCloud's own per-user
+// GET /api/activity) and admin.js's GET /api/admin/activity both scope
+// the shared, cross-app hc_activity_events table back down to "just
+// HomeCloud's own events." GET /api/core/activity(/me) deliberately keep
+// passing no applicationId — that feed is meant to be cross-app by
+// design (see its own file's header comment).
 function listEvents({ limit = 200, actorUserId = null, applicationId = null } = {}) {
   const cappedLimit = Math.min(Math.max(Number(limit) || 200, 1), 500);
   const conditions = [];

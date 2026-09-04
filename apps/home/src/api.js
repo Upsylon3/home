@@ -91,11 +91,9 @@ export const api = {
   },
 
   // HomeCloud is the one application v0 actually knows details about —
-  // this shows real quota usage on its card. Used to reuse HomeCloud's
-  // /api/auth/me for this (back when usage lived there — see
-  // MIGRATION_PLAN.md's Phase 2/5); now calls homecloud-backend's own
-  // dedicated GET /api/homecloud/files/quota instead, same as HomeCloud's
-  // own frontend does. There's still no generic "quick stat" field in the
+  // this shows real quota usage on its card. Calls apps/homecloud-backend's
+  // dedicated GET /api/homecloud/files/quota, same as HomeCloud's own
+  // frontend does. There's still no generic "quick stat" field in the
   // application manifest yet (§8) for Home to pull this from any
   // arbitrary app, so this call is intentionally HomeCloud-specific
   // rather than pretending to be generic.

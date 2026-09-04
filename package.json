@@ -1,10 +1,10 @@
 {
   "name": "home",
-  "version": "0.9.1",
+  "version": "1.0.0",
   "private": true,
   "description": "Home — a self-hosted personal/family cloud ecosystem. This root package.json exists purely to tie every Node-based service and frontend together as one npm workspace, so `npm install` at the repo root installs everything in one pass instead of eight separate `cd X && npm install` steps. It is not itself published or run.",
 
-  "//workspaces": "Every folder listed here has its own package.json and can still be developed independently (cd into it, npm run dev, as SETUP.md §4 describes). Listing them explicitly here — rather than a glob like 'apps/*' — is deliberate: apps/homesync-android is a Kotlin/Gradle project with no package.json, and an explicit list means a future new app under apps/ is NOT silently picked up as a workspace until someone adds it here on purpose.",
+  "//workspaces": "Every folder listed here has its own package.json and can still be developed independently (cd into it, npm run dev — see docs/DEVELOPMENT.md). Listing them explicitly here — rather than a glob like 'apps/*' — is deliberate: apps/homesync-android is a Kotlin/Gradle project with no package.json, and an explicit list means a future new app under apps/ is NOT silently picked up as a workspace until someone adds it here on purpose.",
   "workspaces": [
     "homecore",
     "packages/homecore-client",
@@ -18,16 +18,16 @@
     "apps/homesync-backend"
   ],
 
-  "//version-policy": "See VERSIONING.md. Short version: this is ONE version number for the whole ecosystem while everything still evolves together tightly (pre-1.0, heavy v0 churn). Individual services get their own independent version numbers only once they're genuinely independently deployable — see MIGRATION_PLAN.md for what that unlocks.",
+  "//version-policy": "One version number for the whole ecosystem, bumped on every meaningful release across any service — simplest thing that works for a project this size. Individual package.json files under apps/ and packages/ have their own version fields for npm/Docker tooling's sake, but this root version is the one that matters for release notes (see CHANGELOG.md).",
 
   "scripts": {
-    "//test": "Runs every workspace's own `test` script, one at a time, stopping at the first failure. Equivalent to (but shorter than) cd-ing into backend, homemedia-backend, homenotes-backend, homesync-backend, and homecore/test one by one.",
+    "//test": "Runs every workspace's own `test` script, one at a time, stopping at the first failure — homecore, apps/homecloud-backend, apps/homemedia-backend, apps/homenotes-backend, and apps/homesync-backend.",
     "test": "npm run test --workspaces --if-present",
 
     "//install:all": "Redundant with plain `npm install` once workspaces are set up (that already installs every workspace's deps) — kept as an explicit, discoverable alias for anyone skimming this file.",
     "install:all": "npm install",
 
-    "//docker:up": "The actual way this whole ecosystem normally runs — see SETUP.md. This script is just a memorable shortcut.",
+    "//docker:up": "The actual way this whole ecosystem normally runs — see docs/DEPLOYMENT.md. This script is just a memorable shortcut.",
     "docker:up": "docker compose up --build -d",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f"

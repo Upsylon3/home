@@ -1,13 +1,10 @@
-// GET /internal/users/usage — per-user storage usage, for HomeCore's admin
-// panel. MIGRATION_PLAN.md's Phase 4 problem: admin.js's user list used to
-// get this with a direct SQL join against a `files` table in the same
-// process. Once split (Phase 2), that table lives here instead — this is
-// the reachable replacement, following the exact same shape of solution
-// Phase 3 already built for logActivity() (see homecore/src/internalEvents.js):
-// a machine-to-machine call, authenticated with a shared secret rather
-// than a user's bearer token, because there's no per-request user token to
-// forward — this is HomeCore asking on behalf of the whole admin panel,
-// not any one user.
+// GET /internal/users/usage — per-user storage usage, for HomeCore's
+// admin panel (homecore/src/admin.js) to show alongside each account.
+// Authenticated with a shared secret rather than a user's bearer token
+// (the same pattern as POST /internal/events, see
+// homecore/src/internalEvents.js) — there's no per-request user token to
+// forward here, since this is HomeCore asking on behalf of the whole
+// admin panel, not any one user.
 //
 // Deliberately reuses HOMECORE_INTERNAL_SECRET rather than minting a
 // second secret for a second internal endpoint — one shared secret

@@ -1,24 +1,22 @@
 // POST /internal/events — the HTTP side of "may emit events to the shared
 // bus, fire-and-forget" (docs/ARCHITECTURE.md §4's Tier 1 rule).
 //
-// Before MIGRATION_PLAN.md's Phase 3, every logActivity() call anywhere in
-// HomeCloud ran in the same process as HomeCore's event bus, so
-// homecore/db.js's in-process onActivity() hook (see homecore/db.js) was
-// enough. apps/homecloud-backend is a genuinely separate process now (Phase
-// 2) — it can't reach that hook directly, so it POSTs here instead. Its own
-// logActivity() (apps/homecloud-backend/src/db.js) does exactly this,
-// fire-and-forget, never awaited by its callers.
+// apps/homecloud-backend runs in its own separate process from HomeCore,
+// so it can't reach ./db.js's in-process onActivity() hook directly (that
+// hook only sees logActivity() calls made inside this same process, i.e.
+// from auth.js/admin.js). It POSTs here instead — its own logActivity()
+// (apps/homecloud-backend/src/db.js) does exactly this, fire-and-forget,
+// never awaited by its callers.
 //
 // Deliberately NOT under /api/core: everything there is browser-facing,
 // authenticated as a signed-in *user* (see homecore/index.js's requireAuth).
 // This is a machine-to-machine call — "one trusted service calling another
-// as itself, not as a user," the same shape of problem MIGRATION_PLAN.md's
-// Phase 4 names for its own /internal/... endpoint on HomeCloud's backend —
-// so it's protected by a shared secret instead of a user's bearer token.
-// logActivity()'s signature only ever carried a plain userId (it never had
-// a per-request token to forward — see its callers in files.js/folders.js),
-// so authenticating this call as "HomeCloud's backend, acting on userId's
-// behalf" is the natural fit, not a workaround.
+// as itself, not as a user" — so it's protected by a shared secret instead
+// of a user's bearer token. logActivity()'s signature only ever carried a
+// plain userId (it never had a per-request token to forward — see its
+// callers in files.js/folders.js), so authenticating this call as
+// "HomeCloud's backend, acting on userId's behalf" is the natural fit,
+// not a workaround.
 const express = require("express");
 const { getApplicationIdBySlug } = require("./homecore/db");
 const { emitEvent, toEventType } = require("./homecore/events");

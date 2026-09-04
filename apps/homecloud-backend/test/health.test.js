@@ -1,10 +1,7 @@
-// The temporary /whoami route this file used to exercise (Phase 1) is
-// gone — replaced by real files/folders/shares routes in Phase 2 (see
-// files.test.js/folders.test.js/publicShare.test.js), which now cover
-// the same "auth delegation actually works end-to-end" ground more
-// thoroughly (real routes, real data, not a diagnostic stand-in). What's
-// left here: the two things that were never about auth in the first
-// place.
+// Auth delegation is already covered end-to-end by files.test.js,
+// folders.test.js, and publicShare.test.js (real routes, real data).
+// What's left here: the two things that were never about auth in the
+// first place.
 const { test, before, after } = require("node:test");
 const assert = require("node:assert/strict");
 const { startTestApp, stopTestApp } = require("./helpers/app");

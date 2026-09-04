@@ -1,17 +1,13 @@
-// Moved from homecore/src/files.js per MIGRATION_PLAN.md's Phase 2.
-// Two real changes from the original, everything else is unchanged:
+// File upload/list/download/trash/share/move routes. This service has no
+// identity of its own, so requireAuth (from @home/homecore-client,
+// delegating to HomeCore) is applied once, at mount time, in app.js —
+// the same pattern HomeMedia/HomeSync/HomeNotes use.
 //
-// 1. Auth is no longer applied here (`router.use(requireAuth)` is gone).
-//    homecore's own files.js could check requests directly because it
-//    shared a process with the users table; this service has no identity
-//    of its own, so requireAuth (from @home/homecore-client, delegating
-//    to HomeCore) is applied once, at mount time, in app.js — the same
-//    pattern HomeMedia/HomeSync/HomeNotes already use.
-// 2. The quota limit no longer comes from a local `users` table query
-//    (that table doesn't exist in this database) — it comes off
-//    `req.user.quotaOverride`, which requireAuth already populated from
-//    HomeCore's /api/auth/me response. Usage (`usedBytes`) stays a local
-//    query against this service's own `files` table, unchanged.
+// The per-user quota limit comes off `req.user.quotaOverride`, which
+// requireAuth already populated from HomeCore's /api/auth/me response
+// (there's no local `users` table here to query it from). Usage
+// (`usedBytes`) is a local query against this service's own `files`
+// table.
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
@@ -97,12 +93,10 @@ const upload = multer({
 });
 
 // New in this service — didn't exist in the original homecore/src/files.js
-// because it didn't need to: HomeCore's own /api/auth/me could compute
-// usedBytes with a direct query against the same process's files table.
-// Once split, that field on /api/auth/me reads HomeCore's own (now
-// unused) files table and is stale for anyone actually using this
-// service — this is the real, reachable replacement. apps/homecloud's
-// StorageGauge.jsx moves to this once Phase 5 wires the frontend up.
+// HomeCore's own /api/auth/me has no way to compute usedBytes — the
+// files table it would need lives entirely in this separate service and
+// database. This route is the real source of truth for it;
+// apps/homecloud's StorageGauge.jsx calls this, not /api/auth/me.
 router.get("/quota", (req, res) => {
   res.json({ usedBytes: usedBytes(req.user.id), quotaBytes: quotaBytesFor(req.user) });
 });

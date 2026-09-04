@@ -1,8 +1,6 @@
-// Moved from homecore/src/publicShare.js per MIGRATION_PLAN.md's Phase 2.
-// Deliberately still mounted WITHOUT requireAuth in app.js (see that
-// file) — a share link has to work for someone with no account at all,
-// that's the entire point of it. No functional changes from the
-// original: same db/UPLOADS_DIR names, same route, same behavior.
+// Deliberately mounted WITHOUT requireAuth in app.js (see that file) — a
+// share link has to work for someone with no account at all, that's the
+// entire point of it.
 const fs = require("fs");
 const path = require("path");
 const express = require("express");

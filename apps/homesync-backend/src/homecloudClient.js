@@ -4,7 +4,7 @@
 // upload endpoint — HomeSync's own database only ever tracks what's
 // already been sent, for dedup and backup history, never the bytes
 // themselves. Identity verification itself lives in packages/homecore-client
-// (this file doesn't need HOMECLOUD_URL from there — that's HomeCore's
+// (this file doesn't need HOMECORE_URL from there — that's HomeCore's
 // address, for auth; this file only ever talks to the separate file-
 // storage service below), shared with HomeMedia's and HomeNotes'
 // equivalents of this file.

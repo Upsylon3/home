@@ -51,6 +51,8 @@ deployment, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 ## Project layout
 
 ```
+HOME_MASTER_SPECIFICATION.md   The governing product/architecture spec — see Documentation below
+HOME_ARTISTIC_DIRECTION.md     The governing visual/UX spec
 gateway/              nginx — the single public entry point (see docs/ARCHITECTURE.md)
 homecore/             Identity, sessions, permissions, the app registry — shared by every app
 packages/
@@ -97,6 +99,12 @@ what each layer covers.
 
 ## Documentation
 
+- [HOME_MASTER_SPECIFICATION.md](HOME_MASTER_SPECIFICATION.md) —
+  the original product/architecture/API/security/roadmap brief. Takes
+  priority over everything below where they disagree; implementation
+  can flex, this can't without a deliberate decision to change it.
+- [HOME_ARTISTIC_DIRECTION.md](HOME_ARTISTIC_DIRECTION.md) — the
+  original visual/UX brief `docs/DESIGN_SYSTEM.md` is condensed from.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — how the apps fit
   together, and the rules for adding a new one
 - [docs/API.md](docs/API.md) — every HTTP endpoint, by service

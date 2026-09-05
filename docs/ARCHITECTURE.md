@@ -1,15 +1,19 @@
 # Architecture
 
-> **A note on section references in code comments:** many comments across
-> this codebase cite specific sections of `HOME_MASTER_SPECIFICATION.md`
-> and `HOME_ARTISTIC_DIRECTION.md` (e.g. "per §7.6"). **Neither file
-> exists anywhere in this repository.** If you have copies of these from
-> elsewhere, add them at the repo root — 25 files across `homecore/`,
-> several `apps/*`, and `docs/` reference them. If not, the comments are
-> still meaningful as written (they describe how the current code
-> behaves and why), just not independently checkable against a numbered
-> source. This document reflects the actual code, verified directly —
-> not those two files, which this pass never had access to.
+> **A note on section references in code comments:** `HOME_MASTER_SPECIFICATION.md`
+> and `HOME_ARTISTIC_DIRECTION.md` — cited throughout the codebase as
+> "per §N" — are now both present at the repo root. Cross-checking a
+> sample of citations against them found the implementation faithful to
+> the spec's intent everywhere it matters, with one real, worth-knowing
+> gap: §10 suggests nesting every HomeCore-owned route under
+> `/api/core/...` (`/api/core/auth`, `/api/core/users`, ...), but
+> `/api/auth`, `/api/admin`, and `/api/activity` are top-level instead —
+> a holdover from before HomeCore existed as its own concept, never
+> moved to match once it did. Not a bug (nothing is broken or
+> insecure), just a naming inconsistency a future cleanup could resolve.
+> This document itself reflects the actual code, verified directly
+> against both the spec and the implementation, not just one or the
+> other.
 
 ## 1. The vision
 

@@ -26,21 +26,20 @@ first (see below).
    against real self-host hardware, and a designed recovery-kit UX. TLS
    and the shared-origin question are already decided — see
    `SECURITY.md`.
-3. **Locate or recreate `HOME_MASTER_SPECIFICATION.md` and
-   `HOME_ARTISTIC_DIRECTION.md`.** 25 files across this codebase cite
-   specific sections of these two documents, and neither exists in this
-   repository — see the callout at the top of `ARCHITECTURE.md`. If they
-   exist elsewhere, add them at the repo root; if they're truly gone,
-   the numbered citations in code comments should eventually be cleaned
-   up to stop pointing at nothing.
-4. **Icon system finishing touches**: PNG/ICO favicon exports for every
+3. **Icon system finishing touches**: PNG/ICO favicon exports for every
    frontend but HomeCloud's, and an Android adaptive-icon split — see
    `DESIGN_SYSTEM.md`. Typeface and accent color are now final, not
    open questions.
-5. **Upgrade to `vite@8`** across all four frontends, to clear a
+4. **Upgrade to `vite@8`** across all four frontends, to clear a
    moderate, dev-server-only `esbuild` advisory — see `SECURITY.md`.
    Breaking change; budget time to verify each app's dev and build
    modes, not a drop-in bump.
+5. **Fix the `/api/auth`, `/api/admin`, `/api/activity` route-nesting
+   inconsistency** flagged in `ARCHITECTURE.md` — `HOME_MASTER_SPECIFICATION.md`
+   §10 calls for these under `/api/core/...`; they're top-level instead,
+   a holdover from before HomeCore existed. Not urgent (nothing's
+   broken), but a real deviation worth resolving deliberately rather
+   than leaving as an accident of history.
 
 **Settled, not open questions anymore** (kept here so the reasoning
 isn't lost): TLS approach (private overlay, not public certs —

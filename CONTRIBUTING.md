@@ -2,7 +2,15 @@
 
 ## Before you start
 
-Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) first, specifically the
+If a change would contradict [HOME_MASTER_SPECIFICATION.md](HOME_MASTER_SPECIFICATION.md)
+or [HOME_ARTISTIC_DIRECTION.md](HOME_ARTISTIC_DIRECTION.md), that's a
+deliberate decision to make and record (in the PR description and, if
+it's a lasting change of direction, in the doc itself) — not something
+to drift into silently. Everything under `docs/` is a condensed,
+current-state view derived from those two; when they disagree, the
+docs are what's stale, not the other way around.
+
+Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) next, specifically the
 three-tier layering rule. It's the one thing every other rule below
 exists to protect: **a Tier 1 app (HomeCloud, HomeMedia, HomeSync,
 HomeNotes, and any future one) owns its own database and process, never

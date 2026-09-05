@@ -7,6 +7,17 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 
 ## [Unreleased]
 
+Added the two governing spec documents (`HOME_MASTER_SPECIFICATION.md`,
+`HOME_ARTISTIC_DIRECTION.md`) to the repo root — previously cited by
+section number throughout the codebase but absent from the repository
+itself (flagged during the [1.0.0] cleanup). Cross-checked a sample of
+citations against them: the implementation matches the spec's intent
+everywhere checked, with one real, documented deviation — see
+`docs/ARCHITECTURE.md`'s note and the new roadmap item on
+`/api/auth`/`/api/admin`/`/api/activity` not being nested under
+`/api/core` the way §10 suggests. Tightened `docs/SECURITY.md`'s
+permission-enforcement note with the precise citation (§28, layer 3).
+
 Resolved every open decision flagged during the [1.0.0] handoff cleanup
 in one pass, so future work isn't blocked re-litigating them. No code
 behavior changed; this is documentation plus one new file.

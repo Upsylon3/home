@@ -62,14 +62,17 @@ real time to test each frontend's dev and build modes before taking it.
 - **Permission enforcement is declarative, not enforced.** Applications
   declare intended permissions in their manifest (HomeCore's application
   registry), but no code path currently checks a permission before
-  granting access to another application's resource. Ordinary
-  ownership checks (each app checking "does this row belong to this
-  user?" directly) are the only real enforcement today — fine for
-  HomeCloud/HomeMedia/HomeSync/HomeNotes as built, but **not** something
-  HomeVault, or any future security-sensitive app, should rely on as a
-  boundary — see "sibling application overreach" below. **Decided:**
-  deliberately deferred until HomeVault actually needs it, rather than
-  built speculatively ahead of a real consumer — but it's a hard
+  granting access to another application's resource — `HOME_MASTER_SPECIFICATION.md`
+  §28 calls for four enforced authorization layers (identity, role,
+  permission, ownership); layer 3 (permission) is the one not actually
+  implemented yet. Ordinary ownership checks (each app checking "does
+  this row belong to this user?" directly) are the only real
+  enforcement today — fine for HomeCloud/HomeMedia/HomeSync/HomeNotes
+  as built, but **not** something HomeVault, or any future
+  security-sensitive app, should rely on as a boundary — see "sibling
+  application overreach" below. **Decided:** deliberately deferred
+  until HomeVault actually needs it, rather than built speculatively
+  ahead of a real consumer — but it's a hard
   prerequisite for HomeVault specifically, not indefinitely optional.
 - No email-based password reset (an admin-panel reset is the intentional
   substitute — no outgoing mail server to run).

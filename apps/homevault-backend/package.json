@@ -1,0 +1,20 @@
+{
+  "name": "homevault-backend",
+  "version": "0.1.0",
+  "description": "HomeVault — client-side-encrypted password/secrets manager backend. This service NEVER sees plaintext: it stores only a wrapped vault key and encrypted item blobs, and cannot decrypt either. See docs/SECURITY.md for the full threat model.",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@home/homecore-client": "^1.0.0",
+    "better-sqlite3": "^11.3.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "helmet": "^7.1.0"
+  }
+}

@@ -5,9 +5,9 @@ brainstorm — explicitly speculative, none of it committed.
 
 **Build order, decided:** HomeVault → HomeTasks → HomeBridge →
 HomeMonitor → HomeAI. HomeVault first because it's security-critical and
-already has a full threat model (`SECURITY.md`) — building it while that
-design context is fresh beats letting it go stale. HomeTasks next as
-the highest everyday-value, most conventional build (CRUD app, no new
+already had a full threat model (`SECURITY.md`) — **v0 is now built**
+(see `ARCHITECTURE.md`'s status table), so this is HomeTasks next: the
+highest everyday-value, most conventional build (CRUD app, no new
 architectural pattern needed). HomeBridge after that, once there are
 enough real apps for its cross-app ideas (`ROADMAP.md`'s brainstorm
 below) to actually matter. HomeMonitor and HomeAI last — lower urgency,
@@ -16,25 +16,31 @@ first (see below).
 
 ## Near-term backlog
 
-1. **HomeSync Android's first real build.** The app (including the
+1. **An independent security/cryptography review of HomeVault v0.** The
+   single most important item on this list — see `SECURITY.md`'s v0
+   status callout for exactly what's been verified by automated test
+   versus what still needs human review. Nothing real should go into a
+   HomeVault vault before this happens.
+2. **HomeSync Android's first real build.** The app (including the
    previously-missing `data/` package) is written and statically
    reviewed, but has never been through a real Gradle sync or run on a
    device/emulator — see `DEVELOPMENT.md`. Not a blocker for anything
    else — other apps can proceed in parallel while this is pending.
-2. **HomeVault**, per the decided build order above. Its own
-   prerequisites (`SECURITY.md`): Argon2id parameters benchmarked
-   against real self-host hardware, and a designed recovery-kit UX. TLS
-   and the shared-origin question are already decided — see
-   `SECURITY.md`.
-3. **Icon system finishing touches**: PNG/ICO favicon exports for every
+3. **HomeVault follow-ups deferred out of v0**: soft-delete/undo for a
+   deleted item, benchmarking Argon2id's parameters against real
+   minimum self-hosting hardware (v0 ships OWASP's default, untested
+   against, say, a Raspberry Pi specifically), and an admin-facing
+   vault-reset action for HomeCore (today only the account holder can
+   delete their own vault).
+4. **Icon system finishing touches**: PNG/ICO favicon exports for every
    frontend but HomeCloud's, and an Android adaptive-icon split — see
    `DESIGN_SYSTEM.md`. Typeface and accent color are now final, not
    open questions.
-4. **Upgrade to `vite@8`** across all four frontends, to clear a
+5. **Upgrade to `vite@8`** across all five frontends, to clear a
    moderate, dev-server-only `esbuild` advisory — see `SECURITY.md`.
    Breaking change; budget time to verify each app's dev and build
    modes, not a drop-in bump.
-5. **Fix the `/api/auth`, `/api/admin`, `/api/activity` route-nesting
+6. **Fix the `/api/auth`, `/api/admin`, `/api/activity` route-nesting
    inconsistency** flagged in `ARCHITECTURE.md` — `HOME_MASTER_SPECIFICATION.md`
    §10 calls for these under `/api/core/...`; they're top-level instead,
    a holdover from before HomeCore existed. Not urgent (nothing's

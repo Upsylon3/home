@@ -13,6 +13,7 @@ apps/homecloud-backend/.env
 apps/homemedia-backend/.env
 apps/homenotes-backend/.env
 apps/homesync-backend/.env
+apps/homevault-backend/.env
 
 # Per-service SQLite data directories — local runtime state, not source.
 homecore/data/
@@ -20,6 +21,7 @@ apps/homecloud-backend/data/
 apps/homemedia-backend/data/
 apps/homenotes-backend/data/
 apps/homesync-backend/data/
+apps/homevault-backend/data/
 
 # Nightly backup archives land here on the host (see services/backup).
 # Keep the folder in git (so a fresh checkout has somewhere for the

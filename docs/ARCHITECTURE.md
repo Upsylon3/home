@@ -60,11 +60,15 @@ other Tier 1 app currently has a hard dependency on (see §4).
 `hc_permissions`, `hc_application_permissions`, `hc_activity_events`,
 `hc_notifications`, `hc_sessions`.
 
-Four applications are registered today: `homecloud`, `homemedia`,
-`homesync`, `homenotes` — pre-seeded by HomeCore's own startup code (see
-§6 on why this is a shortcut worth reconsidering before adding a fifth).
-HomeVault, HomeTasks, HomeMonitor, and HomeAI are not registered — they
-don't exist yet.
+Five applications are registered today: `homecloud`, `homemedia`,
+`homesync`, `homenotes`, `homevault` — pre-seeded by HomeCore's own
+startup code (see §6). This is exactly the "before adding a fifth"
+point earlier notes on this shortcut flagged for reconsidering — the
+pattern still held up fine at this scale (one more `INSERT OR IGNORE`
+function, no real complexity added), so it stayed. A sixth application
+is a reasonable point to actually build the real admin-driven install
+flow instead of extending this further. HomeTasks, HomeMonitor, and
+HomeAI are not registered — they don't exist yet.
 
 ## 4. The three-tier layering rule
 
@@ -81,12 +85,17 @@ Tier 0 — Foundation
   change — only registered against.
 
 Tier 1 — Independent apps
-  HomeCloud, HomeMedia, HomeSync, HomeNotes (future: HomeTasks,
-  HomeMonitor, HomeVault)
+  HomeCloud, HomeMedia, HomeSync, HomeNotes, HomeVault (future: HomeTasks,
+  HomeMonitor)
   Each has its own database, own process, own deploy. May declare a
   small number of HARD dependencies on another app's STABLE PUBLIC API
   (never its database) — HomeMedia, HomeSync, and HomeNotes each declare
   exactly one: HomeCloud's file-storage API (apps/homecloud-backend).
+  HomeVault declares zero — the first app with no dependency on
+  HomeCloud at all, since it stores only its own encrypted blobs (see
+  §3's database-tables note). "May declare" always meant zero-or-more,
+  not exactly-one; HomeVault is just the first app to actually be at
+  zero.
   Contains ZERO optional/enhancement cross-app behavior.
 
 Tier 2 — HomeBridge
@@ -214,7 +223,7 @@ problem:
 | HomeNotes | Built |
 | HomeSync backend | Built and tested |
 | HomeSync Android app | Written, not yet build-verified — see `docs/DEVELOPMENT.md` |
-| HomeVault | Threat model designed (`docs/SECURITY.md`), no code |
+| HomeVault | **v0 built** — core loop (create/unlock/recover a vault, add/view/edit/delete items) implemented and tested; **not yet security-reviewed** — see `docs/SECURITY.md`'s "HomeVault v0" section before trusting it with anything real |
 | HomeTasks, HomeMonitor, HomeAI, HomeBridge | Not started |
 
 ## 8. Future ecosystem map

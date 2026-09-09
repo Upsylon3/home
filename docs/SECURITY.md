@@ -44,7 +44,7 @@ threat model — a design document with no implementation yet.
 — a malicious website a developer visits could send requests to their
 local `vite dev` server and read the response. It does not affect
 production (nginx serves pre-built static files, never the dev server).
-Fixing it means `vite@8`, a breaking major upgrade across all four
+Fixing it means `vite@8`, a breaking major upgrade across all five
 frontends — deliberately not forced through as part of this pass; budget
 real time to test each frontend's dev and build modes before taking it.
 
@@ -79,11 +79,48 @@ real time to test each frontend's dev and build modes before taking it.
 - No account-deletion flow — only disable. See
   `ARCHITECTURE.md` §6 for the gap this leaves once one is added.
 
-## HomeVault threat model (design only, not built)
+## HomeVault threat model and v0 status
 
-HomeVault is meant to be the ecosystem's answer to Bitwarden/1Password —
-holding passwords, secure notes, TOTP secrets, recovery info, and API
-keys. Every other app here (HomeCloud, HomeMedia, HomeNotes) trusts the
+> **v0 is built. It has not had a real security review.** Everything
+> below this callout is the design this v0 implements — the same
+> architecture, unchanged. What actually exists in code:
+>
+> - **Verified by automated test** (`apps/homevault/test/crypto.test.js`,
+>   run in complete isolation from any UI): Argon2id derivation is
+>   deterministic for the same inputs and differs for a different
+>   password or salt; AES-256-GCM encrypt/decrypt round-trips; a wrong
+>   key or tampered ciphertext throws rather than silently returning
+>   garbage; the master-password and recovery-key unwrap paths both
+>   reach the same underlying vault key; a fresh random IV is used on
+>   every encryption.
+> - **Followed exactly as designed**: client-side envelope encryption,
+>   Argon2id (OWASP's current default parameters — `m=19456, t=2, p=1`,
+>   stored per-vault so a future parameter change never breaks an
+>   existing vault), AES-256-GCM with a per-field IV, a recovery kit
+>   generated once and never stored server-side, titles encrypted (not
+>   just sensitive fields), the vault key held only in memory with its
+>   own shorter-than-the-session auto-lock timer.
+> - **Explicitly NOT done**: an independent security/cryptography review
+>   by anyone other than whoever wrote this. Automated tests confirm the
+>   code does what it was written to do; they cannot confirm the design
+>   itself has no flaw a reviewer would catch. **Do not store real
+>   passwords or secrets in this v0 until that review happens.**
+> - **Prerequisites below that remain genuinely open**: concrete
+>   Argon2id parameters *for this specific v0* are the OWASP default,
+>   not yet benchmarked against real minimum self-hosting hardware as
+>   originally planned — reasonable starting point, not a completed
+>   prerequisite. TLS and the shared-origin decision are settled (see
+>   Part A above and "Shared-origin XSS" below) and not blockers for
+>   this v0 existing, but remain blockers for exposing it beyond a
+>   trusted LAN.
+> - **Deferred out of v0, not forgotten**: soft-delete/undo for a
+>   deleted item (currently permanent, like the vault-level delete),
+>   and any HomeCore-admin-facing vault-reset action (today only the
+>   account holder can delete their own vault, from Settings).
+
+HomeVault is the ecosystem's answer to Bitwarden/1Password — holding
+passwords, secure notes, TOTP secrets, recovery info, and API keys.
+Every other app here (HomeCloud, HomeMedia, HomeNotes) trusts the
 server with plaintext, because a file server that can't read files can't
 serve thumbnails. HomeVault's whole design problem is the opposite: **the
 server should be useful without ever being trusted with plaintext.**
@@ -159,25 +196,31 @@ re-wrap, not an O(n) re-encryption of the whole vault.
 | **HomeCore admin overreach** | An admin can disable an account or force a full vault reset (destroying the wrapped key — the user loses their own vault too), but cannot decrypt existing items. No admin-only route should ever return decrypted contents, for any reason including support requests. |
 | **Lost master password** | A recovery kit — a high-entropy recovery key generated once, shown once, independently unwrapping the same vault key — is the only acceptable path. The user stores it offline; the server never sees it. Explicitly unacceptable: email reset links, security questions, or anything else that routes through something the server can see or influence. |
 | **Metadata leakage** | Item count, blob size, and timestamps are unavoidably visible even with content encrypted. Acknowledge rather than hide — keep it to the structural minimum, treat size-padding as future hardening, not a v1 blocker. |
-| **Standing decrypted key in memory** | Vault "unlock" is a separate, shorter-lived state than the HomeCore session — the derived master key lives only in page memory, with its own auto-lock timer independent of how long the HomeCore session has left. |
+| **Standing decrypted key in memory** | Vault "unlock" is a separate, shorter-lived state than the HomeCore session — the derived master key lives only in page memory, with its own auto-lock timer independent of how long the HomeCore session has left. Implemented in `apps/homevault/src/vaultContext.jsx`: 5-minute inactivity timeout, never `localStorage`/`sessionStorage`. |
 | **Multi-device sync UX** | Not a threat, a design consequence worth documenting: a new device syncs the *encrypted* vault immediately but needs the master password re-entered before anything is readable. Correct behavior, not friction to fix. |
 
-### Prerequisites before any HomeVault code is written
+### Prerequisites before HomeVault v0 handles anything real
 
 In priority order:
-1. **TLS at the gateway** — the single largest gap between "sound on
-   paper" and "safe to actually use." (Decided: a private overlay
-   network, not a public reverse-proxy cert — see Part A above.)
-2. **Concrete Argon2id parameters**, benchmarked against realistic
-   minimum self-hosting hardware.
-3. **A designed recovery-kit UX**, reviewed before the first vault is
-   ever created — it can't be retrofitted onto existing vaults without
-   asking every user to re-derive and re-wrap their key.
+1. **An independent security/cryptography review of the actual v0 code**
+   (not just this design document) — nothing below matters if the
+   implementation itself has a flaw a reviewer would catch that
+   automated tests, by construction, cannot. See the v0 status callout
+   at the top of this section for exactly what's been verified so far
+   and what hasn't.
+2. **TLS for anything beyond a trusted LAN** — the single largest gap
+   between "sound on paper" and "safe to actually use" once real secrets
+   are involved. (Decided: a private overlay network, not a public
+   reverse-proxy cert — see Part A above.) Not a blocker for local,
+   LAN-only use during review.
+3. **Argon2id parameters benchmarked against real minimum self-hosting
+   hardware.** v0 ships OWASP's current default (`m=19456, t=2, p=1`) as
+   a reasonable starting point, not a completed prerequisite — see the
+   v0 status callout.
 
-The shared-vs-separate-origin decision above is settled; it's no longer
-a blocking prerequisite.
-
-None of these are done yet.
+The shared-vs-separate-origin decision, and the recovery-kit UX, are
+both settled and implemented (see the v0 status callout above) — no
+longer blocking prerequisites.
 
 ## Reporting a vulnerability
 

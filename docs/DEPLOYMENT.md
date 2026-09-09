@@ -33,7 +33,7 @@ docker compose up --build -d
 ```
 
 This builds and starts every container: the gateway, `homecore`, all
-four frontends, all four independent apps' backends, and the backup
+five frontends, all five independent apps' backends, and the backup
 service. Only the gateway publishes a host port (`8080`).
 
 Open `http://localhost:8080` (or `http://<server-ip>:8080` from another
@@ -88,9 +88,12 @@ docker compose up
 
 Substitute the volume name for whichever app you're restoring
 (`home_homecore_data`, `home_homemedia_data`, `home_homenotes_data`,
-`home_homesync_data` — the `home_` prefix comes from `docker-compose.yml`'s
-pinned `name: home`). Test this occasionally — an untested backup isn't
-one you can count on.
+`home_homesync_data`, `home_homevault_data` — the `home_` prefix comes
+from `docker-compose.yml`'s pinned `name: home`). Test this
+occasionally — an untested backup isn't one you can count on. For
+HomeVault specifically: a restored backup is exactly as readable as it
+was the moment it was taken — restoring doesn't bypass encryption, you
+still need the master password or recovery key from that point in time.
 
 ## Upgrading
 

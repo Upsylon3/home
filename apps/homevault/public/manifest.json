@@ -1,0 +1,8 @@
+{
+  "name": "HomeVault",
+  "short_name": "HomeVault",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#14171c",
+  "theme_color": "#14171c"
+}

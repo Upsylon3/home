@@ -18,8 +18,9 @@ you choose to set that up.
 | **HomeMedia** | Photo/video library — albums, favorites, EXIF, no storage of its own | Built |
 | **HomeNotes** | A Markdown notes workspace | Built |
 | **HomeSync** | Android app that backs up phone photos/videos to HomeCloud | Backend built and tested; Android app not yet build-verified — see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) |
+| **HomeVault** | Client-side-encrypted password/secrets manager | **v0 built, not yet security-reviewed** — see [docs/SECURITY.md](docs/SECURITY.md) before storing anything real |
 | **HomeCore** | Shared identity, sessions, permissions, and the app registry — no UI of its own | Built |
-| HomeVault, HomeTasks, HomeMonitor, HomeAI | Password manager, to-dos, system monitor, assistant | Not started — see [docs/ROADMAP.md](docs/ROADMAP.md) |
+| HomeTasks, HomeMonitor, HomeAI | To-dos, system monitor, assistant | Not started — see [docs/ROADMAP.md](docs/ROADMAP.md) |
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how these fit
 together, and [docs/SECURITY.md](docs/SECURITY.md) for what's protecting
@@ -67,6 +68,8 @@ apps/
   homenotes-backend/   HomeNotes backend
   homesync-backend/    HomeSync backend — the API the Android app talks to
   homesync-android/    The Android app itself (Kotlin)
+  homevault/           HomeVault frontend — the only app whose code ever sees a plaintext secret
+  homevault-backend/   HomeVault backend — stores only ciphertext, never a key
 services/backup/       Nightly backup of every app's data volume
 design/                Icon set + wordmark, shared across every frontend
 scripts/               Windows dev launcher (see docs/DEVELOPMENT.md)
@@ -78,13 +81,16 @@ docs/                  Architecture, security, API reference, deployment, roadma
 - **Backend:** Node.js, Express, SQLite (`better-sqlite3`), Node's
   built-in test runner (`node --test`)
 - **Frontend:** React, Vite, React Router
+- **Client-side cryptography (HomeVault only):** the browser's native
+  Web Crypto API (AES-256-GCM) plus `hash-wasm` for Argon2id — see
+  [docs/SECURITY.md](docs/SECURITY.md)
 - **Infrastructure:** Docker Compose, nginx
 - **Android:** Kotlin, WorkManager, Room
 
 ## Tests
 
-145 automated backend tests across 5 services, run with `npm test` from
-the repo root (or inside any one service's own folder):
+190 automated tests across 6 services, run with `npm test` from the
+repo root (or inside any one service's own folder):
 
 ```
 homecore                44 tests
@@ -92,6 +98,8 @@ apps/homecloud-backend  39 tests
 apps/homemedia-backend  18 tests
 apps/homenotes-backend  24 tests
 apps/homesync-backend   20 tests
+apps/homevault-backend  27 tests
+apps/homevault          18 tests  (src/crypto.js — the one frontend with real tests)
 ```
 
 See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for how to run them and

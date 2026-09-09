@@ -1,8 +1,8 @@
-// Mirrors ../frontend/src/theme.js exactly, including the storage key —
-// deliberately the same key rather than a Home-specific one, so if these
-// two apps are ever served from the same origin (a future reverse-proxy
-// gateway, see README) a person's light/dark choice carries over between
-// them for free instead of needing to be set twice.
+// Mirrors apps/homecloud/src/theme.js exactly, including the storage key
+// — deliberately the same key rather than an app-specific one, so a
+// person's light/dark choice carries over for free between every app
+// behind the gateway (see docs/ARCHITECTURE.md), instead of needing to
+// be set separately in each one.
 const STORAGE_KEY = "homecloud-theme";
 
 export function getStoredPreference() {

@@ -110,6 +110,28 @@ A Markdown notes workspace, with version history and folders.
 | GET | `/api/homenotes/note-folders/all` | Full folder tree |
 | PATCH/DELETE | `/api/homenotes/note-folders/:id` | Rename / delete |
 
+## HomeVault backend (`/api/homevault`)
+
+A client-side-encrypted password/secrets manager. **Every field below
+except `type` and the KDF parameters is opaque ciphertext to this
+server** — it validates shape and ownership, never content. See
+`docs/SECURITY.md`'s v0 status callout before relying on this for
+anything real.
+
+| Method | Path | What it does |
+|---|---|---|
+| GET | `/api/homevault/health` | *(no auth)* |
+| GET | `/api/homevault/vault` | `{exists: false}` or `{exists: true, vault: {...}}` — everything needed to attempt unlocking, both wrap paths |
+| POST | `/api/homevault/vault` | Create this user's vault (409 if one already exists) |
+| PATCH | `/api/homevault/vault/rewrap` | Replace the master-password wrap path (change password, or complete a recovery) |
+| POST | `/api/homevault/vault/regenerate-recovery` | Replace the recovery-key wrap path only |
+| DELETE | `/api/homevault/vault` | Destroy the vault and every item in it — irreversible |
+| GET | `/api/homevault/vault/items` | List item summaries (encrypted title, not the full secret payload) |
+| GET | `/api/homevault/vault/items/:id` | Full item, including encrypted data |
+| POST | `/api/homevault/vault/items` | Create an item (`type`: `login` \| `note` \| `card`) |
+| PATCH | `/api/homevault/vault/items/:id` | Update an item's encrypted fields |
+| DELETE | `/api/homevault/vault/items/:id` | Permanently delete an item |
+
 ## HomeSync backend (`/api/homesync`)
 
 The API the Android app talks to. No web frontend of its own.

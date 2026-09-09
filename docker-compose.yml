@@ -33,6 +33,7 @@ services:
       HOMEMEDIA_FRONTEND_URL: /media/
       HOMESYNC_INFO_URL: /sync/
       HOMENOTES_FRONTEND_URL: /notes/
+      HOMEVAULT_FRONTEND_URL: /vault/
       # Used for the admin panel's storage-usage lookup (homecore/src/admin.js).
       # No depends_on needed for this one: the fetch has its own short
       # timeout and a fallback if homecloud-backend isn't reachable yet, so
@@ -142,6 +143,30 @@ services:
       start_period: 10s
       retries: 3
 
+  homevault-backend:
+    build: ./apps/homevault-backend
+    restart: unless-stopped
+    # Notice what's NOT here: HOMECLOUD_BACKEND_INTERNAL_URL. HomeVault is
+    # the first app with zero dependency on HomeCloud — it stores only its
+    # own encrypted blobs, never a real file (see
+    # apps/homevault-backend/src/db.js). HomeCore is its only upstream.
+    environment: { DATA_DIR: /data, HOMECORE_INTERNAL_URL: http://homecore:4000 }
+    volumes: [homevault_data:/data]
+    expose: ["4600"]
+    depends_on: { homecore: { condition: service_healthy } }
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:4600/api/homevault/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+  homevault:
+    build: ./apps/homevault
+    restart: unless-stopped
+    depends_on: { homevault-backend: { condition: service_healthy } }
+    expose: ["80"]
+
   # ---------------------------------------------------------------------
   # Operational services.
   # ---------------------------------------------------------------------
@@ -160,6 +185,7 @@ services:
       - homemedia_data:/sources/homemedia:ro
       - homenotes_data:/sources/homenotes:ro
       - homesync_data:/sources/homesync:ro
+      - homevault_data:/sources/homevault:ro
       - ./backups:/backups
 
 volumes:
@@ -168,3 +194,4 @@ volumes:
   homemedia_data:
   homenotes_data:
   homesync_data:
+  homevault_data:

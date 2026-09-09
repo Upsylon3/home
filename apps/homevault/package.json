@@ -1,0 +1,22 @@
+{
+  "name": "homevault",
+  "version": "0.1.0",
+  "description": "HomeVault — a client-side-encrypted password/secrets manager. This frontend holds the only code in the whole ecosystem that ever sees a plaintext secret; the backend (apps/homevault-backend) never does. See src/crypto.js and docs/SECURITY.md.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "hash-wasm": "^4.12.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.18.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "vite": "^5.4.20"
+  }
+}

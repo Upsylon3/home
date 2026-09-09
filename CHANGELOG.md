@@ -5,26 +5,51 @@ All notable changes to this project are documented here. Format follows
 [SemVer](https://semver.org/): one version number for the whole
 ecosystem (see root `package.json`), bumped on any meaningful release.
 
-## [Unreleased]
+## [1.1.0] — HomeVault v0
 
-Added the two governing spec documents (`HOME_MASTER_SPECIFICATION.md`,
-`HOME_ARTISTIC_DIRECTION.md`) to the repo root — previously cited by
-section number throughout the codebase but absent from the repository
-itself (flagged during the [1.0.0] cleanup). Cross-checked a sample of
-citations against them: the implementation matches the spec's intent
-everywhere checked, with one real, documented deviation — see
-`docs/ARCHITECTURE.md`'s note and the new roadmap item on
-`/api/auth`/`/api/admin`/`/api/activity` not being nested under
-`/api/core` the way §10 suggests. Tightened `docs/SECURITY.md`'s
-permission-enforcement note with the precise citation (§28, layer 3).
+The first new application since the [1.0.0] handoff cleanup — a
+client-side-encrypted password/secrets manager, per the build order
+decided below. **v0 is built and tested; it has not had an independent
+security review** — see `docs/SECURITY.md`'s v0 status callout before
+storing anything real in it. This release also folds in a full pass
+resolving every decision left open by the handoff cleanup, and adding
+the two governing spec documents that were missing from the repo.
 
-Resolved every open decision flagged during the [1.0.0] handoff cleanup
-in one pass, so future work isn't blocked re-litigating them. No code
-behavior changed; this is documentation plus one new file.
+### Added — HomeVault v0
+- `apps/homevault-backend` (port 4600) — stores only ciphertext and
+  public KDF parameters; structurally cannot decrypt anything it holds.
+  The first app with zero dependency on `apps/homecloud-backend`. 27
+  tests.
+- `apps/homevault` (port 5177) — vault creation with a one-time
+  recovery-kit display, unlock, recovery (lost password → recovery key
+  → set a new one), item list/create/edit/delete (login/note/card
+  types), settings (change master password, regenerate recovery kit,
+  delete vault). `src/crypto.js` — the actual envelope encryption
+  (Argon2id via `hash-wasm`, AES-256-GCM via the Web Crypto API) — is
+  framework-free specifically so it has its own 18 tests, run in
+  complete isolation from any UI, the same way HomeSync's
+  `pathPlanner.js` is tested apart from Android.
+- Registered in HomeCore's application registry, the gateway, and
+  `docker-compose.yml`, following the existing patterns exactly. Added
+  to the Windows dev launcher (`scripts/dev-home-ui.ps1`) as a new
+  optional checkbox.
+- `docs/SECURITY.md`'s HomeVault section now states plainly what's been
+  verified by automated test, what was followed exactly as designed,
+  and what still needs human review — not just the original design.
 
 ### Added
 - `LICENSE` — proprietary, all rights reserved. Deliberately the most
   restrictive default (easy to relax later, hard to undo the other way).
+- The two governing spec documents (`HOME_MASTER_SPECIFICATION.md`,
+  `HOME_ARTISTIC_DIRECTION.md`) to the repo root — previously cited by
+  section number throughout the codebase but absent from the repository
+  itself (flagged during the [1.0.0] cleanup). Cross-checked a sample of
+  citations against them: the implementation matches the spec's intent
+  everywhere checked, with one real, documented deviation — see
+  `docs/ARCHITECTURE.md`'s note and the roadmap item on
+  `/api/auth`/`/api/admin`/`/api/activity` not being nested under
+  `/api/core` the way §10 suggests. Tightened `docs/SECURITY.md`'s
+  permission-enforcement note with the precise citation (§28, layer 3).
 
 ### Fixed
 - A moderate-severity `qs` advisory, pulled in transitively through
@@ -32,15 +57,19 @@ behavior changed; this is documentation plus one new file.
   pin rather than a breaking Express 5 upgrade — see root
   `package.json`'s comment. `npm audit`: 5 vulnerabilities → 1
   (moderate, dev-server-only — see below).
+- A stale `TRANSITIONAL` comment reference in
+  `apps/homecloud-backend/test/helpers/client.js`, and three stale
+  pre-gateway comments in `theme.js` across `apps/home`,
+  `apps/homemedia`, `apps/homenotes`, found while working nearby.
 
 ### Known, not fixed here
 - `vite`/`esbuild`'s moderate dev-server advisory remains — fixing it
-  needs `vite@8`, a breaking upgrade across all four frontends. Flagged
+  needs `vite@8`, a breaking upgrade across all five frontends. Flagged
   in `docs/ROADMAP.md` and `docs/SECURITY.md` rather than forced through
   without dedicated testing time.
 
 ### Decided (see the linked doc for each; recorded so the reasoning isn't lost)
-- Version stays 1.0.0.
+- Version: 1.1.0 for this release.
 - TLS: private overlay network (Tailscale/WireGuard) is the supported
   path to remote access, not a public reverse-proxy cert — `SECURITY.md`.
 - HomeVault stays on the shared origin, hardened with a strict CSP,

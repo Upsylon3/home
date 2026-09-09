@@ -43,11 +43,16 @@ cd apps/homenotes-backend && HOMECORE_INTERNAL_URL=http://localhost:4000 \
 cd apps/homesync-backend && HOMECORE_INTERNAL_URL=http://localhost:4000 \
   HOMECLOUD_BACKEND_INTERNAL_URL=http://localhost:4500 npm run dev # :4300
 
+# HomeVault's backend — notice: no HOMECLOUD_BACKEND_INTERNAL_URL. It's
+# the only backend with zero dependency on apps/homecloud-backend.
+cd apps/homevault-backend && HOMECORE_INTERNAL_URL=http://localhost:4000 npm run dev # :4600
+
 # Frontends — each is independent, run whichever you're working on
 cd apps/home && npm run dev        # :5174
 cd apps/homecloud && npm run dev   # :5173
 cd apps/homemedia && npm run dev   # :5175
 cd apps/homenotes && npm run dev   # :5176
+cd apps/homevault && npm run dev   # :5177
 ```
 
 Visit whichever frontend's port you started. `homemedia-backend`,
@@ -69,10 +74,10 @@ scripts\dev-home.bat
 
 Opens a small picker UI. Home's own stack (HomeCore, HomeCloud's
 backend, Home's dashboard) always starts; HomeCloud's frontend,
-HomeMedia, HomeNotes, and HomeSync's backend are optional checkboxes.
-Each selected service opens in its own terminal window, already pointed
-at the others via the same env vars listed above — nothing extra to
-type per-service.
+HomeMedia, HomeNotes, HomeSync's backend, and HomeVault are optional
+checkboxes. Each selected service opens in its own terminal window,
+already pointed at the others via the same env vars listed above —
+nothing extra to type per-service.
 
 | Service | Port |
 |---|---:|
@@ -83,6 +88,7 @@ type per-service.
 | HomeMedia backend + frontend *(optional)* | `4200` + `5175` |
 | HomeNotes backend + frontend *(optional)* | `4400` + `5176` |
 | HomeSync backend *(optional — Android app not launched by this)* | `4300` |
+| HomeVault backend + frontend *(optional — v0, not yet security-reviewed)* | `4600` + `5177` |
 
 It also creates any missing `.env` files (from each service's
 `.env.example`) and data directories on first run, and passes HomeCore
@@ -174,12 +180,20 @@ cd apps/homecloud-backend && npm test      # 39 tests
 cd apps/homemedia-backend && npm test      # 18 tests
 cd apps/homenotes-backend && npm test      # 24 tests
 cd apps/homesync-backend && npm test       # 20 tests
+cd apps/homevault-backend && npm test      # 27 tests
+cd apps/homevault && npm test              # 18 tests — crypto.js only, see below
 ```
 
 All use Node's built-in test runner (`node --test`) — no extra
 test-framework dependency. Each test file gets its own fresh, isolated
 temp SQLite database, and `node --test` runs each file in its own
 process, so tests can't leak state into each other.
+
+`apps/homevault` is the one frontend with real tests — its client-side
+encryption module (`src/crypto.js`) is framework-free on purpose, so it
+can be tested directly with `node --test` the same way HomeSync's
+`pathPlanner.js` is, rather than only indirectly through rendering UI.
+No other frontend has automated tests yet.
 
 If you change a frontend, also run `npm run build` in that app — the
 test suites above don't catch a build-time error in a `.jsx` file.

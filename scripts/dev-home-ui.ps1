@@ -19,7 +19,8 @@ $services = @(
     @{ Key='homecloud'; Name='HomeCloud'; Detail='Frontend  :5173 + backend :4500'; Path='apps\homecloud'; Backend='apps\homecloud-backend' },
     @{ Key='homemedia'; Name='HomeMedia'; Detail='Frontend  :5175 + backend :4200'; Path='apps\homemedia'; Backend='apps\homemedia-backend' },
     @{ Key='homenotes'; Name='HomeNotes'; Detail='Frontend  :5176 + backend :4400'; Path='apps\homenotes'; Backend='apps\homenotes-backend' },
-    @{ Key='homesync'; Name='HomeSync backend'; Detail='Backend   :4300 (Android client not launched)'; Path=$null; Backend='apps\homesync-backend' }
+    @{ Key='homesync'; Name='HomeSync backend'; Detail='Backend   :4300 (Android client not launched)'; Path=$null; Backend='apps\homesync-backend' },
+    @{ Key='homevault'; Name='HomeVault'; Detail='Frontend  :5177 + backend :4600 (v0, not yet security-reviewed)'; Path='apps\homevault'; Backend='apps\homevault-backend' }
 )
 
 $form = New-Object System.Windows.Forms.Form
@@ -92,11 +93,11 @@ $launch.Add_Click({
     try {
         $devSecret = 'home-dev-only-change-me'
 
-        foreach ($dir in @('homecore\data','apps\homecloud-backend\data','apps\homemedia-backend\data','apps\homenotes-backend\data','apps\homesync-backend\data')) {
+        foreach ($dir in @('homecore\data','apps\homecloud-backend\data','apps\homemedia-backend\data','apps\homenotes-backend\data','apps\homesync-backend\data','apps\homevault-backend\data')) {
             $full = Join-Path $root $dir
             if (-not (Test-Path $full)) { New-Item -ItemType Directory -Path $full -Force | Out-Null }
         }
-        foreach ($env in @('homecore\.env','apps\homecloud-backend\.env','apps\homemedia-backend\.env','apps\homenotes-backend\.env','apps\homesync-backend\.env')) {
+        foreach ($env in @('homecore\.env','apps\homecloud-backend\.env','apps\homemedia-backend\.env','apps\homenotes-backend\.env','apps\homesync-backend\.env','apps\homevault-backend\.env')) {
             $full = Join-Path $root $env
             if (-not (Test-Path $full)) {
                 $example = "$full.example"
@@ -120,7 +121,8 @@ $launch.Add_Click({
             'HOMECLOUD_FRONTEND_URL=http://localhost:5173/',
             'HOMEMEDIA_FRONTEND_URL=http://localhost:5175/',
             'HOMENOTES_FRONTEND_URL=http://localhost:5176/',
-            'HOMESYNC_INFO_URL=http://localhost:4300/'
+            'HOMESYNC_INFO_URL=http://localhost:4300/',
+            'HOMEVAULT_FRONTEND_URL=http://localhost:5177/'
         ); Run='npm run dev' }
 
         $cmds += @{ Title='HomeCloud backend - :4500'; Dir='apps\homecloud-backend'; Env=@(
@@ -164,6 +166,16 @@ $launch.Add_Click({
                 'HOMECLOUD_BACKEND_INTERNAL_URL=http://localhost:4500',
                 'HOMECORE_INTERNAL_SECRET=' + $devSecret
             ); Run='npm run dev' }
+        }
+        if ($checks['homevault'].Checked) {
+            # No HOMECLOUD_BACKEND_INTERNAL_URL — HomeVault is the only
+            # backend with zero dependency on apps/homecloud-backend.
+            $cmds += @{ Title='HomeVault backend - :4600'; Dir='apps\homevault-backend'; Env=@(
+                'PORT=4600',
+                'DATA_DIR=' + (Join-Path $root 'apps\homevault-backend\data'),
+                'HOMECORE_INTERNAL_URL=http://localhost:4000'
+            ); Run='npm run dev' }
+            $cmds += @{ Title='HomeVault frontend - :5177'; Dir='apps\homevault'; Env=@(); Run='npm run dev' }
         }
 
         foreach ($c in $cmds) {

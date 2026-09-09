@@ -169,12 +169,42 @@ function seedHomeNotesApplication() {
   return info.lastInsertRowid;
 }
 
+// The first application with no dependency on HomeCloud at all — it
+// stores its own encrypted blobs, never a real file (see
+// apps/homevault-backend/src/db.js). Its permission grant below is
+// deliberately empty: everything it does is scoped to its own database
+// through ordinary ownership checks, not through anything in
+// DEFAULT_PERMISSIONS above (none of which describe "read/write your
+// own vault" — that's not a cross-app concern the permission catalog
+// needs to know about).
+function seedHomevaultApplication() {
+  const baseUrl = process.env.HOMEVAULT_FRONTEND_URL || "/vault";
+
+  const existing = db.prepare("SELECT id FROM hc_applications WHERE slug = 'homevault'").get();
+  if (existing) {
+    db.prepare("UPDATE hc_applications SET base_url = ?, updated_at = datetime('now') WHERE id = ?").run(
+      baseUrl,
+      existing.id
+    );
+    return existing.id;
+  }
+
+  const info = db
+    .prepare(
+      `INSERT INTO hc_applications (slug, name, description, version, icon, base_url, health_url, enabled)
+       VALUES ('homevault', 'HomeVault', 'Client-side-encrypted password and secrets manager', '0.1.0', '/icons/homevault.svg', ?, '/api/homevault/health', 1)`
+    )
+    .run(baseUrl);
+  return info.lastInsertRowid;
+}
+
 function runSeed() {
   seedPermissions();
   seedHomecloudApplication();
   seedHomeMediaApplication();
   seedHomeSyncApplication();
-  return seedHomeNotesApplication();
+  seedHomeNotesApplication();
+  return seedHomevaultApplication();
 }
 
 module.exports = { runSeed, DEFAULT_PERMISSIONS };

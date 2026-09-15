@@ -15,7 +15,18 @@ function requireAuth(req, res, next) {
 
   let payload;
   try {
-    payload = jwt.verify(token, process.env.JWT_SECRET);
+    // Explicit, not strictly required — verified directly against this
+    // project's pinned jsonwebtoken@9.0.3 that a forged `alg: "none"`
+    // token is already rejected by default ("jwt signature is
+    // required"), and the classic RS256-signed-as-HS256 confusion
+    // attack has nothing to attach to here since this project only
+    // ever signs with a single HMAC secret — no public/private keypair
+    // exists anywhere for an attacker to redirect verification onto.
+    // Pinning the allow-list anyway means that stays true regardless of
+    // a future change (a new sign call using a different algorithm, a
+    // library upgrade with different defaults) rather than depending on
+    // today's default continuing to be safe.
+    payload = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ["HS256"] });
   } catch (err) {
     return res.status(401).json({ error: "Invalid or expired token." });
   }

@@ -15,6 +15,23 @@ fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 const db = new Database(path.join(DATA_DIR, "homecloud.db"));
 db.pragma("journal_mode = WAL");
 db.pragma("busy_timeout = 5000");
+// Explicit, not strictly required: a security review raised the
+// question of whether `ON DELETE CASCADE` below (folders.parent_id,
+// shares.file_id) actually does anything, since plain SQLite disables
+// foreign-key enforcement by default and it's a per-connection setting,
+// not a database-wide one. Checked directly — the version of
+// better-sqlite3 this project pins (see package.json) bundles a build
+// of SQLite with foreign keys already ON by default, confirmed with a
+// real INSERT/DELETE/verify against a throwaway in-memory database, not
+// just by reading `PRAGMA foreign_keys`'s reported value. Cascades were
+// never actually broken. This line is set anyway, explicitly, so that
+// stays true even if a future dependency upgrade ships a build compiled
+// with a different default — correctness here shouldn't depend on an
+// implicit default silently continuing to be what it happens to be
+// today. (apps/homecloud-backend/test/folders.test.js's own cascade
+// test — new as of this review, not existing before it — is what a
+// real regression would actually be caught by, pragma or not.)
+db.pragma("foreign_keys = ON");
 
 // `user_id`/`created_by` are plain INTEGER columns, not foreign keys into
 // a `users` table — there is no `users` table in this database. Identity

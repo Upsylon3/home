@@ -173,3 +173,28 @@ test("deleting a vault cascades to its items", async () => {
   const res = await client.get(`/api/homevault/vault/items/${item.body.item.id}`);
   assert.equal(res.status, 404, "an item from a destroyed vault must not resurface under the new one");
 });
+
+// A stronger check than the one above: that test alone doesn't actually
+// prove the old item row is gone — a freshly recreated vault gets a new
+// autoincrement id, so the item would be unreachable through it either
+// way, cascade or not. This queries the database directly (see db.js's
+// foreign_keys pragma comment) to confirm the row itself, not just one
+// path to it, is really gone — the test that would actually catch a
+// regression if cascade behavior ever stopped working.
+test("deleting a vault removes its items' rows from the database, not just from view", async () => {
+  const started = await startTestApp();
+  const { client } = await registerHomevaultUser(homecore, homevaultBaseUrl);
+  await client.post("/api/homevault/vault", fakeEnvelope());
+  const item = await client.post("/api/homevault/vault/items", {
+    type: "note",
+    encryptedTitle: "dGl0bGU=",
+    encryptedTitleIv: "aXY=",
+    encryptedData: "ZGF0YQ==",
+    encryptedDataIv: "aXYy"
+  });
+
+  await client.delete("/api/homevault/vault");
+
+  const row = started.db.prepare("SELECT id FROM vault_items WHERE id = ?").get(item.body.item.id);
+  assert.equal(row, undefined, "the item row must be gone from the database entirely, not just orphaned");
+});

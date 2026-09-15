@@ -138,10 +138,29 @@ started.
 ## 5. The gateway
 
 A single public entry point (`gateway/nginx.conf`, published at
-container port 8080) that puts every frontend behind one browser origin,
-which is what makes shared login real — every frontend reads/writes the
-same `homecloud_token` key in `localStorage`, and that only works
-same-origin.
+container port 8080) that puts every frontend behind one browser origin.
+
+**Correction (found during the security review that produced
+`docs/SECURITY.md`'s "Shared-origin XSS" entry):** this section used to
+claim the single origin gives every frontend a *shared login*, by
+reading/writing one common `homecloud_token` key in `localStorage`.
+That's not what the code does, and never was — there is no
+session-sharing mechanism anywhere in this codebase (no shared cookie,
+no token forwarded on cross-app navigation, no silent re-auth against
+HomeCore). Each frontend keeps its own key — `home_token`,
+`homecloud_token`, `homemedia_token`, `homenotes_token`,
+`homevault_token` (`apps/*/src/api.js`) — and each independently
+prompts for login, against the same HomeCore identity backend, with the
+same account credentials. `hc_sessions` (HomeCore's session table)
+tracks those logins individually for "sign out everywhere" and the
+active-sessions list — it doesn't unify them into one.
+
+What the single origin actually buys is simpler routing (the table
+below) and, once TLS exists, one termination point — and, as the direct
+flip side of that, one shared *attack* surface: a same-origin script
+can read **any** app's token regardless of which key it's under, which
+is exactly the premise behind `docs/SECURITY.md`'s "Shared-origin XSS"
+threat-catalog entry.
 
 Routing, as implemented:
 

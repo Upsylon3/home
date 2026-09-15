@@ -179,7 +179,10 @@ router.post(
 
     let payload;
     try {
-      payload = jwt.verify(pendingToken, process.env.JWT_SECRET);
+      // Explicit allow-list — see authMiddleware.js's identical line for
+      // the full explanation of why this is hardening, not a fix for a
+      // live bug.
+      payload = jwt.verify(pendingToken, process.env.JWT_SECRET, { algorithms: ["HS256"] });
     } catch {
       return res.status(401).json({ error: "That login attempt has expired. Please log in again." });
     }

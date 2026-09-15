@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useOutletContext, useParams } from "react-router-dom";
-import { marked } from "marked";
+import { renderMarkdownToSafeHtml } from "../markdown.js";
 import { api } from "../api.js";
 import { StarGlyph, TrashGlyph, PaperclipGlyph, HistoryGlyph, FolderGlyph, TagGlyph } from "../components/icons.jsx";
 
@@ -262,8 +262,8 @@ export default function NoteEditor() {
             placeholder="Start writing in Markdown…"
           />
         ) : (
-          // eslint-disable-next-line react/no-danger -- rendering the note's own Markdown is the entire point of a preview pane; content is the person's own, never third-party HTML
-          <div className="note-editor-preview" dangerouslySetInnerHTML={{ __html: marked.parse(content || "") }} />
+          // eslint-disable-next-line react/no-danger -- output is sanitized by renderMarkdownToSafeHtml (DOMPurify) — see that function's header comment
+          <div className="note-editor-preview" dangerouslySetInnerHTML={{ __html: renderMarkdownToSafeHtml(content) }} />
         )}
       </div>
 

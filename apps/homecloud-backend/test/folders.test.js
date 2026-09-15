@@ -133,6 +133,36 @@ test("delete: empty folder removes cleanly; non-empty requires force and trashes
   assert.equal(trash.body.files.some((f) => f.id === upload.body.file.id), true);
 });
 
+// New as of a security review that asked whether ON DELETE CASCADE
+// (folders.parent_id) actually does anything, since deleting only the
+// root of a subtree (folders.js's DELETE /:id) relies entirely on it to
+// remove every descendant. Checked directly (see db.js's foreign_keys
+// pragma comment): this project's pinned better-sqlite3 already
+// enforces foreign keys by default, so the cascade does work today —
+// but there was no test proving that before this one, meaning a future
+// change that broke it (a dependency downgrade, a differently-compiled
+// SQLite build) would have gone unnoticed. This is what would actually
+// catch that regression; checking the child id is genuinely gone from
+// a full listing, not just unreachable through one particular path.
+test("delete cascades to every descendant subfolder, not just the one deleted directly", async () => {
+  const { client } = await registerUser();
+  const top = await client.post("/api/homecloud/folders", { name: "CascadeTop" });
+  const child = await client.post("/api/homecloud/folders", { name: "CascadeChild", parentId: top.body.folder.id });
+  const grandchild = await client.post("/api/homecloud/folders", {
+    name: "CascadeGrandchild",
+    parentId: child.body.folder.id
+  });
+
+  const del = await client.delete(`/api/homecloud/folders/${top.body.folder.id}`);
+  assert.equal(del.status, 200);
+
+  const all = await client.get("/api/homecloud/folders/all");
+  const remainingIds = all.body.folders.map((f) => f.id);
+  assert.equal(remainingIds.includes(top.body.folder.id), false, "the deleted root must be gone");
+  assert.equal(remainingIds.includes(child.body.folder.id), false, "the child must be gone too, via cascade");
+  assert.equal(remainingIds.includes(grandchild.body.folder.id), false, "the grandchild must be gone too, via cascade");
+});
+
 test("folders are isolated per user", async () => {
   const owner = await registerUser();
   const stranger = await registerUser();

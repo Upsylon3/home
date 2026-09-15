@@ -121,6 +121,28 @@ test("GET /api/auth/me requires a valid token and returns identity + quotaOverri
   assert.equal(me.body.totpEnabled, false);
 });
 
+// Regression test for the explicit `algorithms: ["HS256"]` allow-list
+// added to jwt.verify() in authMiddleware.js and auth.js's 2fa/verify
+// route. Confirmed empirically (outside this test, in a throwaway
+// script) that the pinned jsonwebtoken@9.0.3 already rejects a forged
+// `alg: "none"` token by default — this isn't fixing a live bug. The
+// test exists so that stays true if the signing/verification code ever
+// changes, rather than depending on an assumption re-verified once and
+// then forgotten.
+test("a forged alg:none token is rejected, not treated as an authenticated session", async () => {
+  const header = Buffer.from(JSON.stringify({ alg: "none", typ: "JWT" })).toString("base64url");
+  // sub: 1 targets the first account ever created in this test file's
+  // isolated app instance, which is the admin (see the very first test
+  // in this file) — the payload a real attacker would pick.
+  const payload = Buffer.from(JSON.stringify({ sub: 1, username: "first_admin" })).toString("base64url");
+  const forged = `${header}.${payload}.`;
+
+  const client = makeClient(baseUrl);
+  client.setToken(forged);
+  const res = await client.get("/api/auth/me");
+  assert.equal(res.status, 401);
+});
+
 test("change-password rejects a wrong current password, and on success invalidates the old token", async () => {
   const { client, password } = await registerUser(baseUrl);
 

@@ -77,3 +77,20 @@ test("a token with a future expiry still works", async () => {
   assert.equal(res.status, 200);
   assert.equal(Buffer.from(res.body).toString("utf8"), content);
 });
+
+// Distinct from the trash test above: trashing only *marks* a file
+// deleted (fileDeletedAt check in publicShare.js), but permanent
+// deletion actually removes the files row — a genuinely different code
+// path (files.js's DELETE /:id/permanent), and the one that depends on
+// shares.file_id's ON DELETE CASCADE actually working (see db.js's
+// foreign_keys pragma comment) rather than a plain deleted_at check.
+test("a share token for a permanently-deleted file 404s, not just a trashed one", async () => {
+  const { client } = await registerUser();
+  const { fileId, token } = await uploadAndShare(client);
+
+  await client.delete(`/api/homecloud/files/${fileId}`); // trash first — permanent delete requires it
+  await client.delete(`/api/homecloud/files/${fileId}/permanent`);
+
+  const res = await makeClient(baseUrl).get(`/api/share/${token}`);
+  assert.equal(res.status, 404);
+});

@@ -36,10 +36,12 @@ first (see below).
    frontend but HomeCloud's, and an Android adaptive-icon split — see
    `DESIGN_SYSTEM.md`. Typeface and accent color are now final, not
    open questions.
-5. **Upgrade to `vite@8`** across all five frontends, to clear a
-   moderate, dev-server-only `esbuild` advisory — see `SECURITY.md`.
-   Breaking change; budget time to verify each app's dev and build
-   modes, not a drop-in bump.
+5. **Upgrade to `vite@8`** across all five frontends, to clear four
+   dev-server-only advisories (one now high-severity, not just the
+   original moderate `esbuild` one) — see `SECURITY.md`. Breaking
+   change; budget time to verify each app's dev and build modes, not a
+   drop-in bump. Worth moving up in priority given the severity
+   increase found during the latest security review.
 6. **Fix the `/api/auth`, `/api/admin`, `/api/activity` route-nesting
    inconsistency** flagged in `ARCHITECTURE.md` — `HOME_MASTER_SPECIFICATION.md`
    §10 calls for these under `/api/core/...`; they're top-level instead,

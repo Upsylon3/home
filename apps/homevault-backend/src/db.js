@@ -14,6 +14,13 @@ fs.mkdirSync(DATA_DIR, { recursive: true });
 const db = new Database(path.join(DATA_DIR, "homevault.db"));
 db.pragma("journal_mode = WAL");
 db.pragma("busy_timeout = 5000");
+// Explicit, not strictly required — see
+// apps/homecloud-backend/src/db.js's identical line for the full
+// explanation: verified directly that this project's pinned
+// better-sqlite3 already defaults foreign keys to on, so the
+// ON DELETE CASCADE below was never silently broken. Set anyway so
+// that stays true regardless of a future dependency upgrade's default.
+db.pragma("foreign_keys = ON");
 
 db.exec(`
   -- One vault per user. The "envelope" this table stores:

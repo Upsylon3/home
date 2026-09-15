@@ -27,6 +27,12 @@ threat model — a design document with no implementation yet.
   admin-overridable).
 - File/folder/note ownership enforced server-side on every route —
   never a frontend check.
+- HomeNotes' Markdown preview is sanitized with `DOMPurify.sanitize()`
+  (`apps/homenotes/src/markdown.js`) before it ever reaches
+  `dangerouslySetInnerHTML`. Not a precaution — a real, confirmed stored
+  XSS was found and fixed here during this review; see "Shared-origin
+  XSS" below for why it mattered more than an ordinary XSS bug would on
+  this project specifically.
 - Docker builds use `npm ci` against locked dependency versions, not a
   fresh resolve, so a rebuild months later can't silently pull different
   package versions than what was tested.
@@ -38,15 +44,30 @@ threat model — a design document with no implementation yet.
   pin in the root `package.json`, without needing a breaking Express 5
   upgrade — see that file's own comment.
 
-**One known, open vulnerability, dev-only:** every frontend's `vite`
-(and its `esbuild` dependency) has a moderate advisory
+**Known, open vulnerabilities, all dev-only:** every frontend's `vite`
+(and its `esbuild` dependency) carries four advisories as of this
+review — up from the one moderate `esbuild` advisory
 ([GHSA-67mh-4wv8-2f99](https://github.com/advisories/GHSA-67mh-4wv8-2f99))
-— a malicious website a developer visits could send requests to their
-local `vite dev` server and read the response. It does not affect
-production (nginx serves pre-built static files, never the dev server).
-Fixing it means `vite@8`, a breaking major upgrade across all five
-frontends — deliberately not forced through as part of this pass; budget
-real time to test each frontend's dev and build modes before taking it.
+this section originally named; `npm audit` now additionally reports:
+[GHSA-4w7w-66w2-5vf9](https://github.com/advisories/GHSA-4w7w-66w2-5vf9)
+(moderate — path traversal in the dev server's optimized-deps `.map`
+handling), [GHSA-v6wh-96g9-6wx3](https://github.com/advisories/GHSA-v6wh-96g9-6wx3)
+(moderate — NTLMv2 hash disclosure via UNC path handling in the
+dev-server-only "open in editor" feature), and
+[GHSA-fx2h-pf6j-xcff](https://github.com/advisories/GHSA-fx2h-pf6j-xcff)
+(**high**, CVSS 7.5 — a `server.fs.deny` bypass on Windows alternate
+paths). Every one of these, by its own description, is a `vite dev`
+server behavior (dev-server request handling, dev-server file-serving
+config, a dev-server editor-launch feature) — none of it runs in
+production, where nginx serves pre-built static files and the dev
+server never starts. Fixing all four means the same `vite@8` breaking
+major upgrade across all five frontends already planned for the
+original advisory — deliberately not forced through as part of this
+review either, for the same reason (budget real time to verify each
+frontend's dev and build modes, not a drop-in bump) — but the severity
+has moved from "moderate, one advisory" to "high present among four,"
+which changes how much longer this should sit on the roadmap
+unaddressed. See `docs/ROADMAP.md`.
 
 ## What's not covered yet
 
@@ -74,10 +95,37 @@ real time to test each frontend's dev and build modes before taking it.
   until HomeVault actually needs it, rather than built speculatively
   ahead of a real consumer — but it's a hard
   prerequisite for HomeVault specifically, not indefinitely optional.
+- **Minor, low-severity: `/api/auth/login` reveals whether a disabled
+  account exists.** An unknown username and a wrong password for a real
+  account both return the same generic "Incorrect username or
+  password." (good — no ordinary credential-guessing enumeration), but
+  a disabled account gets its own distinct message ("This account has
+  been disabled..."), which tells an attacker guessing usernames that
+  one exists and is disabled. Noted during this review, not changed:
+  telling a legitimate locked-out user why they can't log in is a
+  reasonable trade-off, and what leaks is account existence plus
+  disabled status, not credentials — low enough stakes that changing
+  it wasn't treated as urgent, but worth a conscious call rather than
+  an unnoticed gap.
 - No email-based password reset (an admin-panel reset is the intentional
   substitute — no outgoing mail server to run).
 - No account-deletion flow — only disable. See
   `ARCHITECTURE.md` §6 for the gap this leaves once one is added.
+- **Every backend's `CORS_ORIGIN` defaults to `*` when unset — and
+  confirmed, not assumed, during this review: `docker-compose.yml`
+  never sets it for any service, so every backend actually ships with
+  wide-open CORS today,** not just as a fallback for an operator who
+  forgot to configure it. The practical risk is low specifically
+  because this ecosystem authenticates with Bearer tokens read from
+  each app's own `localStorage`, never cookies — none of the `cors()`
+  calls set `credentials: true` (checked directly in each backend's
+  `app.js`), and a wildcard origin plus no credentials means a
+  malicious page can't get a browser to attach anything of the victim's
+  to a cross-origin request in the first place; it would need the
+  token already, which is exactly what "Shared-origin XSS" above is
+  about, not a new exposure this adds. Still open, still worth setting
+  explicitly per-service once real domains exist, rather than relying
+  on this reasoning indefinitely.
 
 ## HomeVault threat model and v0 status
 
@@ -190,7 +238,7 @@ re-wrap, not an O(n) re-encryption of the whole vault.
 |---|---|
 | **Server/DB compromise** | Everything stored is ciphertext + minimal metadata — the core promise the whole design exists for, including making a leaked backup harmless as long as Argon2id parameters resist offline attack. |
 | **Network interception** | Blocking prerequisite: the gateway has no TLS yet. Not shippable for a password manager without it, even on a "trusted" home LAN. |
-| **Shared-origin XSS** | The gateway's SSO design means every app on the origin shares one security perimeter — a stored XSS bug in *any* app can read the shared session token. **Decided:** stay on the shared origin (simpler ops, one cert, consistent with every other app) rather than a separate origin just for HomeVault, on the condition that the mitigation is real, not aspirational: a strict CSP project-wide, no `dangerouslySetInnerHTML`/`innerHTML` with untrusted content anywhere, and the decrypted vault key kept tab-lifetime-only, never in `localStorage`. |
+| **Shared-origin XSS** | Every app on the gateway's single origin shares one security perimeter — a stored XSS bug in *any* app can read *every* app's token out of `localStorage`, HomeVault's included, regardless of each app keeping its own key name (`home_token`, `homecloud_token`, `homemedia_token`, `homenotes_token`, `homevault_token` — see `ARCHITECTURE.md` §5; same-origin script access doesn't care that the keys differ). **Decided:** stay on the shared origin (simpler ops, one cert, consistent with every other app) rather than a separate origin just for HomeVault, on the condition that the mitigation is real, not aspirational: a strict CSP project-wide, no unsanitized `dangerouslySetInnerHTML`/`innerHTML` with untrusted content anywhere, and the decrypted vault key kept tab-lifetime-only, never in `localStorage`. **That condition was violated in practice, found, and fixed during this review:** HomeNotes' Markdown preview rendered `marked.parse()` output straight into `dangerouslySetInnerHTML` with zero sanitization — a real, confirmed path from a note's content (including pasted content, completely ordinary use of a notes app) to a script that reads every app's token, HomeVault's included. Fixed by routing through `DOMPurify.sanitize()` (`apps/homenotes/src/markdown.js`, tested in `apps/homenotes/test/markdown.test.js`); see `CHANGELOG.md`. Re-confirmed via grep that this was the *only* `dangerouslySetInnerHTML`/raw-HTML-injection site in `apps/*/src` — worth re-checking on every future app addition, not a one-time sweep. |
 | **Sibling application overreach via HomeCore** | HomeCore's permission system is declarative, not enforced (see above). Encryption itself — not HomeCore's authorization layer — is what actually stops this: a fully compromised sibling app still only gets ciphertext. |
 | **Malicious/compromised HomeVault backend code** | Structurally limited — the server is never sent plaintext to begin with, so there's nothing to exfiltrate unless the *client* is also compromised. |
 | **HomeCore admin overreach** | An admin can disable an account or force a full vault reset (destroying the wrapped key — the user loses their own vault too), but cannot decrypt existing items. No admin-only route should ever return decrypted contents, for any reason including support requests. |

@@ -36,18 +36,19 @@ first (see below).
    frontend but HomeCloud's, and an Android adaptive-icon split — see
    `DESIGN_SYSTEM.md`. Typeface and accent color are now final, not
    open questions.
-5. **Upgrade to `vite@8`** across all five frontends, to clear four
-   dev-server-only advisories (one now high-severity, not just the
-   original moderate `esbuild` one) — see `SECURITY.md`. Breaking
-   change; budget time to verify each app's dev and build modes, not a
-   drop-in bump. Worth moving up in priority given the severity
-   increase found during the latest security review.
-6. **Fix the `/api/auth`, `/api/admin`, `/api/activity` route-nesting
+5. **Fix the `/api/auth`, `/api/admin`, `/api/activity` route-nesting
    inconsistency** flagged in `ARCHITECTURE.md` — `HOME_MASTER_SPECIFICATION.md`
    §10 calls for these under `/api/core/...`; they're top-level instead,
    a holdover from before HomeCore existed. Not urgent (nothing's
    broken), but a real deviation worth resolving deliberately rather
    than leaving as an accident of history.
+6. **Run `docker-compose build && docker-compose up` end-to-end** to
+   confirm the `node:22-slim` base-image bump (see `SECURITY.md`)
+   actually builds and boots every service — done from an environment
+   without Docker available, so this was reasoned through (same Debian
+   base, no Node-20-specific detail anywhere else in any Dockerfile,
+   the native `better-sqlite3` build confirmed to have no conflicting
+   engine requirement) but never run.
 
 **Settled, not open questions anymore** (kept here so the reasoning
 isn't lost): TLS approach (private overlay, not public certs —

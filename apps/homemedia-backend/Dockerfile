@@ -1,4 +1,4 @@
-FROM node:20-slim
+FROM node:22-slim
 
 # better-sqlite3 and sharp are native modules; these build tools are a
 # safety net in case a prebuilt binary isn't available for your platform.

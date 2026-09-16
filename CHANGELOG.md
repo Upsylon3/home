@@ -5,6 +5,62 @@ All notable changes to this project are documented here. Format follows
 [SemVer](https://semver.org/): one version number for the whole
 ecosystem (see root `package.json`), bumped on any meaningful release.
 
+## [1.1.2] — Clearing the [1.1.1] security review's open items
+
+Follow-up to [1.1.1]: fixes the `vite`/`esbuild` advisories that
+review deliberately deferred, plus one more finding surfaced while
+checking compatibility for that fix — an EOL base image affecting
+every service, not just the frontends.
+
+### Fixed
+- **All four `vite`/`esbuild` dev-server advisories**
+  ([GHSA-67mh-4wv8-2f99](https://github.com/advisories/GHSA-67mh-4wv8-2f99),
+  [GHSA-4w7w-66w2-5vf9](https://github.com/advisories/GHSA-4w7w-66w2-5vf9),
+  [GHSA-v6wh-96g9-6wx3](https://github.com/advisories/GHSA-v6wh-96g9-6wx3),
+  [GHSA-fx2h-pf6j-xcff](https://github.com/advisories/GHSA-fx2h-pf6j-xcff))
+  — `vite` bumped `^5.4.20` → `^8.3.0` and `@vitejs/plugin-react`
+  `^4.3.1` → `^6.1.1` across all five frontends. `npm audit` goes from
+  4 advisories (1 high, 3 moderate) to 0. Checked the vite 5→8 migration
+  notes against every frontend's actual `vite.config.js` first — plain
+  `react()` plugin, `server.port`/`proxy`/`base` only, nothing
+  esbuild-specific or SSR-specific — so this landed with zero config
+  changes needed, matching what Vite's own migration guide says to
+  expect for a project shaped like this. Verified, not just built
+  clean: each frontend's dev server was actually started and hit with
+  a real request (confirmed React Fast Refresh injection and the JSX
+  transform both still work), on top of all five production builds
+  succeeding and the full test suite still passing.
+- **Every Dockerfile in the repo (all 11 — every frontend and every
+  backend) was pinned to `node:20-slim`.** Found as a side effect of
+  checking Node-version compatibility for the `vite@8` upgrade above,
+  not something this review went looking for — and confirmed against
+  Node's own release schedule, not assumed: **Node.js 20 reached
+  end-of-life on 2026-04-30** and has received no security patches
+  since. Unlike the `vite` advisories above, this one is not dev-only —
+  it's every service's actual production base image. Bumped to
+  `node:22-slim` (Maintenance LTS, security support through
+  2027-04-30) in all 11 Dockerfiles, and `docs/DEVELOPMENT.md`'s
+  "Node.js 20+" prerequisite to "Node.js 22+" to match. Checked first
+  that this doesn't trip a `better-sqlite3` requirement this project
+  can't meet yet: confirmed directly (not by reading the registry's
+  "latest" dist-tag, which is an unrelated, much newer 13.x line with
+  its own newer floor) that the version this project's `^11.3.0` range
+  actually resolves to, 11.10.0, declares no `engines` constraint at
+  all.
+
+### Known limitation of this entry
+- The Dockerfile change above was made from an environment without
+  Docker available, so `docker-compose build && docker-compose up`
+  was never actually run against it. The change itself is low-risk
+  (same Debian base as `node:20-slim`, same package manager, nothing
+  else in any Dockerfile references a Node-20-specific detail) and was
+  reasoned through carefully, but reasoning through a Docker change
+  and watching it boot are different kinds of confidence — see
+  `docs/ROADMAP.md`.
+
+Verified: all 205 tests still pass, all 5 frontends build clean against
+`vite@8`, `npm audit` reports 0 vulnerabilities (was 4).
+
 ## [1.1.1] — Security review pass
 
 A self-review of the whole codebase (no independent audit available —

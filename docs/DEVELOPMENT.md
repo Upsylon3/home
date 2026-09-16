@@ -2,7 +2,9 @@
 
 ## Prerequisites
 
-- Node.js 20+ and npm
+- Node.js 22+ and npm (bumped from 20+ during the [1.1.2] security
+  review — Node 20 reached end-of-life on 2026-04-30 and no longer
+  receives security patches; see `docs/SECURITY.md`)
 - Docker (optional for local dev, required for the full stack — see
   [DEPLOYMENT.md](DEPLOYMENT.md))
 - Android Studio, only if working on `apps/homesync-android`
@@ -104,7 +106,7 @@ The secret this script sets (`JWT_SECRET`, `HOMECORE_INTERNAL_SECRET`)
 is a fixed, published dev-only value — fine for a throwaway local
 database, **never reuse it for a real deployment**.
 
-Requires Node.js 20+ and npm in `PATH`; runs `npm install` automatically
+Requires Node.js 22+ and npm in `PATH`; runs `npm install` automatically
 on first launch if `node_modules` is missing. macOS/Linux: use the
 manual commands above instead — this launcher is Windows-only.
 

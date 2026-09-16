@@ -44,30 +44,35 @@ threat model — a design document with no implementation yet.
   pin in the root `package.json`, without needing a breaking Express 5
   upgrade — see that file's own comment.
 
-**Known, open vulnerabilities, all dev-only:** every frontend's `vite`
-(and its `esbuild` dependency) carries four advisories as of this
-review — up from the one moderate `esbuild` advisory
-([GHSA-67mh-4wv8-2f99](https://github.com/advisories/GHSA-67mh-4wv8-2f99))
-this section originally named; `npm audit` now additionally reports:
-[GHSA-4w7w-66w2-5vf9](https://github.com/advisories/GHSA-4w7w-66w2-5vf9)
-(moderate — path traversal in the dev server's optimized-deps `.map`
-handling), [GHSA-v6wh-96g9-6wx3](https://github.com/advisories/GHSA-v6wh-96g9-6wx3)
-(moderate — NTLMv2 hash disclosure via UNC path handling in the
-dev-server-only "open in editor" feature), and
-[GHSA-fx2h-pf6j-xcff](https://github.com/advisories/GHSA-fx2h-pf6j-xcff)
-(**high**, CVSS 7.5 — a `server.fs.deny` bypass on Windows alternate
-paths). Every one of these, by its own description, is a `vite dev`
-server behavior (dev-server request handling, dev-server file-serving
-config, a dev-server editor-launch feature) — none of it runs in
-production, where nginx serves pre-built static files and the dev
-server never starts. Fixing all four means the same `vite@8` breaking
-major upgrade across all five frontends already planned for the
-original advisory — deliberately not forced through as part of this
-review either, for the same reason (budget real time to verify each
-frontend's dev and build modes, not a drop-in bump) — but the severity
-has moved from "moderate, one advisory" to "high present among four,"
-which changes how much longer this should sit on the roadmap
-unaddressed. See `docs/ROADMAP.md`.
+**Resolved since the last review:** every frontend's `vite` (and its
+`esbuild` dependency) previously carried four dev-server-only advisories
+— one high severity — tracked in this section until the `vite@8`
+upgrade landed. `npm audit` reports zero vulnerabilities as of this
+writing. See `CHANGELOG.md`'s `[1.1.2]` entry for the advisory IDs and
+what the upgrade involved.
+
+**Resolved since the last review, and unrelated to the above:** every
+Dockerfile in this repo (all eleven — every frontend and every backend)
+was pinned to `node:20-slim`. Found while checking Node-version
+compatibility for the `vite@8` upgrade above, **confirmed against
+Node's own release schedule, not assumed:** Node.js 20 reached
+end-of-life on 2026-04-30 and has not received a security patch since
+— a live gap in every service's production base image, not a
+dev-only one like the `vite` advisories. Bumped to `node:22-slim`
+(Maintenance LTS, security support through 2027-04-30) across all
+eleven Dockerfiles and `docs/DEVELOPMENT.md`'s prerequisites. Checked
+first that this doesn't newly require a `better-sqlite3` upgrade this
+project can't take: the version this project's `^11.3.0` range actually
+resolves to (11.10.0, confirmed directly, not just read off the
+registry's "latest" dist-tag, which is a much later, unrelated 13.x
+line with its own newer Node floor) declares no `engines` constraint at
+all. **Not independently verified end-to-end:** the actual
+`docker-compose build` couldn't be run in the environment this review
+was done in (no Docker available there) — the image bump itself is
+low-risk (same Debian base, same package manager, nothing else in any
+Dockerfile references a Node-20-specific detail), but building and
+booting the full stack once is still worth doing explicitly before this
+is considered fully closed.
 
 ## What's not covered yet
 

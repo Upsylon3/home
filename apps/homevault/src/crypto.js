@@ -26,11 +26,18 @@ import { argon2id } from "hash-wasm";
 // a new vault or the next master-password change.
 export const DEFAULT_KDF_PARAMS = { m: 19456, t: 2, p: 1 };
 
-// A fixed, known plaintext. Encrypting it under a freshly-derived/
-// unwrapped vault key and comparing the result against what's stored
-// lets the UI say "that password is wrong" immediately, instead of only
-// finding out indirectly when decrypting the first real item fails (or,
-// worse, not failing loudly — see the note on AES-GCM below).
+// A fixed, known plaintext. A copy of it, encrypted once under the real
+// vault key at creation time, is stored alongside the wrapped keys.
+// On unlock, decrypting that stored copy with the freshly-derived/
+// unwrapped key and checking the result equals VERIFIER_PLAINTEXT lets
+// the UI say "that password is wrong" immediately (see Unlock.jsx and
+// Recover.jsx), instead of only finding out indirectly when decrypting
+// the first real item fails. The comparison isn't what actually
+// provides security here — AES-GCM's own authentication tag already
+// makes `decryptBytes` throw on a wrong key before this check ever
+// runs (see decryptBytes below); this is a deliberately redundant,
+// explicit belt-and-suspenders check on top of that, not a substitute
+// for it.
 export const VERIFIER_PLAINTEXT = "homevault-verify-v1";
 
 const AES_KEY_USAGES = ["encrypt", "decrypt"];
@@ -97,13 +104,62 @@ export function base32ToBytes(str) {
 // to visually check in chunks, a well-worn convention (license/product
 // keys, 2FA recovery codes) for exactly this "a human needs to copy this
 // correctly" problem.
+//
+// The last group is a single checksum character (see crc8 below), not
+// key material — it exists purely so a mistyped/mis-scanned character
+// is caught immediately, with a clear "you made a typo" message, rather
+// than silently producing a different, wrong 32-byte key that only
+// fails much later (and unhelpfully) when it doesn't unwrap the vault.
+// This is error *detection*, not a security control — it's exactly as
+// guessable as any other single base32 character, so it adds no
+// meaningful resistance if someone is deliberately guessing recovery
+// keys (rate limiting and the key's own 256 bits of entropy already
+// handle that).
 export function formatRecoveryKey(bytes) {
-  const raw = bytesToBase32(bytes);
+  const raw = bytesToBase32(withChecksum(bytes));
   return raw.match(/.{1,5}/g).join("-");
 }
 
+// Throws with a distinct, recognizable message if the checksum doesn't
+// match — callers (see Recover.jsx) use this to tell "you mistyped
+// this" apart from "this key is correctly formed but doesn't unlock
+// this particular vault," which need different messages to actually be
+// useful to someone who's already stressed about being locked out.
 export function parseRecoveryKey(formatted) {
-  return base32ToBytes(formatted);
+  const bytes = base32ToBytes(formatted);
+  return withoutChecksum(bytes);
+}
+
+// A minimal CRC-8 (poly 0x07, the standard/"CRC-8/SMBUS" variant) —
+// deliberately not cryptographic. Its only job is catching an
+// accidental single-character transcription error before it wastes a
+// vault-unwrap attempt, not resisting a deliberate attacker (who would
+// just recompute it, trivially, since it's neither secret nor keyed).
+function crc8(bytes) {
+  let crc = 0x00;
+  for (const b of bytes) {
+    crc ^= b;
+    for (let i = 0; i < 8; i++) {
+      crc = crc & 0x80 ? ((crc << 1) ^ 0x07) & 0xff : (crc << 1) & 0xff;
+    }
+  }
+  return crc;
+}
+
+function withChecksum(bytes) {
+  return new Uint8Array([...bytes, crc8(bytes)]);
+}
+
+function withoutChecksum(bytesWithChecksum) {
+  if (bytesWithChecksum.length < 1) {
+    throw new Error("Recovery key is too short — check for a typo and try again.");
+  }
+  const bytes = bytesWithChecksum.slice(0, -1);
+  const claimedChecksum = bytesWithChecksum[bytesWithChecksum.length - 1];
+  if (crc8(bytes) !== claimedChecksum) {
+    throw new Error("Recovery key has a typo — check it and try again.");
+  }
+  return bytes;
 }
 
 // ---- key derivation & generation ---------------------------------------

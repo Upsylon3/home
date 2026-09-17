@@ -16,6 +16,11 @@ import {
   formatRecoveryKey
 } from "../crypto.js";
 
+// Same reasoning as Setup.jsx's identical constant: auto-clear the
+// clipboard a short while after copying a credential that can never be
+// reissued if it leaks.
+const CLIPBOARD_CLEAR_MS = 30 * 1000;
+
 export default function Settings({ onVaultUpdated }) {
   const { vaultKey, lock } = useVault();
   const navigate = useNavigate();
@@ -29,10 +34,24 @@ export default function Settings({ onVaultUpdated }) {
   const [newRecoveryKit, setNewRecoveryKit] = useState(null);
   const [recoveryGenerating, setRecoveryGenerating] = useState(false);
   const [recoveryError, setRecoveryError] = useState("");
+  const [recoveryCopied, setRecoveryCopied] = useState(false);
 
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+
+  function copyNewRecoveryKit() {
+    navigator.clipboard
+      ?.writeText(newRecoveryKit)
+      .then(() => {
+        setRecoveryCopied(true);
+        setTimeout(() => setRecoveryCopied(false), 2000);
+        setTimeout(() => {
+          navigator.clipboard?.writeText("").catch(() => {});
+        }, CLIPBOARD_CLEAR_MS);
+      })
+      .catch(() => {});
+  }
 
   // Deliberately doesn't ask for the CURRENT master password first: the
   // vault is already unlocked (vaultKey is sitting in memory), and
@@ -166,9 +185,9 @@ export default function Settings({ onVaultUpdated }) {
           <button
             className="btn btn-ghost"
             type="button"
-            onClick={() => navigator.clipboard?.writeText(newRecoveryKit).catch(() => {})}
+            onClick={copyNewRecoveryKit}
           >
-            <CopyGlyph size={15} /> Copy
+            <CopyGlyph size={15} /> {recoveryCopied ? "Copied — clears in 30s" : "Copy"}
           </button>
         </>
       ) : (

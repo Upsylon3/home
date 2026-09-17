@@ -5,6 +5,87 @@ All notable changes to this project are documented here. Format follows
 [SemVer](https://semver.org/): one version number for the whole
 ecosystem (see root `package.json`), bumped on any meaningful release.
 
+## [1.1.3] — HomeVault: a deeper, adversarial self-review pass
+
+No independent security/cryptography reviewer is available for this
+project (see `docs/SECURITY.md`'s HomeVault status callout — that
+remains the honest, unchanged bottom line). This is a second pass at
+`apps/homevault/src/crypto.js` and the actual unlock/setup/recovery/
+settings flows that's different in kind from the one that shipped with
+[1.1.0]: not "does the code match the design doc" but deliberately
+trying to find a way to break it, the way a real reviewer would start.
+
+### Fixed
+- **A mistyped recovery-key character was silently dropped rather than
+  flagged.** `parseRecoveryKey` stripped anything outside its base32
+  alphabet before decoding, so a single transcription error just
+  produced a different, wrong 32-byte key — which safely failed to
+  unwrap the vault (AES-GCM's own authentication tag still caught it;
+  this was never a confidentiality issue), but with a generic "doesn't
+  match this vault" message and no indication where the typo was, in
+  exactly the flow that exists because the primary path already failed.
+  Fixed by giving the recovery key format a trailing checksum character
+  (CRC-8, deliberately non-cryptographic — its only job is catching an
+  accidental typo before wasting an unwrap attempt, not resisting a
+  deliberate attacker, who could trivially recompute it). A mistyped
+  character now fails immediately with a distinct "Recovery key has a
+  typo" message. 2 new tests
+  (`apps/homevault/test/crypto.test.js`): a single flipped character is
+  rejected before any unwrap is attempted, and a correctly-transcribed
+  key (checksum included) still round-trips.
+- **Copying the recovery key to the clipboard had no auto-clear.**
+  Bitwarden and 1Password both clear the clipboard a short while after
+  copying a credential, specifically because clipboard managers,
+  clipboard history, and cross-device clipboard sync can otherwise keep
+  an indefinitely-live copy of a key that can never be reissued if it
+  leaks. Added a 30-second auto-clear (write an empty string,
+  unconditionally, rather than reading the clipboard back first to
+  check — avoids needing clipboard-read permission for this) to both
+  places the recovery key can be copied (`Setup.jsx`, initial creation;
+  `Settings.jsx`, regeneration), with a "Copied — clears in 30s" label
+  so it's not a silent behavior change.
+- A code comment in `crypto.js` described the "wrong password" verifier
+  check backwards — "encrypting it and comparing the result," which
+  would actually be broken given AES-GCM's random per-encryption IVs
+  (the same plaintext encrypts to different ciphertext every time). The
+  actual code was always correct — decrypt the stored verifier with the
+  freshly-derived key and compare plaintext, relying on AES-GCM's own
+  authentication tag to reject a wrong key before the comparison even
+  matters. Fixed the comment to describe what the code actually does.
+
+### Investigated, confirmed no issue
+- No `Math.random()` anywhere in HomeVault's security-critical path —
+  every salt, key, and IV goes through `crypto.getRandomValues` /
+  `crypto.subtle.generateKey`.
+- IVs are never caller-suppliable and are freshly generated per call;
+  confirmed by tracing the actual encrypt call sites in `ItemDetail.jsx`
+  that a title and its item data get independent IVs even within the
+  same item, not just by reading the `encryptBytes` implementation and
+  assuming callers use it correctly.
+- Salt and KDF parameters are correctly persisted per-vault and passed
+  in from stored server data on every unlock attempt, never
+  regenerated locally (which would have permanently locked people out
+  of their own vault).
+- Recovery-key rotation exists (`Settings.jsx`) and correctly
+  invalidates the previously-issued recovery key; the recovery key
+  itself is never sent to or stored on the server, confirmed by
+  checking the actual `api.vault.create()`/`rewrap()` payloads, not
+  just the code that generates it.
+- **A nuance worth recording, not a new hole**: the master- and
+  recovery-wrapping keys are imported non-extractable
+  (`importAesKeyRaw`), but the vault key itself has to stay extractable
+  (`generateVaultKey`) so it can be re-wrapped under a new password or
+  a new recovery key. Since the vault key is the one that actually
+  matters, the non-extractable choice on the wrapping keys provides
+  less real protection than it might look like — it doesn't change the
+  already-documented "Shared-origin XSS" exposure in `docs/SECURITY.md`
+  at all. Recorded here for honesty, not treated as something to fix,
+  since there's no way to make the vault key non-extractable without
+  breaking password/recovery-key rotation entirely.
+
+Verified: all 207 tests pass (was 205; +2 recovery-key checksum tests),
+`apps/homevault` builds clean.
+
 ## [1.1.2] — Clearing the [1.1.1] security review's open items
 
 Follow-up to [1.1.1]: fixes the `vite`/`esbuild` advisories that

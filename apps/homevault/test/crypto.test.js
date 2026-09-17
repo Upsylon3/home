@@ -56,6 +56,38 @@ test("recovery key parsing tolerates lowercase and stray whitespace", () => {
   assert.deepEqual([...parsed], [...original]);
 });
 
+// The trailing base32 character in a formatted recovery key is a
+// checksum, not key material — see crypto.js's formatRecoveryKey
+// comment for why. These two tests are the reason it exists: catching
+// a transcription error immediately, with a message that says so,
+// rather than silently producing a different 32-byte key that only
+// fails much later when it doesn't unwrap the vault.
+test("parseRecoveryKey rejects a single mistyped character with a clear, distinct error", () => {
+  const original = generateRecoveryKeyBytes();
+  const formatted = formatRecoveryKey(original);
+  // Flip one character in the middle of the key portion (not the
+  // trailing checksum character itself) to a different valid base32
+  // character — simulating a real, easy-to-make single-character typo.
+  const flipIndex = 10;
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  const originalChar = formatted[flipIndex];
+  const replacement = alphabet[(alphabet.indexOf(originalChar) + 1) % alphabet.length];
+  const typoed = formatted.slice(0, flipIndex) + replacement + formatted.slice(flipIndex + 1);
+
+  assert.throws(() => parseRecoveryKey(typoed), /typo/i);
+});
+
+test("parseRecoveryKey accepts a correctly-transcribed key including its checksum character", () => {
+  const original = generateRecoveryKeyBytes();
+  const formatted = formatRecoveryKey(original);
+  // Sanity check the test fixture itself: the checksum character is a
+  // real, meaningful part of the string, not a no-op appended
+  // separator — formatted output should be longer than a plain,
+  // checksum-less base32 encoding of the same 32 bytes would be.
+  assert.ok(formatted.replace(/-/g, "").length > bytesToBase32(original).length);
+  assert.deepEqual([...parseRecoveryKey(formatted)], [...original]);
+});
+
 test("Argon2id derivation is deterministic for the same password+salt+params", async () => {
   const salt = generateSalt();
   const a = await deriveMasterKeyBits("correct horse battery staple", salt, FAST_PARAMS);

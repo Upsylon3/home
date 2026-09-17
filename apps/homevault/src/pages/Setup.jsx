@@ -25,6 +25,15 @@ import {
 // actually see and acknowledge the recovery kit, not just have it
 // silently generated in the background where they might never notice
 // it existed until they need it and don't have it.
+// Same reason Bitwarden/1Password both auto-clear the clipboard after
+// copying a credential: a clipboard manager, clipboard history, or
+// cross-device clipboard sync can otherwise keep an indefinitely-live
+// copy of the one key that can never be reissued if it leaks. Clearing
+// unconditionally after a short window (rather than first reading back
+// the clipboard to check it's still what we wrote) avoids asking for
+// clipboard-read permission just for this.
+const CLIPBOARD_CLEAR_MS = 30 * 1000;
+
 export default function Setup({ onCreated }) {
   const { unlock } = useVault();
   const [password, setPassword] = useState("");
@@ -34,6 +43,7 @@ export default function Setup({ onCreated }) {
   const [recoveryKit, setRecoveryKit] = useState(null); // formatted string, once created
   const [savedConfirmed, setSavedConfirmed] = useState(false);
   const [pendingUnlock, setPendingUnlock] = useState(null); // {vaultKey, vaultRecord} — applied only after confirmation
+  const [copied, setCopied] = useState(false);
 
   async function handleCreate(e) {
     e.preventDefault();
@@ -93,7 +103,16 @@ export default function Setup({ onCreated }) {
   }
 
   function copyRecoveryKit() {
-    navigator.clipboard?.writeText(recoveryKit).catch(() => {});
+    navigator.clipboard
+      ?.writeText(recoveryKit)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+        setTimeout(() => {
+          navigator.clipboard?.writeText("").catch(() => {});
+        }, CLIPBOARD_CLEAR_MS);
+      })
+      .catch(() => {});
   }
 
   function downloadRecoveryKit() {
@@ -134,7 +153,7 @@ export default function Setup({ onCreated }) {
 
           <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
             <button className="btn btn-ghost" type="button" onClick={copyRecoveryKit}>
-              <CopyGlyph size={15} /> Copy
+              <CopyGlyph size={15} /> {copied ? "Copied — clears in 30s" : "Copy"}
             </button>
             <button className="btn btn-ghost" type="button" onClick={downloadRecoveryKit}>
               Download as text file

@@ -145,7 +145,10 @@ is considered fully closed.
 >   key or tampered ciphertext throws rather than silently returning
 >   garbage; the master-password and recovery-key unwrap paths both
 >   reach the same underlying vault key; a fresh random IV is used on
->   every encryption.
+>   every encryption; a single mistyped character in a recovery key is
+>   caught immediately via a checksum, with a distinct "you made a
+>   typo" error, rather than silently producing a different, wrong
+>   32-byte key.
 > - **Followed exactly as designed**: client-side envelope encryption,
 >   Argon2id (OWASP's current default parameters — `m=19456, t=2, p=1`,
 >   stored per-vault so a future parameter change never breaks an
@@ -153,6 +156,22 @@ is considered fully closed.
 >   generated once and never stored server-side, titles encrypted (not
 >   just sensitive fields), the vault key held only in memory with its
 >   own shorter-than-the-session auto-lock timer.
+> - **A second, more adversarial self-review pass** (not the "does the
+>   code match the design doc" check above — deliberately trying to
+>   find a way to break it) went through nonce/salt/IV generation, key
+>   extractability choices, the verifier mechanism, and the recovery-key
+>   format by hand. Found and fixed two real, minor issues: a mistyped
+>   recovery-key character was silently dropped instead of flagged (see
+>   the checksum bullet above), and copying the recovery key to the
+>   clipboard had no auto-clear (now clears after 30s, matching
+>   Bitwarden/1Password). Also confirmed, not just assumed: no
+>   `Math.random()` anywhere in the security-critical path; the vault
+>   key must stay extractable so it can be re-wrapped, so the
+>   non-extractable wrapping-key choices provide less real protection
+>   against the already-documented "Shared-origin XSS" than they might
+>   look like. **This still is not the independent review below** — same
+>   author reviewing their own work, just a more skeptical pass at it.
+>   See `CHANGELOG.md`'s `[1.1.3]` entry for the full writeup.
 > - **Explicitly NOT done**: an independent security/cryptography review
 >   by anyone other than whoever wrote this. Automated tests confirm the
 >   code does what it was written to do; they cannot confirm the design

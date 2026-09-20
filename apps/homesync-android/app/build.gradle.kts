@@ -1,12 +1,18 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
 }
 
 android {
     namespace = "com.homeecosystems.homesync"
-    compileSdk = 34
+    // Raised from 34 alongside the compose-bom bump below (newer Compose
+    // releases assume a newer compileSdk to compile cleanly against).
+    // targetSdk deliberately left at 34 — that's a runtime behavior
+    // commitment (edge-to-edge enforcement, etc.) worth its own deliberate
+    // pass with a real device, not a side effect of a dependency refresh.
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.homeecosystems.homesync"
@@ -39,9 +45,9 @@ android {
         buildConfig = true
     }
 
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.14"
-    }
+    // No composeOptions { kotlinCompilerExtensionVersion = ... } here —
+    // from Kotlin 2.0 on, the Compose compiler ships as its own Gradle
+    // plugin (applied above) versioned together with Kotlin itself.
 
     packaging {
         resources {
@@ -56,7 +62,7 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.9.1")
 
     // Compose
-    implementation(platform("androidx.compose:compose-bom:2024.06.00"))
+    implementation(platform("androidx.compose:compose-bom:2025.10.01"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
@@ -64,12 +70,26 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.7.7")
     debugImplementation("androidx.compose.ui:ui-tooling")
 
+    // Classic Material Components — NOT the same as androidx.compose.material3
+    // above. Compose's material3 artifact only provides Kotlin/Compose
+    // theming (MaterialTheme, etc.); it ships none of the XML styles.
+    // themes.xml's Theme.HomeSync inherits from Theme.Material3.DayNight.NoActionBar,
+    // an XML resource, so this library has to be present too or AAPT
+    // fails to link it.
+    implementation("com.google.android.material:material:1.12.0")
+
     // WorkManager — background/constrained backup runs (Wi-Fi only,
     // charging only, battery threshold all map onto its native Constraints)
     implementation("androidx.work:work-runtime-ktx:2.9.1")
 
     // Room — local cache of what's been backed up, for the History screen
-    // and offline "last backup" summary without a network round trip
+    // and offline "last backup" summary without a network round trip.
+    // KSP now defaults to KSP2 (independent versioning since KSP 2.3.0,
+    // paired with Kotlin 2.3.20 above). If Room's annotation processing
+    // errors out after this bump, add `ksp { useKsp2 = false }` here in
+    // this file (or `ksp.useKSP2=false` in gradle.properties) to fall
+    // back to KSP1 while a fix lands — this hasn't been build-verified
+    // since it needs a real Android SDK/AAPT toolchain to compile.
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
     ksp("androidx.room:room-compiler:2.6.1")

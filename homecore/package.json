@@ -1,7 +1,7 @@
 {
   "name": "homecore",
   "version": "1.0.0",
-  "description": "HomeCore — the shared Tier 0 platform every application depends on: identity, sessions, 2FA, the application registry, permissions, and the cross-app activity/event feed. Owns no files or app-specific data of its own; see docs/ARCHITECTURE.md.",
+  "description": "HomeCore \u2014 the shared Tier 0 platform every application depends on: identity, sessions, 2FA, the application registry, permissions, and the cross-app activity/event feed. Owns no files or app-specific data of its own; see docs/ARCHITECTURE.md.",
   "main": "src/server.js",
   "type": "commonjs",
   "scripts": {
@@ -10,13 +10,13 @@
     "test": "node --test"
   },
   "dependencies": {
-    "bcryptjs": "^2.4.3",
-    "better-sqlite3": "^11.3.0",
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^11.10.0",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "express": "^4.19.2",
-    "express-rate-limit": "^7.4.0",
-    "helmet": "^7.1.0",
+    "dotenv": "^18.0.0",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.7.0",
+    "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.2",
     "otpauth": "^9.5.1"
   }

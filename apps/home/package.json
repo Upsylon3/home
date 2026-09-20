@@ -1,7 +1,7 @@
 {
   "name": "home-dashboard",
   "version": "0.1.0",
-  "description": "Home — the dashboard/launcher for the Home ecosystem, built against HomeCore v0",
+  "description": "Home \u2014 the dashboard/launcher for the Home ecosystem, built against HomeCore v0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,8 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
     "react-router-dom": "^7.18.2"
   },
   "devDependencies": {

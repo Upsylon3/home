@@ -1,7 +1,7 @@
 {
   "name": "homemedia",
   "version": "0.1.0",
-  "description": "HomeMedia — personal photo and video library, built on top of HomeCloud's storage and HomeCore's identity",
+  "description": "HomeMedia \u2014 personal photo and video library, built on top of HomeCloud's storage and HomeCore's identity",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,8 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
     "react-router-dom": "^7.18.2"
   },
   "devDependencies": {

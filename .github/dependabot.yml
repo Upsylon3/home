@@ -1,0 +1,71 @@
+version: 2
+
+updates:
+  # --- JS/Node side: homecore + every app under apps/ + packages/homecore-client ---
+  # This is ONE entry pointing at the repo root, not one per workspace. npm
+  # workspaces share a single root package-lock.json — pointing Dependabot at
+  # individual workspace folders instead (e.g. /apps/homecloud-backend) is a
+  # known-broken pattern: it edits that folder's package.json but not the
+  # root lockfile, leaving you with an install that doesn't match what's
+  # committed. Root-level config understands the "workspaces" field in the
+  # root package.json and correctly updates every workspace + the one
+  # lockfile together, in a single coherent PR.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    groups:
+      # Patch/minor bumps are batched into one low-drama PR per week.
+      # Majors (express 4->5-style changes) are deliberately excluded from
+      # the group so each lands as its own PR you'll actually want to read
+      # the changelog for before merging.
+      routine-updates:
+        update-types: ["minor", "patch"]
+
+  # --- Android app (apps/homesync-android) ---
+  # Covers the Gradle plugin versions (AGP, Kotlin, KSP, the Compose
+  # Compiler plugin) declared in build.gradle.kts, plus every androidx/
+  # Retrofit/OkHttp/etc. library version in app/build.gradle.kts.
+  - package-ecosystem: "gradle"
+    directory: "/apps/homesync-android"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+
+  # --- Dockerfiles: homecore + every app under apps/ (node:22-slim, and
+  # nginx:1.30-alpine for the 5 frontends) ---
+  # Docker doesn't have workspace-wide dependency resolution the way npm
+  # does, so this still opens one PR per directory per image bump — the
+  # directories list here just avoids repeating this whole block 11 times.
+  - package-ecosystem: "docker"
+    directories:
+      - "/homecore"
+      - "/apps/home"
+      - "/apps/homecloud"
+      - "/apps/homecloud-backend"
+      - "/apps/homemedia"
+      - "/apps/homemedia-backend"
+      - "/apps/homenotes"
+      - "/apps/homenotes-backend"
+      - "/apps/homesync-backend"
+      - "/apps/homevault"
+      - "/apps/homevault-backend"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 10
+
+  # --- Dockerfiles with their own, different base images ---
+  - package-ecosystem: "docker"
+    directories:
+      - "/gateway"
+      - "/services/backup"
+    schedule:
+      interval: "monthly"
+
+# To have PRs auto-assigned to you, add e.g.:
+#   reviewers:
+#     - "your-github-username"
+# under any of the blocks above.

@@ -178,14 +178,32 @@ $launch.Add_Click({
             $cmds += @{ Title='HomeVault frontend - :5177'; Dir='apps\homevault'; Env=@(); Run='npm run dev' }
         }
 
+        # Each service used to be launched as one long quoted command line
+        # ('cd /d "..." && set "K=V" && set "K=V" && ... && npm run dev')
+        # handed to cmd.exe /k through PowerShell's own argument quoting.
+        # That line ends up with a dozen-plus embedded '"' characters.
+        # cmd.exe only reliably preserves quoting when the whole line has
+        # EXACTLY two quote characters; with more than that it falls back
+        # to a crude "strip the first quote, strip the last quote" rule,
+        # which can sever a `set "KEY=VALUE"` from its value and leave a
+        # bare `set "<path>"` behind — hence the
+        # "Environment variable <path> not defined" errors.
+        # Writing each service's commands to its own temp .bat file avoids
+        # this entirely: cmd /k then only ever receives one single quoted
+        # file path, never a multiply-quoted one-liner.
+        $tmpDir = Join-Path $root '.dev-launch'
+        if (Test-Path $tmpDir) { Remove-Item $tmpDir -Recurse -Force }
+        New-Item -ItemType Directory -Path $tmpDir -Force | Out-Null
+
         foreach ($c in $cmds) {
             $dir = Join-Path $root $c.Dir
-            # Quote the directory and every "KEY=VALUE" individually — never
-            # join then re-split by spaces (see the Env comment above).
-            $command = 'cd /d "' + $dir + '"'
-            foreach ($kv in $c.Env) { $command += ' && set "' + $kv + '"' }
-            $command += ' && ' + $c.Run
-            Start-Process 'cmd.exe' -ArgumentList '/k', $command -WorkingDirectory $dir
+            $lines = @('@echo off', ('title ' + $c.Title), ('cd /d "' + $dir + '"'))
+            foreach ($kv in $c.Env) { $lines += ('set "' + $kv + '"') }
+            $lines += $c.Run
+            $safeName = ($c.Title -replace '[^a-zA-Z0-9]+', '_')
+            $batPath = Join-Path $tmpDir ($safeName + '.bat')
+            Set-Content -Path $batPath -Value $lines -Encoding ASCII
+            Start-Process 'cmd.exe' -ArgumentList '/k', $batPath -WorkingDirectory $dir
         }
 
         $form.Close()

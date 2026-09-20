@@ -1,7 +1,7 @@
 {
   "name": "homenotes-backend",
   "version": "0.1.0",
-  "description": "HomeNotes — personal Markdown workspace. Note content lives in its own database (small structured data, not file storage); attachments are real HomeCloud files (HOME_MASTER_SPECIFICATION.md §2.2, §15).",
+  "description": "HomeNotes \u2014 personal Markdown workspace. Note content lives in its own database (small structured data, not file storage); attachments are real HomeCloud files (HOME_MASTER_SPECIFICATION.md \u00a72.2, \u00a715).",
   "main": "src/server.js",
   "type": "commonjs",
   "scripts": {
@@ -11,11 +11,11 @@
   },
   "dependencies": {
     "@home/homecore-client": "^1.0.0",
-    "better-sqlite3": "^11.3.0",
+    "better-sqlite3": "^11.10.0",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "express": "^4.19.2",
-    "helmet": "^7.1.0",
+    "dotenv": "^18.0.0",
+    "express": "^5.2.1",
+    "helmet": "^8.3.0",
     "multer": "^2.0.0"
   }
 }

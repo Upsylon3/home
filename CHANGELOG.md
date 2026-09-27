@@ -5,6 +5,113 @@ All notable changes to this project are documented here. Format follows
 [SemVer](https://semver.org/): one version number for the whole
 ecosystem (see root `package.json`), bumped on any meaningful release.
 
+## [1.1.4] — First real HomeSync Android build; full dependency audit
+
+The roadmap's next two items after [1.1.3]: `apps/homesync-android`'s
+actual first Gradle sync/build (never previously run against a real
+Android toolchain), and a full outdated/deprecated dependency sweep
+across the whole repo. Both surfaced real, fixable problems.
+
+### Fixed
+- **`apps/homesync-android` failed its first real build**: AAPT
+  couldn't link `Theme.Material3.DayNight.NoActionBar`, the parent
+  style `themes.xml` inherits from. That style ships in the classic
+  Material Components library, not in Compose's
+  `androidx.compose.material3:material3` — the only Material artifact
+  the project declared. Static review never caught this since imports
+  still resolved; it only surfaces once AAPT actually tries to link
+  resources. Added `com.google.android.material:material:1.12.0`.
+- **The Windows dev launcher (`scripts/dev-home-ui.ps1`) failed with
+  `Environment variable <path> not defined`** for every service. Root
+  cause: each service was launched as one long `cmd /k` command line
+  (`cd /d "..." && set "K=V" && set "K=V" && ... && npm run dev`)
+  built through PowerShell's own argument quoting, ending up with a
+  dozen-plus embedded `"` characters. `cmd.exe` only reliably preserves
+  quoting when the whole line has *exactly two* quote characters; past
+  that it falls back to a crude "strip the first quote, strip the
+  last quote" rule, which can sever a `set "KEY=VALUE"` from its value
+  entirely. Rewrote to write each service's commands to its own temp
+  `.bat` file and hand `cmd /k` just that one file path instead — a
+  single, unambiguous quoted argument.
+- **`services/backup/Dockerfile` was on Alpine 3.20**, which reached
+  end-of-life on 2026-04-30 (confirmed against Alpine's own EOL
+  schedule, not assumed) and receives no further security patches.
+  Bumped to `alpine:3.22`.
+- **Five frontend Dockerfiles (`apps/home`, `homecloud`, `homemedia`,
+  `homenotes`, `homevault`) were pinned to `nginx:1.27-alpine`**,
+  missing several CVE fixes already backported to the `1.30` stable
+  line (buffer overflow and memory-disclosure fixes across
+  `ngx_http_v3_module`, `ngx_http_proxy_v2_module`,
+  `ngx_http_slice_module`, and others). Bumped to `nginx:1.30-alpine`.
+- Removed the `qs` override in the root `package.json`. It was a
+  workaround for an advisory in Express 4's own dependency tree (see
+  [1.0.0]); Express 5 (below) resolves a patched `qs` on its own —
+  confirmed via `npm ls qs` and `npm audit` (0 vulnerabilities) with
+  the override removed, not assumed.
+
+### Changed — dependency bumps, each verified before and after
+- `express` `^4.19.2` → `^5.2.1`, `express-rate-limit` `^7.4.0` →
+  `^8.7.0`, `helmet` `^7.1.0` → `^8.3.0`, `dotenv` `^16.4.5` → `^18.0.0`
+  across every backend. Checked every route/middleware call site first
+  for Express 5's known breaking patterns (wildcard routes, `app.del`,
+  `req.param()`, custom rate-limit option names) — none present.
+- `bcryptjs` `^2.4.3` → `^3.0.3` in `homecore` — auth-critical, so
+  confirmed `hash`/`compare`'s async signature is unchanged before
+  touching it (bcryptjs 3's breaking changes are ESM packaging and a
+  `$2b$` hash-prefix default; `compare()` still verifies `$2a$` hashes
+  fine).
+- `marked` `^13.0.3` → `^18.0.13` in `homenotes` — already used the
+  stable `.parse()` API with no custom renderer; all 11 markdown
+  sanitization tests (including the malicious-payload ones) still
+  pass.
+- `react`/`react-dom` `^18.3.1` → `^19.3.0` across all 5 frontends —
+  every entrypoint already used `createRoot`, with no `defaultProps`,
+  `PropTypes`, string refs, or other legacy pattern anywhere in the
+  codebase.
+- Attempted `better-sqlite3` `^11.3.0` → `^13.0.3` to clear a
+  `prebuild-install@7.1.3` deprecation warning (v13 bundles prebuilt
+  binaries directly rather than fetching them at install time).
+  **Reverted after finding a real regression**: a plain `npm install`
+  against the *committed* lockfile (as opposed to one that regenerates
+  it from scratch) reliably tried to compile from source instead of
+  using the bundled binary, needing a C++ toolchain most Windows dev
+  machines don't have. Reproduced 3/3 times against the exact
+  unzip-then-`npm install` workflow before reverting. Left at
+  `^11.10.0` — a cosmetic deprecation warning beats a build that
+  doesn't complete.
+- Android/Gradle stack in `apps/homesync-android`: AGP `8.5.2` →
+  `8.13.0` (the last 8.x release — deliberately not 9.x, which bundles
+  its own Kotlin support and conflicts with the separately-applied
+  `org.jetbrains.kotlin.android` plugin here), Kotlin `1.9.24` →
+  `2.3.20`, KSP → `2.3.10`, Gradle wrapper `8.7` → `8.13`, Compose BOM
+  `2024.06.00` → `2025.10.01`, `compileSdk` `34` → `36` (`targetSdk`
+  deliberately left at 34 — a runtime-behavior commitment worth its
+  own deliberate pass, not a side effect of a dependency refresh).
+  Kotlin 2.0+ moves the Compose compiler into its own Gradle plugin;
+  added `org.jetbrains.kotlin.plugin.compose` and removed the now-dead
+  `composeOptions { kotlinCompilerExtensionVersion }` block.
+
+### Added
+- `.github/dependabot.yml`: one `npm` entry at the workspace root
+  (workspace-aware — pointing Dependabot at individual app folders
+  instead is a documented way to get PRs that edit a `package.json`
+  without updating the lockfile that actually governs the install),
+  one `gradle` entry for `apps/homesync-android`, and two `docker`
+  entries covering all 13 Dockerfiles, grouped by shared base image.
+
+### Known limitation of this entry
+- The Android/Gradle changes above are not compile-verified — this
+  work was done from an environment with no Android SDK/AAPT
+  toolchain available, unlike the AAPT fix above (which *was* diffed
+  against the actual failing build output). Reasoned through against
+  each tool's own release notes and compatibility tables, but that is
+  not the same as watching a Gradle sync succeed.
+
+Verified (JS/Node side only, per the limitation above): all 207 tests
+pass, all 5 frontends build clean, `npm audit` reports 0
+vulnerabilities, `npm outdated` is clean except the deliberately-kept
+`better-sqlite3` `11.10.0`.
+
 ## [1.1.3] — HomeVault: a deeper, adversarial self-review pass
 
 No independent security/cryptography reviewer is available for this

@@ -19,7 +19,7 @@ WORKDIR /app/apps/homevault
 RUN npm run build
 
 # ---- Stage 2: serve the compiled files with nginx (no Node in the final image)
-FROM nginx:1.30-alpine
+FROM nginx:1.31-alpine
 COPY --from=build /app/apps/homevault/dist /usr/share/nginx/html
 COPY apps/homevault/nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80

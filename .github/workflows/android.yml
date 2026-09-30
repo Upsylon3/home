@@ -1,0 +1,100 @@
+# Builds the HomeSync Android app and runs its unit tests on GitHub's
+# machines, so no local Android Studio, emulator or phone is needed just to
+# find out "does it still compile?".
+#
+# WHAT THIS DOES AND DOES NOT PROVE
+# A green run means: the Gradle build succeeds, the Kotlin compiles, and the
+# JUnit tests pass. It does NOT mean the app works on a real phone (that
+# needs a device or emulator). It does give you a downloadable debug APK
+# (see the artifact at the bottom), which is the file you would sideload
+# onto an Android phone later.
+#
+# WHY IT'S A SEPARATE FILE FROM ci.yml
+# It takes several minutes and only matters when the Android project
+# changes, so it only runs when files under apps/homesync-android change
+# (which includes Dependabot's Gradle PRs). "Run workflow" in the Actions
+# tab runs it on demand, which is how you get the first result.
+
+name: Android
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/homesync-android/**"
+      - ".github/workflows/android.yml"
+  pull_request:
+    paths:
+      - "apps/homesync-android/**"
+      - ".github/workflows/android.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build debug APK and run unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: apps/homesync-android
+    steps:
+      - uses: actions/checkout@v7
+
+      # The Android Gradle Plugin used here (8.13) needs JDK 17.
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 17
+
+      # The repo has gradle/wrapper/gradle-wrapper.properties but NOT the
+      # `gradlew` script or wrapper jar (Android Studio generates them), so
+      # `./gradlew` doesn't exist in a fresh checkout. This installs Gradle
+      # directly instead. Keep the version equal to distributionUrl in
+      # gradle/wrapper/gradle-wrapper.properties. It also caches downloads
+      # between runs.
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "8.13"
+
+      # GitHub's runner image already ships the Android SDK. AGP downloads
+      # any missing piece itself, but only once the SDK licences are
+      # accepted, which is what this does (the "|| true" is because `yes`
+      # gets a broken-pipe error when sdkmanager stops reading).
+      - name: Accept Android SDK licences
+        working-directory: .
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+
+      # assembleDebug     = compile everything and package a debug APK.
+      #                     This is the step that failed in 1.1.4 (AAPT
+      #                     could not link the Material theme).
+      # testDebugUnitTest = the JUnit tests (SyncLogicTest.kt, which covers
+      #                     the hashing/dedup logic).
+      - name: Build and test
+        run: gradle --no-daemon --console=plain :app:assembleDebug :app:testDebugUnitTest
+
+      # Keeps the APK for 14 days so you can download it from the run's page.
+      # Debug-signed, contains no secrets, not suitable for publishing.
+      - name: Save the debug APK
+        if: success()
+        uses: actions/upload-artifact@v7
+        with:
+          name: homesync-debug-apk
+          path: apps/homesync-android/app/build/outputs/apk/debug/*.apk
+          retention-days: 14
+
+      # If the build failed, keep the HTML test/lint reports for debugging.
+      - name: Save reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-build-reports
+          path: apps/homesync-android/app/build/reports/
+          retention-days: 7
+          if-no-files-found: ignore

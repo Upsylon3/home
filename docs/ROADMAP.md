@@ -25,9 +25,11 @@ first (see below).
    app's first real Gradle build, which failed at resource linking and
    was fixed (a missing Material Components dependency). The Gradle,
    Kotlin and Compose upgrades made in that same release were never
-   compiled, so the first step is a fresh Gradle sync on a machine with
-   the Android SDK, and the second is a real device or emulator run,
-   which has never happened — see `DEVELOPMENT.md`. Not a blocker for
+   compiled, so the first step is a fresh Gradle build — start
+   `android.yml` by hand from the Actions tab, which needs no local
+   Android SDK — and the second is a real device or emulator run, which
+   has never happened and does need a device. The APK that workflow saves
+   is what to sideload — see `DEVELOPMENT.md`. Not a blocker for
    anything else — other apps can proceed in parallel while this is
    pending.
 3. **HomeVault follow-ups deferred out of v0**: soft-delete/undo for a
@@ -46,21 +48,23 @@ first (see below).
    a holdover from before HomeCore existed. Not urgent (nothing's
    broken), but a real deviation worth resolving deliberately rather
    than leaving as an accident of history.
-6. **Run `docker-compose build && docker-compose up` end-to-end** to
-   confirm the `node:22-slim`, `nginx:1.30-alpine` and `alpine:3.22`
-   base-image bumps (see `SECURITY.md`)
-   actually builds and boots every service — done from an environment
-   without Docker available, so this was reasoned through (same Debian
-   base, no Node-20-specific detail anywhere else in any Dockerfile,
-   the native `better-sqlite3` build confirmed to have no conflicting
-   engine requirement) but never run.
+6. **Get `ci.yml`'s Docker job green.** It runs `docker compose build`
+   and boots the whole stack on GitHub's machines, which is the
+   end-to-end run this item has always asked for, and it needs no Docker
+   on a development machine. It hasn't run yet, so its first result is the
+   real test of the `node:22-slim`, `nginx:1.30-alpine` and `alpine:3.22`
+   base-image bumps (see `SECURITY.md`), which were reasoned through
+   (same Debian base, no Node-20-specific detail anywhere else in any
+   Dockerfile, the native `better-sqlite3` build confirmed to have no
+   conflicting engine requirement) but never actually built.
 7. **Pin the gateway's base image.** `gateway/Dockerfile` is still
    `FROM nginx:alpine` (a floating tag) while the frontends are on
    `nginx:1.30-alpine` — see `SECURITY.md`. A one-line change, but do it
    together with item 6, since both need a Docker rebuild to confirm.
 8. **Triage Dependabot's first PRs** (`.github/dependabot.yml`, added in
    1.1.4). Majors are deliberately left out of the weekly group so each
-   one gets read on its own. `better-sqlite3` is the one to be careful
+   one gets read on its own. With `ci.yml` in place, each PR shows a
+   green or red result, so start with the green ones. `better-sqlite3` is the one to be careful
    with: a bump to 13 was tried and reverted in 1.1.4 (see its
    changelog entry for why).
 

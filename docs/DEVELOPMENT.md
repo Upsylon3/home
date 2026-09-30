@@ -204,6 +204,30 @@ reaching them only through rendering UI. `home`, `homecloud` and
 If you change a frontend, also run `npm run build` in that app — the
 test suites above don't catch a build-time error in a `.jsx` file.
 
+## Continuous integration
+
+Two GitHub Actions workflows in `.github/workflows/` run the same checks
+on GitHub's machines, on every push to `main` and every pull request
+(including the ones Dependabot opens). They mean the Docker and Android
+checks don't depend on the machine you develop on.
+
+- **`ci.yml`** has three jobs. *Tests and frontend builds* runs `npm ci`,
+  `npm test` and a build of every frontend. *Dependency audit* runs `npm
+  audit` and fails only on high or critical advisories. *Docker build and
+  smoke test* builds every image, starts the whole stack, and checks it
+  through the gateway: every frontend is served, every backend answers
+  its health check, a protected route refuses a request with no token, and
+  a freshly registered account's token works on HomeCloud's backend.
+- **`android.yml`** builds a debug APK and runs the Android unit tests. It
+  only runs when `apps/homesync-android` changes, or when started by hand
+  (Actions tab, "Android", "Run workflow"). Download the APK from the
+  run's page under "Artifacts".
+
+The Docker job creates its own throwaway `homecore/.env` with random
+secrets, so it needs nothing configured in the repository's settings.
+When a job fails, open the run in the Actions tab; the Docker job prints
+each container's last log lines on failure.
+
 ## HomeSync Android
 
 `apps/homesync-android/` has had exactly one real build attempt so far,
@@ -215,7 +239,10 @@ been checked against a real Android toolchain. The Gradle, Kotlin and
 Compose upgrades made in the same release were reasoned through against
 each tool's release notes, not compiled, and the app has never run on a
 device or emulator. The pure-Kotlin sync/hashing logic (`SyncLogic.kt`,
-zero Android dependencies) has its own JUnit tests.
+zero Android dependencies) has its own JUnit tests. `android.yml`
+(above) now does the Gradle build and those tests on GitHub's machines, so
+a fresh sync no longer needs a local Android SDK to find out whether it
+compiles.
 **A fresh Gradle sync, then a real device/emulator run, should be the
 first thing anyone picking this up does** — treat it as unverified until
 then, not as done.

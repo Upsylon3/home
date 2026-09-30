@@ -1,0 +1,168 @@
+# Continuous integration: runs on GitHub's machines, not yours, every time
+# code is pushed to main or a pull request is opened/updated.
+#
+# WHY THIS FILE EXISTS
+# Dependabot (see .github/dependabot.yml) opens pull requests that bump
+# dependencies and Docker base images. Before this file, nothing checked
+# whether a bump broke anything, so every PR needed a manual "checkout,
+# npm ci, npm test" by hand. Now each PR shows a green tick or a red cross
+# and you only have to read the ones that matter.
+#
+# Three independent jobs, so one failure never hides another:
+#   test    - all automated tests + a production build of every frontend
+#   audit   - `npm audit`, kept separate so a NEW advisory doesn't turn the
+#             tests red (a new advisory isn't the PR's fault, but you still
+#             want to see it)
+#   docker  - builds every image and boots the whole stack, then pokes it
+#             through the gateway. This is the check docs/ROADMAP.md item 6
+#             says has never been done, and it needs no Docker on your PC.
+#
+# The Android build lives in its own file (android.yml) because it is slow
+# and only matters when apps/homesync-android changes.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Adds a "Run workflow" button in the Actions tab, for re-running by hand.
+  workflow_dispatch:
+
+# If you push twice in a row, stop the older run instead of wasting minutes
+# on code that is already out of date.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least privilege: these jobs only need to READ the repo. (Dependabot PRs
+# get a read-only token anyway, so asking for more would just fail there.)
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests and frontend builds
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          # Must match the Dockerfiles (node:22-slim) and
+          # docs/DEVELOPMENT.md. Node 20 is end-of-life.
+          node-version: 22
+          cache: npm
+
+      # `npm ci`, not `npm install`: it installs exactly what
+      # package-lock.json says and fails if the lockfile and package.json
+      # disagree. That is the same rule the Dockerfiles follow, and it is
+      # what catches a Dependabot PR that edited one but not the other.
+      - run: npm ci
+
+      # Runs every workspace's own test suite (207 tests at time of writing).
+      - run: npm test
+
+      # The tests don't compile the React code, so a broken import in a
+      # .jsx file would pass them. Building each frontend catches that.
+      # --if-present skips workspaces (the backends) with no build script.
+      - run: npm run build --workspaces --if-present
+
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Fail only on HIGH or CRITICAL. Low/moderate advisories in
+      # dev-only tooling would otherwise make every PR red for reasons
+      # unrelated to the change; they still show up when you run
+      # `npm audit` yourself.
+      - run: npm audit --audit-level=high
+
+  docker:
+    name: Docker build and smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      # docker-compose.yml reads ./homecore/.env, which is git-ignored (it
+      # holds secrets), so a fresh checkout doesn't have one. Create it from
+      # the example file with throwaway random secrets. These exist only for
+      # this run on a machine GitHub deletes afterwards.
+      - name: Create throwaway .env with random secrets
+        run: |
+          cp homecore/.env.example homecore/.env
+          sed -i "s|^JWT_SECRET=.*|JWT_SECRET=$(openssl rand -hex 32)|" homecore/.env
+          sed -i "s|^HOMECORE_INTERNAL_SECRET=.*|HOMECORE_INTERNAL_SECRET=$(openssl rand -hex 32)|" homecore/.env
+
+      # Builds all 13 images. This is the first real test of the base-image
+      # bumps (node:22-slim, nginx:1.30-alpine, alpine:3.22).
+      - name: Build every image
+        run: docker compose build
+
+      # --wait blocks until every service with a healthcheck reports
+      # healthy, and fails if one never does.
+      - name: Start the whole stack
+        run: docker compose up -d --wait --wait-timeout 180
+
+      # Everything below goes through the gateway on :8080, exactly like a
+      # browser would, so it also proves the nginx routing table is right.
+      - name: Smoke test through the gateway
+        run: |
+          set -eu
+          BASE=http://localhost:8080
+
+          echo "--- every frontend is served"
+          for path in / /cloud/ /media/ /notes/ /vault/; do
+            curl -fsS -o /dev/null "$BASE$path"
+            echo "ok  $path"
+          done
+
+          echo "--- every backend answers its health check"
+          for path in /api/health \
+                      /api/homecloud/health /api/homemedia/health \
+                      /api/homenotes/health /api/homesync/health \
+                      /api/homevault/health; do
+            curl -fsS -o /dev/null "$BASE$path"
+            echo "ok  $path"
+          done
+
+          echo "--- a protected route refuses a request with no token"
+          code=$(curl -s -o /dev/null -w '%{http_code}' "$BASE/api/homecloud/files")
+          [ "$code" = "401" ] || { echo "expected 401, got $code"; exit 1; }
+          echo "ok  401 without a token"
+
+          echo "--- register the first account (it becomes admin)"
+          resp=$(curl -fsS -X POST "$BASE/api/auth/register" \
+            -H 'Content-Type: application/json' \
+            -d '{"username":"ci-admin","password":"ci-password-123"}')
+          token=$(echo "$resp" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).token))")
+          [ -n "$token" ] || { echo "no token in response"; exit 1; }
+          echo "ok  registered"
+
+          echo "--- that token works on a DIFFERENT service"
+          # homecloud-backend has no user database of its own. It has to
+          # ask HomeCore whether this token is valid, using the shared
+          # HOMECORE_INTERNAL_SECRET. A 200 here proves that whole chain
+          # (gateway -> homecloud-backend -> homecore) is wired up.
+          curl -fsS -o /dev/null -H "Authorization: Bearer $token" "$BASE/api/homecloud/files"
+          echo "ok  cross-service auth"
+
+      # Only runs if something above failed. Shows each container's output
+      # so you can see WHY, instead of just "step failed".
+      - name: Show container logs on failure
+        if: failure()
+        run: docker compose logs --no-color --tail=80
+
+      # Always clean up, even on failure.
+      - name: Stop the stack
+        if: always()
+        run: docker compose down -v

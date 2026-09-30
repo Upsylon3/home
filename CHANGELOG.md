@@ -5,12 +5,15 @@ All notable changes to this project are documented here. Format follows
 [SemVer](https://semver.org/): one version number for the whole
 ecosystem (see root `package.json`), bumped on any meaningful release.
 
-## [Unreleased] — Documentation sync after [1.1.4]
+## [Unreleased] — Documentation sync and continuous integration after [1.1.4]
 
-A docs-only pass: every number, version and status claim in `README.md`
+Two things. First, every number, version and status claim in `README.md`
 and `docs/` was checked against the repo at `0fd25b0`, and the ones that
-had drifted were corrected. The only non-doc file touched is one stale
-comment in the root `package.json`.
+had drifted were corrected. Second, GitHub Actions workflows now run the
+checks that until now only happened by hand, on GitHub's machines, so
+they don't depend on this project's development machine having Docker or
+the Android SDK. The only other file touched is one stale comment in the
+root `package.json`.
 
 ### Fixed
 - **Test counts were out of date.** `README.md` and `docs/DEVELOPMENT.md`
@@ -51,14 +54,44 @@ comment in the root `package.json`.
   `docs/SECURITY.md` and as `docs/ROADMAP.md` item 7.
 
 ### Added
+- `.github/workflows/ci.yml`, three independent jobs on every push to
+  `main` and every pull request. **Tests and frontend builds**: `npm
+  ci`, every workspace's tests, and a production build of each
+  frontend (the tests don't compile `.jsx`, so a broken import would
+  otherwise pass). **Dependency audit**: `npm audit` failing only on high
+  or critical, and kept as its own job so a newly published advisory
+  can't make an unrelated PR's tests look red. **Docker build and smoke
+  test**: builds all 13 images, boots the stack with `docker compose up
+  --wait`, then goes through the gateway the way a browser would. It
+  checks that every frontend is served, every backend answers its health
+  check, a protected route returns 401 without a token, and a token from
+  a fresh registration is accepted by HomeCloud's backend (which has no
+  user database and has to ask HomeCore). This is the end-to-end boot
+  `docs/ROADMAP.md` item 6 said had never been done.
+- `.github/workflows/android.yml`: builds a debug APK and runs the
+  Android unit tests, only when `apps/homesync-android` changes (or when
+  started by hand from the Actions tab). Gradle is installed by the
+  workflow directly because the repo has
+  `gradle/wrapper/gradle-wrapper.properties` but not the `gradlew` script
+  or wrapper jar. The APK is kept as a downloadable artifact for 14
+  days. A green run proves the app compiles and its unit tests pass; it
+  does not prove it runs on a device.
+- A `github-actions` entry in `.github/dependabot.yml`, so the actions
+  the workflows use get update PRs like everything else.
 - `docs/ROADMAP.md` items 7 (pin the gateway image) and 8 (triage
   Dependabot's first PRs).
+- A "Continuous integration" section in `docs/DEVELOPMENT.md`.
 
 Verified: `npm ci` on Node 22 is clean, all 207 tests pass both per
 suite and from the root `npm test`, all 5 frontends build, and `npm
-audit` reports 0 vulnerabilities. Not verified: anything Docker (not
-available here) or Android (no SDK here), and `docs/API.md` beyond a
-rough automated comparison of route names against the code.
+audit` reports 0 vulnerabilities. Both workflow files parse as YAML, the
+`.env` generation step and `npm run build --workspaces --if-present`
+were run as written, and the smoke test's register, 401 and cross-service
+checks were run against real local `homecore` and `homecloud-backend`
+processes. Not verified: the workflows themselves have not yet run on
+GitHub, nothing Docker (not available here), nothing Android (no SDK
+here), and `docs/API.md` beyond a rough automated comparison of route
+names against the code.
 
 ## [1.1.4] — First real HomeSync Android build; full dependency audit
 

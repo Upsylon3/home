@@ -65,6 +65,15 @@ updates:
     schedule:
       interval: "monthly"
 
+  # --- GitHub Actions: the versions pinned in .github/workflows/*.yml ---
+  # Without this, the workflows that check every Dependabot PR would
+  # quietly fall behind on their own actions/checkout, actions/setup-node
+  # etc. and nobody would be told.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+
 # To have PRs auto-assigned to you, add e.g.:
 #   reviewers:
 #     - "your-github-username"

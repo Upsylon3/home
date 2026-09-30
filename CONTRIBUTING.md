@@ -32,7 +32,9 @@ dependencies, running services locally, and running the test suite.
 2. **Run the full test suite before opening a PR**: `npm test` from the
    repo root runs every workspace. All of it should pass; if a change
    touches a frontend, also run `npm run build` in that app to catch
-   build-time errors tests won't.
+   build-time errors tests won't. GitHub Actions (`.github/workflows/`)
+   runs the same checks on every PR, plus a Docker boot of the whole
+   stack, so a PR isn't ready to merge until those are green.
 3. **No speculative dependencies.** Add a package only when a spec'd
    feature actually needs it, not because it might be useful later — see
    the [1.0.0] changelog entry for an example of three that had quietly

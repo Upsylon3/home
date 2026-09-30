@@ -51,9 +51,12 @@ first (see below).
 6. **Get `ci.yml`'s Docker job green.** It runs `docker compose build`
    and boots the whole stack on GitHub's machines, which is the
    end-to-end run this item has always asked for, and it needs no Docker
-   on a development machine. It hasn't run yet, so its first result is the
-   real test of the `node:22-slim`, `nginx:1.30-alpine` and `alpine:3.22`
-   base-image bumps (see `SECURITY.md`), which were reasoned through
+   on a development machine. Its first run found that no image could
+   build at all (the Dockerfiles predated the move to npm workspaces, see
+   `CHANGELOG.md`), which is now fixed but not yet confirmed by a green
+   run. Once it gets past the build, it is the real test of the
+   `node:22-slim`, `nginx:1.30-alpine` and `alpine:3.22` base-image bumps
+   (see `SECURITY.md`), which were reasoned through
    (same Debian base, no Node-20-specific detail anywhere else in any
    Dockerfile, the native `better-sqlite3` build confirmed to have no
    conflicting engine requirement) but never actually built.
@@ -67,6 +70,17 @@ first (see below).
    green or red result, so start with the green ones. `better-sqlite3` is the one to be careful
    with: a bump to 13 was tried and reverted in 1.1.4 (see its
    changelog entry for why).
+
+9. **Move to a newer Node, once, on purpose.** Node 22 is in maintenance
+   support until 2027-04-30, so nothing is urgent. Node 24 is the current
+   Active LTS (supported to 2028-04-30) and Node 26 is due to enter LTS
+   on 2026-10-28 (supported to 2029-04-30). When picking a target, change
+   all 11 Dockerfiles, `node-version` in both places in
+   `.github/workflows/ci.yml`, and the prerequisites in `DEVELOPMENT.md`
+   together, and check first that `better-sqlite3`'s prebuilt binaries
+   cover that Node version (the `slim` images have no compiler, so a
+   missing prebuilt fails the Docker build). Dependabot is told to leave
+   Node majors alone for exactly this reason.
 
 **Settled, not open questions anymore** (kept here so the reasoning
 isn't lost): TLS approach (private overlay, not public certs —

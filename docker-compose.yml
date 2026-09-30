@@ -24,7 +24,7 @@ services:
     ports: ["8080:80"] # the ONLY container that publishes a host port
 
   homecore:
-    build: ./homecore
+    build: { context: ., dockerfile: homecore/Dockerfile }
     restart: unless-stopped
     env_file: [./homecore/.env]
     environment:
@@ -54,19 +54,19 @@ services:
   # ---------------------------------------------------------------------
 
   home:
-    build: ./apps/home
+    build: { context: ., dockerfile: apps/home/Dockerfile }
     restart: unless-stopped
     depends_on: { homecore: { condition: service_healthy } }
     expose: ["80"]
 
   homecloud:
-    build: ./apps/homecloud
+    build: { context: ., dockerfile: apps/homecloud/Dockerfile }
     restart: unless-stopped
     depends_on: { homecloud-backend: { condition: service_healthy } }
     expose: ["80"]
 
   homecloud-backend:
-    build: ./apps/homecloud-backend
+    build: { context: ., dockerfile: apps/homecloud-backend/Dockerfile }
     restart: unless-stopped
     # Shares homecore's own .env file specifically to get the exact same
     # HOMECORE_INTERNAL_SECRET value on both sides without a second file
@@ -90,7 +90,7 @@ services:
       retries: 3
 
   homemedia-backend:
-    build: ./apps/homemedia-backend
+    build: { context: ., dockerfile: apps/homemedia-backend/Dockerfile }
     restart: unless-stopped
     environment: { DATA_DIR: /data, HOMECORE_INTERNAL_URL: http://homecore:4000, HOMECLOUD_BACKEND_INTERNAL_URL: http://homecloud-backend:4500 }
     volumes: [homemedia_data:/data]
@@ -104,13 +104,13 @@ services:
       retries: 3
 
   homemedia:
-    build: ./apps/homemedia
+    build: { context: ., dockerfile: apps/homemedia/Dockerfile }
     restart: unless-stopped
     depends_on: { homemedia-backend: { condition: service_healthy } }
     expose: ["80"]
 
   homenotes-backend:
-    build: ./apps/homenotes-backend
+    build: { context: ., dockerfile: apps/homenotes-backend/Dockerfile }
     restart: unless-stopped
     environment: { DATA_DIR: /data, HOMECORE_INTERNAL_URL: http://homecore:4000, HOMECLOUD_BACKEND_INTERNAL_URL: http://homecloud-backend:4500 }
     volumes: [homenotes_data:/data]
@@ -124,13 +124,13 @@ services:
       retries: 3
 
   homenotes:
-    build: ./apps/homenotes
+    build: { context: ., dockerfile: apps/homenotes/Dockerfile }
     restart: unless-stopped
     depends_on: { homenotes-backend: { condition: service_healthy } }
     expose: ["80"]
 
   homesync-backend:
-    build: ./apps/homesync-backend
+    build: { context: ., dockerfile: apps/homesync-backend/Dockerfile }
     restart: unless-stopped
     environment: { DATA_DIR: /data, HOMECORE_INTERNAL_URL: http://homecore:4000, HOMECLOUD_BACKEND_INTERNAL_URL: http://homecloud-backend:4500 }
     volumes: [homesync_data:/data]
@@ -144,7 +144,7 @@ services:
       retries: 3
 
   homevault-backend:
-    build: ./apps/homevault-backend
+    build: { context: ., dockerfile: apps/homevault-backend/Dockerfile }
     restart: unless-stopped
     # Notice what's NOT here: HOMECLOUD_BACKEND_INTERNAL_URL. HomeVault is
     # the first app with zero dependency on HomeCloud — it stores only its
@@ -162,7 +162,7 @@ services:
       retries: 3
 
   homevault:
-    build: ./apps/homevault
+    build: { context: ., dockerfile: apps/homevault/Dockerfile }
     restart: unless-stopped
     depends_on: { homevault-backend: { condition: service_healthy } }
     expose: ["80"]

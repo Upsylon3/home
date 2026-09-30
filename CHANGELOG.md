@@ -58,6 +58,35 @@ root `package.json`.
   confirmed by a green run, and more errors may follow: nothing past this
   point in the build has been reached yet.
 
+- **No Docker image could build, since the move to npm workspaces.**
+  Found by the first run of `ci.yml`'s Docker job. Two problems, one
+  behind the other. First, seven Dockerfiles did `COPY package.json
+  package-lock.json ./` from their own folder, but the repo has one
+  lockfile, at the root, so the build stopped with "package-lock.json:
+  not found". Second, every backend depends on `@home/homecore-client`,
+  a private package in `packages/` that isn't on npm, which a build
+  limited to `apps/x-backend/` could never have installed, so fixing
+  only the first would have failed at `npm ci` instead. All eleven Node
+  services (six backends, five frontends) now build from the repository
+  root (`build: { context: ., dockerfile: ... }` in `docker-compose.yml`)
+  and install with `npm ci --workspace=<that service>`. The backends
+  became two-stage builds: dependencies are installed with the compilers
+  in a first stage, and only `node_modules`, the shared package and the
+  service itself are copied into a plain `node:22-slim` for the final
+  image (about 21 MB of installed files for HomeSync's backend, with no
+  frontend libraries in it). A root `.dockerignore` keeps
+  `node_modules`, every `.env`, runtime data and the docs out of the
+  build context, so secrets can't end up in an image layer.
+  Side effect: four frontends (`home`, `homemedia`, `homenotes`,
+  `homevault`) used to run `npm install` with no lockfile, which
+  contradicted the "locked dependency versions" line in
+  `docs/SECURITY.md`; all eleven now use `npm ci`. Verified by repeating
+  each Dockerfile's steps by hand (same `.dockerignore` exclusions, same
+  `npm ci --workspace`, same file copies into a fresh runtime layout):
+  all six backends boot and answer their health check, and all five
+  frontends build. Not verified: the `docker build` itself, since Docker
+  isn't available here, so the Docker job's next run is the real test.
+
 ### Found, not changed
 - **`gateway/Dockerfile` is `FROM nginx:alpine`**, a floating tag, while
   the five frontends were pinned to `nginx:1.30-alpine` in [1.1.4]. The

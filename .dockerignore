@@ -1,0 +1,24 @@
+# Applies to every image built from the repository root (all the Node
+# services — see docker-compose.yml). Two jobs: keep images small and builds
+# fast, and keep secrets out of image layers.
+
+# Installed inside the image by `npm ci`. Copying the host's copy would
+# also bring in binaries compiled for the host's OS, not the container's.
+**/node_modules
+
+# Secrets. docker-compose.yml injects these at run time via env_file;
+# they must never be baked into an image.
+.env
+**/.env
+
+# Runtime data and build output, recreated as needed
+homecore/data
+apps/*/data
+apps/*/dist
+backups
+
+# Not needed to build or run any Node image
+.git
+.github
+docs
+apps/homesync-android

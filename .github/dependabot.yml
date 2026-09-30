@@ -23,6 +23,15 @@ updates:
       # the changelog for before merging.
       routine-updates:
         update-types: ["minor", "patch"]
+    ignore:
+      # Never offer a better-sqlite3 MAJOR bump. 13 was tried in 1.1.4 and
+      # reverted: a plain `npm install` against the committed lockfile
+      # tried to compile it from source, which needs a C++ toolchain most
+      # Windows dev machines don't have (see CHANGELOG.md [1.1.4]).
+      # Minor/patch bumps still arrive normally. Remove this rule when
+      # that install problem is understood.
+      - dependency-name: "better-sqlite3"
+        update-types: ["version-update:semver-major"]
 
   # --- Android app (apps/homesync-android) ---
   # Covers the Gradle plugin versions (AGP, Kotlin, KSP, the Compose
@@ -34,6 +43,24 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 10
+    ignore:
+      # These majors can't be taken one PR at a time, because each depends
+      # on the others being moved with it. A single Dependabot PR would
+      # leave the build half-migrated, so do them together, by hand:
+      #  - Android Gradle Plugin 9 and Gradle 9 go as a pair, and AGP 9
+      #    bundles its own Kotlin support, which conflicts with the
+      #    separately-applied Kotlin plugin here (CHANGELOG.md [1.1.4]).
+      #  - Retrofit and OkHttp majors must match each other: the Gson
+      #    converter and the logging interceptor have to be the same
+      #    generation as the Retrofit/OkHttp core they sit on.
+      - dependency-name: "com.android.application"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "gradle-wrapper"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "com.squareup.retrofit2:*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "com.squareup.okhttp3:*"
+        update-types: ["version-update:semver-major"]
 
   # --- Dockerfiles: homecore + every app under apps/ (node:22-slim, and
   # nginx:1.30-alpine for the 5 frontends) ---
@@ -56,6 +83,18 @@ updates:
     schedule:
       interval: "monthly"
     open-pull-requests-limit: 10
+    ignore:
+      # Never offer a Node MAJOR bump. Dependabot proposes whatever the
+      # newest tag is, which is not the same as "the version to run":
+      # odd-numbered Node releases (25, 27) never become LTS and reach
+      # end-of-life within months (25 already has, on 2026-06-01). It also
+      # opens one PR per Dockerfile, so the 11 services would drift onto
+      # different Node versions while CI and docs/DEVELOPMENT.md still say
+      # 22. Move all 11 Dockerfiles, ci.yml's node-version and the docs
+      # in ONE deliberate change instead (docs/ROADMAP.md item 9).
+      # Minor/patch updates of the pinned major still arrive normally.
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
 
   # --- Dockerfiles with their own, different base images ---
   - package-ecosystem: "docker"

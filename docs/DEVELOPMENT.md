@@ -223,6 +223,22 @@ checks don't depend on the machine you develop on.
   (Actions tab, "Android", "Run workflow"). Download the APK from the
   run's page under "Artifacts".
 
+### How the Docker images are built
+
+All eleven Node services (`homecore`, the five `-backend` apps and the
+five frontends) build from the **repository root**, not from their own
+folder: each `build:` entry in `docker-compose.yml` sets `context: .` and
+points at that service's Dockerfile. This is what an npm workspace needs.
+There's one `package-lock.json` at the root, and the backends depend on
+`@home/homecore-client` from `packages/`, neither of which a build limited
+to `apps/x/` could see. Each Dockerfile copies the repo in and runs
+`npm ci --workspace=<service>`, so it installs only that service's locked
+dependencies. Backends then copy just `node_modules`, the shared package
+and their own folder into a clean final image. `.dockerignore` at the
+root keeps `node_modules`, `.env` files and runtime data out of the
+build. The gateway and backup images don't use npm and still build from
+their own folders.
+
 The Docker job creates its own throwaway `homecore/.env` with random
 secrets, so it needs nothing configured in the repository's settings.
 When a job fails, open the run in the Actions tab; the Docker job prints

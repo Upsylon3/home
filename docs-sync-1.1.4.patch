@@ -1,0 +1,361 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 2990270..5fdb339 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -5,6 +5,61 @@ All notable changes to this project are documented here. Format follows
+ [SemVer](https://semver.org/): one version number for the whole
+ ecosystem (see root `package.json`), bumped on any meaningful release.
+ 
++## [Unreleased] — Documentation sync after [1.1.4]
++
++A docs-only pass: every number, version and status claim in `README.md`
++and `docs/` was checked against the repo at `0fd25b0`, and the ones that
++had drifted were corrected. The only non-doc file touched is one stale
++comment in the root `package.json`.
++
++### Fixed
++- **Test counts were out of date.** `README.md` and `docs/DEVELOPMENT.md`
++  said 190 across seven suites (44 / 39 / 18 / 24 / 20 / 27 / 18);
++  running every suite gives 207 across eight (45 / 41 / 18 / 24 / 20 /
++  28 / 20, plus 11 in `apps/homenotes`, the Markdown-sanitizer tests,
++  which neither listed). `docs/DEVELOPMENT.md` also said `apps/homevault`
++  was the only frontend with automated tests, which stopped being true
++  once HomeNotes got its own.
++- **HomeSync Android's status still read "never built"** in
++  `README.md`, `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md` and
++  `docs/ROADMAP.md`. Now says what [1.1.4] actually did: one real build
++  attempt, one bug found and fixed, and the toolchain upgrades since
++  still uncompiled.
++- **`docs/SECURITY.md`** still introduced HomeVault as "a design
++  document with no implementation yet", and still described the `qs`
++  `overrides` pin that [1.1.4] removed. Both corrected, and the
++  [1.1.4] Alpine/nginx bumps and Dependabot config are now recorded
++  there.
++- **`README.md` and `docs/ARCHITECTURE.md` called HomeVault "not yet
++  security-reviewed"**, which undersold the two self-review passes in
++  [1.1.0] and [1.1.3]. Now "self-reviewed twice, not independently
++  reviewed" — the independent review is still the open item.
++- **`docs/API.md` was missing `POST /api/admin/users/:id/reset-password`**,
++  the admin-panel substitute for an email reset flow. Found by comparing
++  the code's 114 route declarations against the doc.
++- **`docs/ROADMAP.md`** pointed at "item 4 above" for permission
++  enforcement, which isn't on that list (item 4 is the icon work), and
++  still said "HomeVault: everything" was deferred. Both corrected.
++- The root `package.json`'s `//test` comment listed five workspaces; the
++  script actually runs all eight suites.
++
++### Found, not changed
++- **`gateway/Dockerfile` is `FROM nginx:alpine`**, a floating tag, while
++  the five frontends were pinned to `nginx:1.30-alpine` in [1.1.4]. The
++  gateway is the one container that publishes a host port. Left alone
++  because no Docker was available to rebuild it; recorded in
++  `docs/SECURITY.md` and as `docs/ROADMAP.md` item 7.
++
++### Added
++- `docs/ROADMAP.md` items 7 (pin the gateway image) and 8 (triage
++  Dependabot's first PRs).
++
++Verified: `npm ci` on Node 22 is clean, all 207 tests pass both per
++suite and from the root `npm test`, all 5 frontends build, and `npm
++audit` reports 0 vulnerabilities. Not verified: anything Docker (not
++available here) or Android (no SDK here), and `docs/API.md` beyond a
++rough automated comparison of route names against the code.
++
+ ## [1.1.4] — First real HomeSync Android build; full dependency audit
+ 
+ The roadmap's next two items after [1.1.3]: `apps/homesync-android`'s
+diff --git a/README.md b/README.md
+index 13334d0..3b6f377 100644
+--- a/README.md
++++ b/README.md
+@@ -17,8 +17,8 @@ you choose to set that up.
+ | **HomeCloud** | File storage: folders, sharing, Trash, 2FA, admin panel | Built |
+ | **HomeMedia** | Photo/video library — albums, favorites, EXIF, no storage of its own | Built |
+ | **HomeNotes** | A Markdown notes workspace | Built |
+-| **HomeSync** | Android app that backs up phone photos/videos to HomeCloud | Backend built and tested; Android app not yet build-verified — see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) |
+-| **HomeVault** | Client-side-encrypted password/secrets manager | **v0 built, not yet security-reviewed** — see [docs/SECURITY.md](docs/SECURITY.md) before storing anything real |
++| **HomeSync** | Android app that backs up phone photos/videos to HomeCloud | Backend built and tested; Android app had its first real build in 1.1.4 (one bug found and fixed) but hasn't been re-verified since, or run on a device — see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) |
++| **HomeVault** | Client-side-encrypted password/secrets manager | **v0 built, self-reviewed twice, not independently reviewed** — see [docs/SECURITY.md](docs/SECURITY.md) before storing anything real |
+ | **HomeCore** | Shared identity, sessions, permissions, and the app registry — no UI of its own | Built |
+ | HomeTasks, HomeMonitor, HomeAI | To-dos, system monitor, assistant | Not started — see [docs/ROADMAP.md](docs/ROADMAP.md) |
+ 
+@@ -89,19 +89,23 @@ docs/                  Architecture, security, API reference, deployment, roadma
+ 
+ ## Tests
+ 
+-190 automated tests across 6 services, run with `npm test` from the
+-repo root (or inside any one service's own folder):
++207 automated tests across 8 suites (6 backends, 2 frontends), run with
++`npm test` from the repo root (or inside any one suite's own folder):
+ 
+ ```
+-homecore                44 tests
+-apps/homecloud-backend  39 tests
++homecore                45 tests
++apps/homecloud-backend  41 tests
+ apps/homemedia-backend  18 tests
+ apps/homenotes-backend  24 tests
+ apps/homesync-backend   20 tests
+-apps/homevault-backend  27 tests
+-apps/homevault          18 tests  (src/crypto.js — the one frontend with real tests)
++apps/homevault-backend  28 tests
++apps/homevault          20 tests  (src/crypto.js — the client-side encryption)
++apps/homenotes          11 tests  (src/markdown.js — the XSS sanitizer)
+ ```
+ 
++The other three frontends (`home`, `homecloud`, `homemedia`) have no
++automated tests; for those, `npm run build` is the check.
++
+ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for how to run them and
+ what each layer covers.
+ 
+@@ -121,7 +125,7 @@ what each layer covers.
+ - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — a from-scratch production
+   setup, backups, upgrading
+ - [docs/SECURITY.md](docs/SECURITY.md) — what's protecting this today,
+-  and HomeVault's (not yet built) threat model
++  and HomeVault's threat model and v0 status
+ - [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md) — visual direction,
+   for anyone designing a new screen
+ - [docs/ROADMAP.md](docs/ROADMAP.md) — what's next
+diff --git a/docs/API.md b/docs/API.md
+index 873b603..cf77a82 100644
+--- a/docs/API.md
++++ b/docs/API.md
+@@ -27,6 +27,7 @@ shared activity/notifications feed. No files live here.
+ | GET | `/api/admin/activity` | *(admin)* HomeCloud-scoped activity feed, every user |
+ | POST | `/api/admin/users/:id/disabled` \| `/role` \| `/quota` | *(admin)* Account management |
+ | POST | `/api/admin/users/:id/2fa/disable` | *(admin)* Reset a lost-phone 2FA |
++| POST | `/api/admin/users/:id/reset-password` | *(admin)* Set a new password for someone who forgot theirs; revokes their sessions |
+ | GET | `/api/core/health` | *(no auth)* Liveness/storage check |
+ | GET | `/api/core/system` | System info (version, uptime) |
+ | GET | `/api/core/users/me` | Identity fields HomeCore itself owns (displayName) |
+diff --git a/docs/ARCHITECTURE.md b/docs/ARCHITECTURE.md
+index a928416..d9e5fcd 100644
+--- a/docs/ARCHITECTURE.md
++++ b/docs/ARCHITECTURE.md
+@@ -241,8 +241,8 @@ problem:
+ | HomeMedia | Built |
+ | HomeNotes | Built |
+ | HomeSync backend | Built and tested |
+-| HomeSync Android app | Written, not yet build-verified — see `docs/DEVELOPMENT.md` |
+-| HomeVault | **v0 built** — core loop (create/unlock/recover a vault, add/view/edit/delete items) implemented and tested; **not yet security-reviewed** — see `docs/SECURITY.md`'s "HomeVault v0" section before trusting it with anything real |
++| HomeSync Android app | Written; first real build in 1.1.4 found and fixed one bug, not re-verified since and never run on a device — see `docs/DEVELOPMENT.md` |
++| HomeVault | **v0 built** — core loop (create/unlock/recover a vault, add/view/edit/delete items) implemented and tested; **self-reviewed twice, not independently reviewed** — see `docs/SECURITY.md`'s "HomeVault v0" section before trusting it with anything real |
+ | HomeTasks, HomeMonitor, HomeAI, HomeBridge | Not started |
+ 
+ ## 8. Future ecosystem map
+diff --git a/docs/DEVELOPMENT.md b/docs/DEVELOPMENT.md
+index e91dd9c..0b03527 100644
+--- a/docs/DEVELOPMENT.md
++++ b/docs/DEVELOPMENT.md
+@@ -177,13 +177,14 @@ npm test
+ Or one service at a time:
+ 
+ ```bash
+-cd homecore && npm test                    # 44 tests
+-cd apps/homecloud-backend && npm test      # 39 tests
++cd homecore && npm test                    # 45 tests
++cd apps/homecloud-backend && npm test      # 41 tests
+ cd apps/homemedia-backend && npm test      # 18 tests
+ cd apps/homenotes-backend && npm test      # 24 tests
+ cd apps/homesync-backend && npm test       # 20 tests
+-cd apps/homevault-backend && npm test      # 27 tests
+-cd apps/homevault && npm test              # 18 tests — crypto.js only, see below
++cd apps/homevault-backend && npm test      # 28 tests
++cd apps/homevault && npm test              # 20 tests — crypto.js only, see below
++cd apps/homenotes && npm test              # 11 tests — markdown.js only, see below
+ ```
+ 
+ All use Node's built-in test runner (`node --test`) — no extra
+@@ -191,25 +192,33 @@ test-framework dependency. Each test file gets its own fresh, isolated
+ temp SQLite database, and `node --test` runs each file in its own
+ process, so tests can't leak state into each other.
+ 
+-`apps/homevault` is the one frontend with real tests — its client-side
+-encryption module (`src/crypto.js`) is framework-free on purpose, so it
+-can be tested directly with `node --test` the same way HomeSync's
+-`pathPlanner.js` is, rather than only indirectly through rendering UI.
+-No other frontend has automated tests yet.
++Two frontends have real tests, and both test one small module rather
++than the UI. `apps/homevault` tests its client-side encryption
++(`src/crypto.js`), and `apps/homenotes` tests its Markdown sanitizer
++(`src/markdown.js`, the fix for the stored XSS found in 1.1.1). Both
++modules are framework-free on purpose, so `node --test` can run them
++directly, the same way it runs HomeSync's `pathPlanner.js`, instead of
++reaching them only through rendering UI. `home`, `homecloud` and
++`homemedia` have no automated tests yet.
+ 
+ If you change a frontend, also run `npm run build` in that app — the
+ test suites above don't catch a build-time error in a `.jsx` file.
+ 
+ ## HomeSync Android
+ 
+-`apps/homesync-android/` has never been built with a real Android
+-toolchain in the environment this codebase was developed in — there's no
+-CI or sandbox here with the Android SDK. Static review (imports resolve,
+-no dangling references) is clean, and the pure-Kotlin sync/hashing logic
+-(`SyncLogic.kt`, zero Android dependencies) has its own JUnit tests. But
+-**a first Gradle sync and a real device/emulator run should be the first
+-thing anyone picking this up does** — treat it as unverified until then,
+-not as done.
++`apps/homesync-android/` has had exactly one real build attempt so far,
++in 1.1.4. Gradle got as far as linking resources and failed because the
++app's theme inherits from a style that lives in the classic Material
++Components library, which wasn't declared as a dependency. That was
++fixed (see `CHANGELOG.md`), and it is the only part of the app that has
++been checked against a real Android toolchain. The Gradle, Kotlin and
++Compose upgrades made in the same release were reasoned through against
++each tool's release notes, not compiled, and the app has never run on a
++device or emulator. The pure-Kotlin sync/hashing logic (`SyncLogic.kt`,
++zero Android dependencies) has its own JUnit tests.
++**A fresh Gradle sync, then a real device/emulator run, should be the
++first thing anyone picking this up does** — treat it as unverified until
++then, not as done.
+ 
+ To try it: open `apps/homesync-android/` in Android Studio, let Gradle
+ sync, connect a device or start an emulator, and hit Run. On the login
+diff --git a/docs/ROADMAP.md b/docs/ROADMAP.md
+index df10f00..a9b7b3f 100644
+--- a/docs/ROADMAP.md
++++ b/docs/ROADMAP.md
+@@ -21,11 +21,15 @@ first (see below).
+    status callout for exactly what's been verified by automated test
+    versus what still needs human review. Nothing real should go into a
+    HomeVault vault before this happens.
+-2. **HomeSync Android's first real build.** The app (including the
+-   previously-missing `data/` package) is written and statically
+-   reviewed, but has never been through a real Gradle sync or run on a
+-   device/emulator — see `DEVELOPMENT.md`. Not a blocker for anything
+-   else — other apps can proceed in parallel while this is pending.
++2. **HomeSync Android: confirm the build, then run it.** 1.1.4 had the
++   app's first real Gradle build, which failed at resource linking and
++   was fixed (a missing Material Components dependency). The Gradle,
++   Kotlin and Compose upgrades made in that same release were never
++   compiled, so the first step is a fresh Gradle sync on a machine with
++   the Android SDK, and the second is a real device or emulator run,
++   which has never happened — see `DEVELOPMENT.md`. Not a blocker for
++   anything else — other apps can proceed in parallel while this is
++   pending.
+ 3. **HomeVault follow-ups deferred out of v0**: soft-delete/undo for a
+    deleted item, benchmarking Argon2id's parameters against real
+    minimum self-hosting hardware (v0 ships OWASP's default, untested
+@@ -43,12 +47,22 @@ first (see below).
+    broken), but a real deviation worth resolving deliberately rather
+    than leaving as an accident of history.
+ 6. **Run `docker-compose build && docker-compose up` end-to-end** to
+-   confirm the `node:22-slim` base-image bump (see `SECURITY.md`)
++   confirm the `node:22-slim`, `nginx:1.30-alpine` and `alpine:3.22`
++   base-image bumps (see `SECURITY.md`)
+    actually builds and boots every service — done from an environment
+    without Docker available, so this was reasoned through (same Debian
+    base, no Node-20-specific detail anywhere else in any Dockerfile,
+    the native `better-sqlite3` build confirmed to have no conflicting
+    engine requirement) but never run.
++7. **Pin the gateway's base image.** `gateway/Dockerfile` is still
++   `FROM nginx:alpine` (a floating tag) while the frontends are on
++   `nginx:1.30-alpine` — see `SECURITY.md`. A one-line change, but do it
++   together with item 6, since both need a Docker rebuild to confirm.
++8. **Triage Dependabot's first PRs** (`.github/dependabot.yml`, added in
++   1.1.4). Majors are deliberately left out of the weekly group so each
++   one gets read on its own. `better-sqlite3` is the one to be careful
++   with: a bump to 13 was tried and reverted in 1.1.4 (see its
++   changelog entry for why).
+ 
+ **Settled, not open questions anymore** (kept here so the reasoning
+ isn't lost): TLS approach (private overlay, not public certs —
+@@ -73,8 +87,9 @@ generic per-app dashboard stat (staying hardcoded per app for now).
+   battery-percentage threshold are **decided against** — whole-file
+   retry and WorkManager's built-in `requiresBatteryNotLow` constraint
+   stay as the permanent design, not gaps waiting to be filled.
+-- **HomeVault:** everything — see `SECURITY.md` for the prerequisites
+-  that come before any of it.
++- **HomeVault:** soft-delete/undo for an item, benchmarking Argon2id on
++  minimum hardware, and an admin-facing vault-reset action — see item 3
++  above. The core vault itself is built (v0).
+ 
+ ## Cross-module ideas brainstorm (speculative)
+ 
+@@ -137,7 +152,7 @@ reintroduced later as a casual "nice to have."
+ 
+ **Two blockers show up repeatedly across the ideas above** — worth
+ fixing once rather than working around per-idea: permission enforcement
+-still being declarative (item 4 above), and HomeCloud's file
++still being declarative (see `SECURITY.md`), and HomeCloud's file
+ authorization being strictly owner-only (blocks any genuinely
+ multi-user version of the ideas above — a shared album, a
+ household-shared life-event bundle).
+diff --git a/docs/SECURITY.md b/docs/SECURITY.md
+index 5c6feba..66b5518 100644
+--- a/docs/SECURITY.md
++++ b/docs/SECURITY.md
+@@ -1,7 +1,8 @@
+ # Security
+ 
+ Two parts: what's actually protecting the app today, and HomeVault's
+-threat model — a design document with no implementation yet.
++threat model — the design v0 was built from, plus what has and hasn't
++been checked since.
+ 
+ ## Part A — implemented today
+ 
+@@ -39,10 +40,14 @@ threat model — a design document with no implementation yet.
+ - The batch-zip feature uses `yazl` (one small dependency) rather than
+   a heavier alternative, specifically to avoid a larger transitive
+   dependency tree.
+-- A moderate-severity `qs` advisory (pulled in transitively through
+-  every backend's `express`/`body-parser`) is patched via an `overrides`
+-  pin in the root `package.json`, without needing a breaking Express 5
+-  upgrade — see that file's own comment.
++- Every backend is on Express 5, which resolves a patched `qs` on its
++  own. An earlier moderate-severity `qs` advisory (in Express 4's
++  dependency tree) used to be patched by an `overrides` pin in the root
++  `package.json`; that pin was removed in [1.1.4] once `npm ls qs` and
++  `npm audit` confirmed it was no longer needed.
++- `.github/dependabot.yml` opens weekly update PRs for npm, Gradle and
++  the Dockerfiles, so a new advisory or an end-of-life base image shows
++  up as a PR instead of waiting for the next manual review.
+ 
+ **Resolved since the last review:** every frontend's `vite` (and its
+ `esbuild` dependency) previously carried four dev-server-only advisories
+@@ -74,6 +79,13 @@ Dockerfile references a Node-20-specific detail), but building and
+ booting the full stack once is still worth doing explicitly before this
+ is considered fully closed.
+ 
++**Resolved in [1.1.4], same theme as the Node bump:**
++`services/backup/Dockerfile` moved off Alpine 3.20 (end-of-life
++2026-04-30) to `alpine:3.22`, and the five frontend Dockerfiles moved
++from `nginx:1.27-alpine` to `nginx:1.30-alpine`, which carries several
++CVE fixes the older line lacks. Like the Node bump, none of this has
++been built with Docker in the environment it was done in.
++
+ ## What's not covered yet
+ 
+ - **No TLS anywhere in the request chain.** The gateway terminates plain
+@@ -112,6 +124,13 @@ is considered fully closed.
+   disabled status, not credentials — low enough stakes that changing
+   it wasn't treated as urgent, but worth a conscious call rather than
+   an unnoticed gap.
++- **The gateway's base image isn't pinned.** `gateway/Dockerfile` is
++  `FROM nginx:alpine`, a floating tag, while the five frontend
++  Dockerfiles were pinned to `nginx:1.30-alpine` in [1.1.4]. The gateway
++  is the one container that publishes a host port, so a surprise
++  upgrade or a stale cached image matters most there. Found while
++  checking these docs against the repo; not changed, since there was no
++  Docker available to rebuild and boot it afterwards.
+ - No email-based password reset (an admin-panel reset is the intentional
+   substitute — no outgoing mail server to run).
+ - No account-deletion flow — only disable. See
+diff --git a/package.json b/package.json
+index 5600376..71de2da 100644
+--- a/package.json
++++ b/package.json
+@@ -23,7 +23,7 @@
+   "//version-policy": "One version number for the whole ecosystem, bumped on every meaningful release across any service — simplest thing that works for a project this size. Individual package.json files under apps/ and packages/ have their own version fields for npm/Docker tooling's sake, but this root version is the one that matters for release notes (see CHANGELOG.md).",
+ 
+   "scripts": {
+-    "//test": "Runs every workspace's own `test` script, one at a time, stopping at the first failure — homecore, apps/homecloud-backend, apps/homemedia-backend, apps/homenotes-backend, and apps/homesync-backend.",
++    "//test": "Runs every workspace's own `test` script, one at a time, stopping at the first failure — homecore, the six backends under apps/ (homecloud, homemedia, homenotes, homesync, homevault), and the two frontends that have tests (apps/homenotes, apps/homevault).",
+     "test": "npm run test --workspaces --if-present",
+ 
+     "//install:all": "Redundant with plain `npm install` once workspaces are set up (that already installs every workspace's deps) — kept as an explicit, discoverable alias for anyone skimming this file.",

@@ -246,22 +246,20 @@ each container's last log lines on failure.
 
 ## HomeSync Android
 
-`apps/homesync-android/` has had exactly one real build attempt so far,
-in 1.1.4. Gradle got as far as linking resources and failed because the
-app's theme inherits from a style that lives in the classic Material
-Components library, which wasn't declared as a dependency. That was
-fixed (see `CHANGELOG.md`), and it is the only part of the app that has
-been checked against a real Android toolchain. The Gradle, Kotlin and
-Compose upgrades made in the same release were reasoned through against
-each tool's release notes, not compiled, and the app has never run on a
-device or emulator. The pure-Kotlin sync/hashing logic (`SyncLogic.kt`,
-zero Android dependencies) has its own JUnit tests. `android.yml`
-(above) now does the Gradle build and those tests on GitHub's machines, so
-a fresh sync no longer needs a local Android SDK to find out whether it
-compiles.
-**A fresh Gradle sync, then a real device/emulator run, should be the
-first thing anyone picking this up does** — treat it as unverified until
-then, not as done.
+`apps/homesync-android/` now builds and passes its unit tests on every
+relevant change: `android.yml` (above) runs the Gradle build and the JUnit
+tests on GitHub's machines, with no local Android SDK needed. Getting it
+there took three rounds of real failures that the 1.1.4 upgrades had
+hidden, because nothing had compiled them: a missing Material Components
+dependency (1.1.4), the `kotlinOptions { jvmTarget }` block that Kotlin 2.3
+turned into an error, and Room 2.6.1 crashing KSP2 at `kspDebugKotlin`
+(fixed by moving to Room 2.8.5). All three are in `CHANGELOG.md`.
+
+What has **not** been done is run the app: it has never been installed on a
+device or emulator, so sign-in, the WorkManager scheduling, and an actual
+backup are unverified. **A real device/emulator run should be the first
+thing anyone picking this up does.** The debug APK that `android.yml`
+saves is what to sideload.
 
 To try it: open `apps/homesync-android/` in Android Studio, let Gradle
 sync, connect a device or start an emulator, and hit Run. On the login

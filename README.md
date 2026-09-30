@@ -17,7 +17,7 @@ you choose to set that up.
 | **HomeCloud** | File storage: folders, sharing, Trash, 2FA, admin panel | Built |
 | **HomeMedia** | Photo/video library — albums, favorites, EXIF, no storage of its own | Built |
 | **HomeNotes** | A Markdown notes workspace | Built |
-| **HomeSync** | Android app that backs up phone photos/videos to HomeCloud | Backend built and tested; Android app had its first real build in 1.1.4 (one bug found and fixed) but hasn't been re-verified since, or run on a device — see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) |
+| **HomeSync** | Android app that backs up phone photos/videos to HomeCloud | Backend built and tested; Android app builds and passes its unit tests in CI, but has never been run on a device — see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) |
 | **HomeVault** | Client-side-encrypted password/secrets manager | **v0 built, self-reviewed twice, not independently reviewed** — see [docs/SECURITY.md](docs/SECURITY.md) before storing anything real |
 | **HomeCore** | Shared identity, sessions, permissions, and the app registry — no UI of its own | Built |
 | HomeTasks, HomeMonitor, HomeAI | To-dos, system monitor, assistant | Not started — see [docs/ROADMAP.md](docs/ROADMAP.md) |

@@ -123,6 +123,15 @@ root `package.json`.
   yet compiled any of the app's own Kotlin sources, so more errors may
   follow.
 
+### Confirmed
+After the fixes above, `ci.yml` (tests and frontend builds, dependency
+audit, and the Docker build and smoke test) and `android.yml` (debug APK
+and unit tests) all ran green on GitHub. That closes the "not yet verified"
+notes in this entry: the Docker job builds every image and boots the whole
+stack, and the smoke test passes through the gateway. The Android job
+compiles the app and passes its unit tests. Still not verified: the app
+running on a device, and a real browser session against the running stack.
+
 ### Found, not changed
 - **`gateway/Dockerfile` is `FROM nginx:alpine`**, a floating tag, while
   the five frontends were pinned to `nginx:1.30-alpine` in [1.1.4]. The

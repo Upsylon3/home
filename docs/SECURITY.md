@@ -71,20 +71,18 @@ project can't take: the version this project's `^11.3.0` range actually
 resolves to (11.10.0, confirmed directly, not just read off the
 registry's "latest" dist-tag, which is a much later, unrelated 13.x
 line with its own newer Node floor) declares no `engines` constraint at
-all. **Not independently verified end-to-end:** the actual
-`docker-compose build` couldn't be run in the environment this review
-was done in (no Docker available there) — the image bump itself is
-low-risk (same Debian base, same package manager, nothing else in any
-Dockerfile references a Node-20-specific detail), but building and
-booting the full stack once is still worth doing explicitly before this
-is considered fully closed.
+all. **Since verified end-to-end:** the review that made this change
+couldn't run Docker, so it was left open. It is now closed by `ci.yml`'s
+Docker job, which builds every image on `node:22-slim` and boots the whole
+stack (see `docs/DEVELOPMENT.md`).
 
 **Resolved in [1.1.4], same theme as the Node bump:**
 `services/backup/Dockerfile` moved off Alpine 3.20 (end-of-life
 2026-04-30) to `alpine:3.22`, and the five frontend Dockerfiles moved
 from `nginx:1.27-alpine` to `nginx:1.30-alpine`, which carries several
-CVE fixes the older line lacks. Like the Node bump, none of this has
-been built with Docker in the environment it was done in.
+CVE fixes the older line lacks. Like the Node bump, this was first made
+without Docker available, and is now confirmed by `ci.yml`'s Docker job,
+which builds those images and boots the stack.
 
 ## What's not covered yet
 

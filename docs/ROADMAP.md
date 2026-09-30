@@ -21,15 +21,13 @@ first (see below).
    status callout for exactly what's been verified by automated test
    versus what still needs human review. Nothing real should go into a
    HomeVault vault before this happens.
-2. **HomeSync Android: confirm the build, then run it.** 1.1.4 had the
-   app's first real Gradle build, which failed at resource linking and
-   was fixed (a missing Material Components dependency). The Gradle,
-   Kotlin and Compose upgrades made in that same release were never
-   compiled, so the first step is a fresh Gradle build — start
-   `android.yml` by hand from the Actions tab, which needs no local
-   Android SDK — and the second is a real device or emulator run, which
-   has never happened and does need a device. The APK that workflow saves
-   is what to sideload — see `DEVELOPMENT.md`. Not a blocker for
+2. **HomeSync Android: run it on a real device.** The app now builds
+   and passes its unit tests in CI (`android.yml`), after three rounds of
+   fixes for problems the 1.1.4 upgrades had hidden (see `CHANGELOG.md`).
+   What has never happened is running it: install the debug APK that the
+   workflow saves on a phone or emulator, sign in, and do one backup. That
+   is the first test of the parts CI can't reach, the sign-in flow, the
+   WorkManager scheduling and the actual upload — see `DEVELOPMENT.md`. Not a blocker for
    anything else — other apps can proceed in parallel while this is
    pending.
 3. **HomeVault follow-ups deferred out of v0**: soft-delete/undo for a
@@ -48,18 +46,16 @@ first (see below).
    a holdover from before HomeCore existed. Not urgent (nothing's
    broken), but a real deviation worth resolving deliberately rather
    than leaving as an accident of history.
-6. **Get `ci.yml`'s Docker job green.** It runs `docker compose build`
-   and boots the whole stack on GitHub's machines, which is the
-   end-to-end run this item has always asked for, and it needs no Docker
-   on a development machine. Its first run found that no image could
-   build at all (the Dockerfiles predated the move to npm workspaces, see
-   `CHANGELOG.md`), which is now fixed but not yet confirmed by a green
-   run. Once it gets past the build, it is the real test of the
-   `node:22-slim`, `nginx:1.30-alpine` and `alpine:3.22` base-image bumps
-   (see `SECURITY.md`), which were reasoned through
-   (same Debian base, no Node-20-specific detail anywhere else in any
-   Dockerfile, the native `better-sqlite3` build confirmed to have no
-   conflicting engine requirement) but never actually built.
+6. **Done: the whole stack builds and boots end to end.** `ci.yml`'s
+   Docker job runs `docker compose build`, starts every container and
+   checks the stack through the gateway, on GitHub's machines. It is green,
+   which also confirms the `node:22-slim`, `nginx:1.30-alpine` and
+   `alpine:3.22` base-image bumps (see `SECURITY.md`). Getting it green took
+   three real fixes, all in `CHANGELOG.md`: the Dockerfiles predated the
+   move to npm workspaces, HomeCloud's backend inherited the wrong port,
+   and the gateway started before the services it forwards to. Kept here,
+   rather than deleted, so the numbering that other files point at stays
+   valid. What it does not cover is a real browser session or a device.
 7. **Pin the gateway's base image.** `gateway/Dockerfile` is still
    `FROM nginx:alpine` (a floating tag) while the frontends are on
    `nginx:1.30-alpine` — see `SECURITY.md`. A one-line change, but do it

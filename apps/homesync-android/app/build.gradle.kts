@@ -93,7 +93,7 @@ dependencies {
     // themes.xml's Theme.HomeSync inherits from Theme.Material3.DayNight.NoActionBar,
     // an XML resource, so this library has to be present too or AAPT
     // fails to link it.
-    implementation("com.google.android.material:material:1.12.0")
+    implementation("com.google.android.material:material:1.14.0")
 
     // WorkManager — background/constrained backup runs (Wi-Fi only,
     // charging only, battery threshold all map onto its native Constraints)

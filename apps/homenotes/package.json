@@ -10,15 +10,15 @@
     "test": "node --test"
   },
   "dependencies": {
-    "dompurify": "^3.4.15",
-    "marked": "^18.0.13",
+    "dompurify": "^3.4.16",
+    "marked": "^18.0.14",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-router-dom": "^7.18.2"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.1.1",
-    "jsdom": "^30.0.1",
-    "vite": "^8.3.0"
+    "jsdom": "^30.1.1",
+    "vite": "^8.3.1"
   }
 }

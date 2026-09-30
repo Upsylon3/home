@@ -107,9 +107,9 @@ dependencies {
     // this file (or `ksp.useKSP2=false` in gradle.properties) to fall
     // back to KSP1 while a fix lands — this hasn't been build-verified
     // since it needs a real Android SDK/AAPT toolchain to compile.
-    implementation("androidx.room:room-runtime:2.6.1")
-    implementation("androidx.room:room-ktx:2.6.1")
-    ksp("androidx.room:room-compiler:2.6.1")
+    implementation("androidx.room:room-runtime:2.8.5")
+    implementation("androidx.room:room-ktx:2.8.5")
+    ksp("androidx.room:room-compiler:2.8.5")
 
     // DataStore — session token and backup settings (Wi-Fi only, charging
     // only, which categories are enabled)

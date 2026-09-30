@@ -1,4 +1,4 @@
-FROM node:22-slim
+FROM node:26-slim
 
 # better-sqlite3 is a native module; these build tools are a safety net
 # in case a prebuilt binary isn't available for your platform.

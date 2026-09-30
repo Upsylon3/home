@@ -19,8 +19,27 @@ services:
   gateway:
     build: ./gateway
     restart: unless-stopped
+    # The gateway must wait for EVERY container it forwards to, not just
+    # homecore. nginx looks up each upstream's hostname once, at startup,
+    # and refuses to start ("host not found in upstream") if any of them
+    # isn't running yet. With only homecore listed here, the gateway raced
+    # ahead of the other services and crash-looped until they appeared.
+    # Backends have healthchecks, so wait until they're healthy. The
+    # frontends have none, so "started" is the strongest thing to wait for.
+    # (A gateway that survives a missing app would be better — see
+    # docs/ROADMAP.md item 10.)
     depends_on:
       homecore: { condition: service_healthy }
+      homecloud-backend: { condition: service_healthy }
+      homemedia-backend: { condition: service_healthy }
+      homenotes-backend: { condition: service_healthy }
+      homesync-backend: { condition: service_healthy }
+      homevault-backend: { condition: service_healthy }
+      home: { condition: service_started }
+      homecloud: { condition: service_started }
+      homemedia: { condition: service_started }
+      homenotes: { condition: service_started }
+      homevault: { condition: service_started }
     ports: ["8080:80"] # the ONLY container that publishes a host port
 
   homecore:
@@ -79,6 +98,12 @@ services:
     environment:
       DATA_DIR: /data
       HOMECORE_INTERNAL_URL: http://homecore:4000
+      # Must be set here. homecore/.env (loaded above) contains PORT=4000
+      # for HomeCore itself, and without this line this service inherited
+      # it and listened on 4000 while its healthcheck, the gateway and its
+      # Dockerfile all use 4500, so it never became healthy. Values in
+      # `environment:` win over values from `env_file:`.
+      PORT: "4500"
     volumes: [homecloud_backend_data:/data]
     expose: ["4500"]
     depends_on: { homecore: { condition: service_healthy } }

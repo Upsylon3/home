@@ -82,6 +82,19 @@ first (see below).
    missing prebuilt fails the Docker build). Dependabot is told to leave
    Node majors alone for exactly this reason.
 
+10. **Let the gateway start when an app is missing.** Today every
+   `proxy_pass` in `gateway/nginx.conf` names its container directly, and
+   nginx resolves those names once at startup, so if any app container
+   isn't running the gateway itself won't start, which takes the whole
+   ecosystem down. That contradicts principle 4 in `ARCHITECTURE.md`
+   (if HomeMedia is offline, Home still loads and shows it as
+   unavailable) and makes "run only HomeCloud" impossible. `docker-compose.yml`
+   now makes the gateway wait for every service, which fixes the crash
+   loop but not the design. The proper fix is for nginx to look names up
+   per request (`resolver 127.0.0.11` and a variable in `proxy_pass`),
+   which changes how paths are rewritten and needs testing with a real
+   stack, plus a friendly "this app is unavailable" page for a 502.
+
 **Settled, not open questions anymore** (kept here so the reasoning
 isn't lost): TLS approach (private overlay, not public certs —
 `SECURITY.md`), HomeVault's origin (shared, with CSP — `SECURITY.md`),

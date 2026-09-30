@@ -87,6 +87,26 @@ root `package.json`.
   frontends build. Not verified: the `docker build` itself, since Docker
   isn't available here, so the Docker job's next run is the real test.
 
+- **HomeCloud's backend never became healthy in Docker.** Found by the
+  Docker job's first run past the build. `docker-compose.yml` loads
+  `homecore/.env` into that container (to share `HOMECORE_INTERNAL_SECRET`),
+  and that file contains `PORT=4000` for HomeCore itself. The backend
+  inherited it, listened on 4000, and failed its healthcheck, the gateway's
+  route and its own Dockerfile, which all say 4500. Fixed with an explicit
+  `PORT: "4500"` under `environment:`, which takes precedence over
+  `env_file:`. Anyone following `docs/SETUP.md` would have hit the same
+  thing, since the example file is copied as-is.
+- **The gateway could crash on startup.** It waited only for `homecore`,
+  but nginx resolves every upstream hostname once at startup and exits
+  with "host not found in upstream" if one isn't running yet. Every other
+  service waits for HomeCloud's backend, so the gateway started first and
+  restarted in a loop until they appeared. It now waits for all six
+  backends to be healthy and all five frontends to have started. This
+  fixes the crash without fixing the design: a gateway that fails to start
+  because one optional app is down contradicts the "graceful degradation"
+  principle in `docs/ARCHITECTURE.md`, which is now `docs/ROADMAP.md`
+  item 10.
+
 ### Found, not changed
 - **`gateway/Dockerfile` is `FROM nginx:alpine`**, a floating tag, while
   the five frontends were pinned to `nginx:1.30-alpine` in [1.1.4]. The

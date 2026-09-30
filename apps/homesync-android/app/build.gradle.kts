@@ -97,7 +97,7 @@ dependencies {
 
     // WorkManager — background/constrained backup runs (Wi-Fi only,
     // charging only, battery threshold all map onto its native Constraints)
-    implementation("androidx.work:work-runtime-ktx:2.9.1")
+    implementation("androidx.work:work-runtime-ktx:2.12.0")
 
     // Room — local cache of what's been backed up, for the History screen
     // and offline "last backup" summary without a network round trip.

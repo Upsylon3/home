@@ -107,6 +107,22 @@ root `package.json`.
   principle in `docs/ARCHITECTURE.md`, which is now `docs/ROADMAP.md`
   item 10.
 
+- **HomeSync Android: annotation processing failed on Room 2.6.1.** Found
+  by the second run of `.github/workflows/android.yml`, once the `jvmTarget`
+  fix let the build get as far as resources, manifest and dependencies.
+  `kspDebugKotlin` stopped with "unexpected jvm signature V", a known KSP2
+  bug when an old Room processes `suspend` DAO methods that return nothing,
+  which is exactly `SyncedMediaDao.insert`. The KSP maintainers' answer is
+  to upgrade Room to 2.7.0 or later. `room-runtime`, `room-ktx` and
+  `room-compiler` all moved from 2.6.1 to 2.8.5 (the current stable
+  release), which supersedes the two Dependabot PRs that proposed the same
+  bump for runtime and compiler separately, where merging either alone
+  would have left the pair mismatched. The "fall back to KSP1" note that
+  sat above these lines was removed, since it was a guess made before the
+  failure was known. Not yet confirmed by a green run: the build has not
+  yet compiled any of the app's own Kotlin sources, so more errors may
+  follow.
+
 ### Found, not changed
 - **`gateway/Dockerfile` is `FROM nginx:alpine`**, a floating tag, while
   the five frontends were pinned to `nginx:1.30-alpine` in [1.1.4]. The

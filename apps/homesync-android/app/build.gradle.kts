@@ -101,15 +101,22 @@ dependencies {
 
     // Room — local cache of what's been backed up, for the History screen
     // and offline "last backup" summary without a network round trip.
-    // KSP now defaults to KSP2 (independent versioning since KSP 2.3.0,
-    // paired with Kotlin 2.3.20 above). If Room's annotation processing
-    // errors out after this bump, add `ksp { useKsp2 = false }` here in
-    // this file (or `ksp.useKSP2=false` in gradle.properties) to fall
-    // back to KSP1 while a fix lands — this hasn't been build-verified
-    // since it needs a real Android SDK/AAPT toolchain to compile.
-    implementation("androidx.room:room-runtime:2.6.1")
-    implementation("androidx.room:room-ktx:2.6.1")
-    ksp("androidx.room:room-compiler:2.6.1")
+    //
+    // Keep all three Room lines on the SAME version. Room generates code
+    // (the DAO implementation) at compile time with room-compiler, and that
+    // code calls into room-runtime, so a mismatch fails in confusing ways.
+    //
+    // Why 2.8.5 and not the 2.6.1 this used to be: KSP (the tool Room runs
+    // inside to generate that code) is on version 2.x, which Room 2.6.1
+    // predates. The first real build failed in `kspDebugKotlin` with
+    // "unexpected jvm signature V", a known KSP2 + old-Room bug triggered by
+    // `suspend` DAO methods that return nothing (SyncedMediaDao.insert). The
+    // KSP maintainers' answer is to upgrade Room to 2.7.0 or later. This is
+    // the current stable release, and needs compileSdk 36 (set above) and
+    // minSdk 23 or higher (we use 26).
+    implementation("androidx.room:room-runtime:2.8.5")
+    implementation("androidx.room:room-ktx:2.8.5")
+    ksp("androidx.room:room-compiler:2.8.5")
 
     // DataStore — session token and backup settings (Wi-Fi only, charging
     // only, which categories are enabled)

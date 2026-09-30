@@ -5,15 +5,20 @@ All notable changes to this project are documented here. Format follows
 [SemVer](https://semver.org/): one version number for the whole
 ecosystem (see root `package.json`), bumped on any meaningful release.
 
-## [Unreleased] — Documentation sync and continuous integration after [1.1.4]
+## [1.1.5] — Continuous integration; Docker and Android build fixes; dependency updates
 
-Two things. First, every number, version and status claim in `README.md`
-and `docs/` was checked against the repo at `0fd25b0`, and the ones that
-had drifted were corrected. Second, GitHub Actions workflows now run the
-checks that until now only happened by hand, on GitHub's machines, so
-they don't depend on this project's development machine having Docker or
-the Android SDK. The only other file touched is one stale comment in the
-root `package.json`.
+The first release with automated checks on GitHub. `.github/workflows/`
+now runs the tests, a build of every frontend, a dependency audit, a full
+Docker build and boot of the whole stack, and a build of the Android app,
+none of which depend on this project's development machine having Docker
+or the Android SDK. Running them for the first time found real problems
+that nothing had caught before: no Docker image could build since the move
+to npm workspaces, two services misbehaved when the stack actually started,
+and the Android app's build file and database dependency were broken under
+the toolchain [1.1.4] had upgraded to. All of that is fixed below. The
+release also brings `README.md` and `docs/` back in line with the repo
+(test counts, versions, statuses), and includes the Dependabot updates
+merged since [1.1.4].
 
 ### Fixed
 - **Test counts were out of date.** `README.md` and `docs/DEVELOPMENT.md`
@@ -124,6 +129,22 @@ root `package.json`.
   follow.
 
 ### Changed
+- **Dependency updates merged from Dependabot**, each one gated on the
+  checks above. Android: Kotlin and the Compose compiler plugin 2.3.20 to
+  2.4.20, KSP 2.3.10 to 2.3.12, Android Gradle Plugin 8.13.0 to 8.13.2,
+  Gradle wrapper 8.13 to 8.14.5, Material Components 1.12.0 to 1.14.0,
+  WorkManager 2.9.1 to 2.12.0, Retrofit 2.11.0 to 2.12.0, coroutines 1.8.1
+  to 1.11.0, AndroidX test junit 1.2.1 to 1.3.0, Espresso 3.6.1 to 3.7.0.
+  Docker: `alpine` 3.22 to 3.24 (backup), `nginx` 1.30 to 1.31 (the five
+  frontends). npm: minor and patch bumps of `vite` (8.3.1), `dotenv`
+  (18.0.4), `sharp` (0.35.5), `dompurify` (3.4.16), `marked` (18.0.14) and
+  `jsdom` (30.1.1). Majors that can't be taken one at a time were closed
+  and are now blocked in `.github/dependabot.yml` (see below).
+- **`android.yml` installs Gradle 8.14.5**, up from 8.13, to match the
+  wrapper in `apps/homesync-android/gradle/wrapper/gradle-wrapper.properties`
+  that the Gradle bump above changed. The workflow installs Gradle
+  separately, since the repo has no `gradlew` script, so the two have to be
+  kept in step by hand. Checked by the workflow's next run.
 - `.github/dependabot.yml` no longer offers minor or major updates of the
   Compose BOM, `androidx.navigation:*` or `androidx.lifecycle:*`. Found
   when the Compose BOM PR (2025.10.01 to 2026.09.00) failed `android.yml`
@@ -156,14 +177,6 @@ notes in this entry: the Docker job builds every image and boots the whole
 stack, and the smoke test passes through the gateway. The Android job
 compiles the app and passes its unit tests. Still not verified: the app
 running on a device, and a real browser session against the running stack.
-
-### Found, not changed
-- **`gateway/Dockerfile` is `FROM nginx:alpine`**, a floating tag, while
-  the five frontends were pinned to `nginx:1.30-alpine` in [1.1.4]. The
-  gateway is the one container that publishes a host port. Left alone
-  because no Docker was available to rebuild it; recorded as
-  `docs/ROADMAP.md` item 7, and since pinned (see the `gateway/Dockerfile`
-  entry above).
 
 ### Added
 - `.github/workflows/ci.yml`, three independent jobs on every push to
@@ -203,16 +216,15 @@ running on a device, and a real browser session against the running stack.
   Dependabot's first PRs).
 - A "Continuous integration" section in `docs/DEVELOPMENT.md`.
 
-Verified: `npm ci` on Node 22 is clean, all 207 tests pass both per
-suite and from the root `npm test`, all 5 frontends build, and `npm
-audit` reports 0 vulnerabilities. Both workflow files parse as YAML, the
-`.env` generation step and `npm run build --workspaces --if-present`
-were run as written, and the smoke test's register, 401 and cross-service
-checks were run against real local `homecore` and `homecloud-backend`
-processes. Not verified: the workflows themselves have not yet run on
-GitHub, nothing Docker (not available here), nothing Android (no SDK
-here), and `docs/API.md` beyond a rough automated comparison of route
-names against the code.
+Verified on the release commit's tree: `npm ci` on Node 22 is clean, all
+207 tests pass (45 / 41 / 18 / 24 / 20 / 28 / 20 / 11 across the eight
+suites), all 5 frontends build, and `npm audit` reports 0 vulnerabilities.
+The CI workflows, including the Docker boot and the Android build, ran
+green on GitHub before the dependency PRs above were merged. Not verified:
+the Android app running on a device, a real browser session against the
+running stack, `docs/API.md` beyond a rough automated comparison of route
+names against the code, and the Gradle 8.14.5 change to `android.yml`
+above until its first run.
 
 ## [1.1.4] — First real HomeSync Android build; full dependency audit
 

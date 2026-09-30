@@ -142,6 +142,12 @@ root `package.json`.
   must match Kotlin exactly. Not yet seen working: the next Kotlin bump
   should arrive as a single combined PR.
 
+- **`gateway/Dockerfile` is pinned** to `nginx:1.31-alpine` (it was the
+  floating tag `nginx:alpine`), matching the five frontends after their
+  Dependabot bump. That closes the "found, not changed" note below. Checked
+  by `ci.yml`'s Docker job on the next push, which builds it and sends every
+  smoke-test request through it.
+
 ### Confirmed
 After the fixes above, `ci.yml` (tests and frontend builds, dependency
 audit, and the Docker build and smoke test) and `android.yml` (debug APK
@@ -155,8 +161,9 @@ running on a device, and a real browser session against the running stack.
 - **`gateway/Dockerfile` is `FROM nginx:alpine`**, a floating tag, while
   the five frontends were pinned to `nginx:1.30-alpine` in [1.1.4]. The
   gateway is the one container that publishes a host port. Left alone
-  because no Docker was available to rebuild it; recorded in
-  `docs/SECURITY.md` and as `docs/ROADMAP.md` item 7.
+  because no Docker was available to rebuild it; recorded as
+  `docs/ROADMAP.md` item 7, and since pinned (see the `gateway/Dockerfile`
+  entry above).
 
 ### Added
 - `.github/workflows/ci.yml`, three independent jobs on every push to

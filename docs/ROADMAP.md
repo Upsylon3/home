@@ -49,17 +49,19 @@ first (see below).
 6. **Done: the whole stack builds and boots end to end.** `ci.yml`'s
    Docker job runs `docker compose build`, starts every container and
    checks the stack through the gateway, on GitHub's machines. It is green,
-   which also confirms the `node:22-slim`, `nginx:1.30-alpine` and
-   `alpine:3.22` base-image bumps (see `SECURITY.md`). Getting it green took
+   which also confirms the `node:22-slim`, `nginx` and `alpine` base-image
+   bumps (see `SECURITY.md`). Getting it green took
    three real fixes, all in `CHANGELOG.md`: the Dockerfiles predated the
    move to npm workspaces, HomeCloud's backend inherited the wrong port,
    and the gateway started before the services it forwards to. Kept here,
    rather than deleted, so the numbering that other files point at stays
    valid. What it does not cover is a real browser session or a device.
-7. **Pin the gateway's base image.** `gateway/Dockerfile` is still
-   `FROM nginx:alpine` (a floating tag) while the frontends are on
-   `nginx:1.30-alpine` — see `SECURITY.md`. A one-line change, but do it
-   together with item 6, since both need a Docker rebuild to confirm.
+7. **Done: the gateway's base image is pinned.** `gateway/Dockerfile` was
+   `FROM nginx:alpine`, a floating tag, while the frontends were pinned.
+   It is now `nginx:1.31-alpine`, the same as they are, so a surprise
+   upgrade can't land on the one container that publishes a host port, and
+   Dependabot now tracks it like the rest. Kept here so the numbering
+   other files point at stays valid.
 8. **Triage Dependabot's first PRs** (`.github/dependabot.yml`, added in
    1.1.4). Majors are deliberately left out of the weekly group so each
    one gets read on its own. With `ci.yml` in place, each PR shows a

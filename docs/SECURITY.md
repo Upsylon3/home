@@ -82,7 +82,9 @@ stack (see `docs/DEVELOPMENT.md`).
 from `nginx:1.27-alpine` to `nginx:1.30-alpine`, which carries several
 CVE fixes the older line lacks. Like the Node bump, this was first made
 without Docker available, and is now confirmed by `ci.yml`'s Docker job,
-which builds those images and boots the stack.
+which builds those images and boots the stack. Dependabot has since moved
+them on (merged only after the same CI run passed) to `alpine:3.24` and
+`nginx:1.31-alpine`.
 
 ## What's not covered yet
 
@@ -122,13 +124,6 @@ which builds those images and boots the stack.
   disabled status, not credentials — low enough stakes that changing
   it wasn't treated as urgent, but worth a conscious call rather than
   an unnoticed gap.
-- **The gateway's base image isn't pinned.** `gateway/Dockerfile` is
-  `FROM nginx:alpine`, a floating tag, while the five frontend
-  Dockerfiles were pinned to `nginx:1.30-alpine` in [1.1.4]. The gateway
-  is the one container that publishes a host port, so a surprise
-  upgrade or a stale cached image matters most there. Found while
-  checking these docs against the repo; not changed, since there was no
-  Docker available to rebuild and boot it afterwards.
 - No email-based password reset (an admin-panel reset is the intentional
   substitute — no outgoing mail server to run).
 - No account-deletion flow — only disable. See

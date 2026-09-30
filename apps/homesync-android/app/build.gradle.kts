@@ -1,3 +1,7 @@
+// Needed for JvmTarget.JVM_17 in the `kotlin { compilerOptions }` block at
+// the bottom of the android section. Imports must come first in the file.
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -36,10 +40,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
     buildFeatures {
         compose = true
         buildConfig = true
@@ -53,6 +53,23 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+    }
+}
+
+// Which Java version the compiled Kotlin targets. This has to match
+// compileOptions (17) above, or Gradle stops with an "Inconsistent
+// JVM-target compatibility" error.
+//
+// This used to be `android { kotlinOptions { jvmTarget = "17" } }`. That
+// form was deprecated for a long time and became a hard ERROR in Kotlin
+// 2.3, which stopped this whole file from compiling, so nothing else in
+// the app was even attempted. It only surfaced once the Android workflow
+// (.github/workflows/android.yml) ran the build on a machine with the real
+// toolchain: the 1.1.4 upgrade to Kotlin 2.3.20 had never been compiled.
+// `compilerOptions` is the replacement Kotlin asks for.
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
     }
 }
 

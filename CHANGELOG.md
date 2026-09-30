@@ -46,6 +46,18 @@ root `package.json`.
 - The root `package.json`'s `//test` comment listed five workspaces; the
   script actually runs all eight suites.
 
+- **`apps/homesync-android/app/build.gradle.kts` did not compile under
+  Kotlin 2.3.20**, the version [1.1.4] upgraded to. The `android {
+  kotlinOptions { jvmTarget = "17" } }` block was deprecated for a long
+  time and became a hard error in Kotlin 2.3 ("Using 'jvmTarget: String'
+  is an error"), so Gradle failed while reading the build file itself,
+  before any app code was touched. Found by the first run of
+  `.github/workflows/android.yml`, which is exactly the compile-check the
+  [1.1.4] entry said was missing. Replaced with the `kotlin {
+  compilerOptions { jvmTarget.set(JvmTarget.JVM_17) } }` form. Not yet
+  confirmed by a green run, and more errors may follow: nothing past this
+  point in the build has been reached yet.
+
 ### Found, not changed
 - **`gateway/Dockerfile` is `FROM nginx:alpine`**, a floating tag, while
   the five frontends were pinned to `nginx:1.30-alpine` in [1.1.4]. The
@@ -78,6 +90,15 @@ root `package.json`.
   does not prove it runs on a device.
 - A `github-actions` entry in `.github/dependabot.yml`, so the actions
   the workflows use get update PRs like everything else.
+- `ignore` rules in `.github/dependabot.yml` for major bumps that can't
+  be taken one PR at a time. Added after the first 24 PRs arrived. Node
+  (11 PRs, one per Dockerfile, some to 25 and some to 26: Node 25 is an
+  odd-numbered release that went end-of-life on 2026-06-01, and the mix
+  would have left the services on different Node versions while CI and
+  the docs say 22). `better-sqlite3` 13, already tried and reverted in
+  [1.1.4]. Android Gradle Plugin 9 with Gradle 9, and Retrofit/OkHttp
+  majors, which each need their sibling artifacts moved in the same
+  change. Minor and patch updates of all of these still arrive normally.
 - `docs/ROADMAP.md` items 7 (pin the gateway image) and 8 (triage
   Dependabot's first PRs).
 - A "Continuous integration" section in `docs/DEVELOPMENT.md`.

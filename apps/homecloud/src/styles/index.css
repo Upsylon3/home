@@ -1,39 +1,7 @@
-:root {
-  --bg: #14171c;
-  --panel: #1d2128;
-  --panel-raised: #262b33;
-  --border: #333a45;
-  --text: #e8e6e1;
-  --text-dim: #9aa1ad;
-  --amber: #e8a33d;
-  --amber-dim: #7a5a28;
-  --teal: #4fb0a5;
-  --red: #d65f5f;
-
-  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
-  --font-sans: "Inter", system-ui, sans-serif;
-}
-
-/* Light theme — same building, different lighting condition (see
-   HOME_ARTISTIC_DIRECTION.md §7). Surfaces get *slightly darker* than the
-   page background as they elevate (the inverse of dark mode, where they
-   get lighter), since you can't go lighter than off-white. Accent hues
-   (amber/teal/red) stay conceptually the same color but are deepened,
-   since the original values were tuned for contrast against a near-black
-   page and read too pale against an off-white one. */
-[data-theme="light"] {
-  --bg: #f6f2ea;
-  --panel: #ece6d9;
-  --panel-raised: #e0d8c5;
-  --border: #d2c7ae;
-  --text: #2a2419;
-  --text-dim: #766c58;
-  --amber: #8a5a16;
-  --amber-dim: #b89a6e;
-  --teal: #2f7d72;
-  --red: #b23b3b;
-}
-
+/* Colors, fonts and corner radii are NOT defined here any more.
+   They live in design/tokens.css (copied into ./tokens.css by
+   design/sync-assets.sh and imported in main.jsx before this file).
+   Use var(--name) below; never type a color literal. */
 * {
   box-sizing: border-box;
 }
@@ -80,7 +48,7 @@ a:focus-visible {
   padding: 24px;
   position: relative;
   background:
-    radial-gradient(circle at 20% 20%, rgba(232, 163, 61, 0.06), transparent 40%),
+    radial-gradient(circle at 20% 20%, color-mix(in srgb, var(--amber) 6%, transparent), transparent 40%),
     var(--bg);
 }
 
@@ -95,7 +63,7 @@ a:focus-visible {
   max-width: 380px;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: 32px;
 }
 
@@ -112,7 +80,7 @@ a:focus-visible {
 }
 
 .auth-title {
-  font-family: var(--font-mono);
+  font-family: var(--font-display);
   font-size: 20px;
   margin: 0 0 4px;
 }
@@ -139,7 +107,7 @@ a:focus-visible {
   width: 100%;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   padding: 10px 12px;
   color: var(--text);
   font-size: 14px;
@@ -153,7 +121,7 @@ a:focus-visible {
 .btn {
   width: 100%;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   padding: 11px 16px;
   font-size: 14px;
   font-weight: 600;
@@ -172,7 +140,7 @@ a:focus-visible {
 
 .btn-primary {
   background: var(--amber);
-  color: #1a1103;
+  color: var(--on-accent);
 }
 
 .btn-ghost {
@@ -206,21 +174,21 @@ a:focus-visible {
 }
 
 .error-banner {
-  background: rgba(214, 95, 95, 0.12);
-  border: 1px solid rgba(214, 95, 95, 0.4);
-  color: #f0a8a8;
+  background: color-mix(in srgb, var(--red) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--red) 40%, transparent);
+  color: var(--red-soft);
   font-size: 13px;
   padding: 10px 12px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   margin-bottom: 16px;
 }
 
 /* The dark-mode error-banner colors above are tuned to sit on a near-black
-   page — #f0a8a8 (pale pink) would nearly disappear against an off-white
+   page — var(--red-soft) (pale pink) would nearly disappear against an off-white
    one, so light mode gets its own, deeper treatment. */
 [data-theme="light"] .error-banner {
-  background: rgba(178, 59, 59, 0.08);
-  border-color: rgba(178, 59, 59, 0.35);
+  background: color-mix(in srgb, var(--red) 8%, transparent);
+  border-color: color-mix(in srgb, var(--red) 35%, transparent);
   color: var(--red);
 }
 
@@ -289,7 +257,7 @@ a:focus-visible {
 .gauge-track {
   width: 100%;
   height: 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: var(--bg);
   border: 1px solid var(--border);
   overflow: hidden;
@@ -302,7 +270,7 @@ a:focus-visible {
 }
 
 .gauge-fill.warn {
-  background: linear-gradient(90deg, #8a3f3f, var(--red));
+  background: linear-gradient(90deg, color-mix(in srgb, var(--red) 60%, #000), var(--red));
 }
 
 .sidebar-spacer {
@@ -321,7 +289,7 @@ a:focus-visible {
 }
 
 .main-header h1 {
-  font-family: var(--font-mono);
+  font-family: var(--font-display);
   font-size: 18px;
   margin: 0;
 }
@@ -343,23 +311,23 @@ a:focus-visible {
 
 .activity-led.on {
   background: var(--teal);
-  box-shadow: 0 0 6px 1px rgba(79, 176, 165, 0.7);
+  box-shadow: 0 0 6px 1px color-mix(in srgb, var(--teal) 70%, transparent);
   animation: led-blink 0.5s ease-out;
 }
 
 @keyframes led-blink {
   from {
-    box-shadow: 0 0 10px 3px rgba(79, 176, 165, 0.9);
+    box-shadow: 0 0 10px 3px color-mix(in srgb, var(--teal) 90%, transparent);
   }
   to {
-    box-shadow: 0 0 6px 1px rgba(79, 176, 165, 0.7);
+    box-shadow: 0 0 6px 1px color-mix(in srgb, var(--teal) 70%, transparent);
   }
 }
 
 /* Upload dropzone */
 .dropzone {
   border: 1px dashed var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: 28px;
   text-align: center;
   color: var(--text-dim);
@@ -371,7 +339,7 @@ a:focus-visible {
 
 .dropzone.dragover {
   border-color: var(--amber);
-  background: rgba(232, 163, 61, 0.05);
+  background: color-mix(in srgb, var(--amber) 5%, transparent);
   color: var(--text);
 }
 

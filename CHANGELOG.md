@@ -5,6 +5,46 @@ All notable changes to this project are documented here. Format follows
 [SemVer](https://semver.org/): one version number for the whole
 ecosystem (see root `package.json`), bumped on any meaningful release.
 
+## [1.2.0] — Atari refresh, phases 1 and 2: shared design tokens and self-hosted fonts
+
+The first step of a visual refresh toward a warm 1970s Atari look (black
+vinyl, cream paper, orange and brass), built the way a modern retro
+product is: retro in color and material, modern in layout and
+readability. This release changes the foundation only: one shared source
+for the look, and fonts that no longer come from Google. The bigger
+visual pieces (woodgrain hero, stripe band on screens, component
+restyling) build on it in later releases.
+
+### Added
+- **`design/tokens.css`** is now the single source of truth for colors,
+  corner radii, fonts, the four stripe colors and a woodgrain surface,
+  plus the `.stripe-band` and `.woodgrain` helpers. `design/sync-assets.sh`
+  copies it to `apps/<name>/src/styles/tokens.css` in every frontend, the
+  same pattern the icons already use. Edit the `design/` copy only.
+- **Display font** (Fredoka, bundled) for page and card titles. Labels,
+  brand marks and numbers stay in IBM Plex Mono.
+- New tokens: `--on-accent`, `--red-soft`, `--radius-sm/md/lg`,
+  `--font-display`, `--stripe-1..4`, `--wood-base`, `--wood-grain`.
+
+### Changed
+- **New palette**, same token names so no component needed rewriting:
+  warm brown-black dark theme ("console"), ivory light theme ("manual"),
+  more orange accent, rust red, 70s teal. Contrast was checked against
+  WCAG AA; a few light-theme accents on the *raised* surface land just
+  under 4.5:1 and are worth a look in the polish pass.
+- Corners are chunkier (`--radius-sm` 6px, `--radius-md` 10px) and status
+  pills are now fully round.
+- 53 hardcoded `rgba(...)` tints and 16 hardcoded hex colors across the
+  five stylesheets now read the tokens (via `color-mix()`), so a future
+  palette change no longer leaves stale glows behind.
+- Browser and PWA chrome colors (`theme-color`, manifests) and the
+  HomeSync info page follow the new page color.
+
+### Removed
+- Every Google Fonts `<link>` tag. Fonts are bundled from `@fontsource`
+  packages, so pages render correctly with no internet and never contact
+  a third party.
+
 ## [1.1.5] — Continuous integration; Docker and Android build fixes; dependency updates
 
 The first release with automated checks on GitHub. `.github/workflows/`

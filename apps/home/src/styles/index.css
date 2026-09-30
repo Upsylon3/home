@@ -1,43 +1,7 @@
-/* Home's design tokens are copied verbatim from ../frontend/src/styles/index.css
-   rather than reinvented — HOME_ARTISTIC_DIRECTION.md §3/§36: "extract
-   HomeCloud's visual DNA, formalize it into a design system, extend it
-   gradually." Same palette, same two typefaces, same restrained radius
-   and border language. What's different here is layout: Home is the
-   entrance hallway, not the archive room, so it's allowed to breathe more
-   (§2 "dense when useful, spacious when important") — bigger cards, more
-   whitespace, fewer borders doing double duty as decoration. */
-:root {
-  --bg: #14171c;
-  --panel: #1d2128;
-  --panel-raised: #262b33;
-  --border: #333a45;
-  --text: #e8e6e1;
-  --text-dim: #9aa1ad;
-  --amber: #e8a33d;
-  --amber-dim: #7a5a28;
-  --teal: #4fb0a5;
-  --red: #d65f5f;
-
-  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
-  --font-sans: "Inter", system-ui, sans-serif;
-}
-
-/* Light theme — same tokens, same reasoning, as ../frontend/src/styles/index.css.
-   Kept identical between the two apps on purpose so switching between
-   HomeCloud and Home never feels like a different product. */
-[data-theme="light"] {
-  --bg: #f6f2ea;
-  --panel: #ece6d9;
-  --panel-raised: #e0d8c5;
-  --border: #d2c7ae;
-  --text: #2a2419;
-  --text-dim: #766c58;
-  --amber: #8a5a16;
-  --amber-dim: #b89a6e;
-  --teal: #2f7d72;
-  --red: #b23b3b;
-}
-
+/* Colors, fonts and corner radii are NOT defined here any more.
+   They live in design/tokens.css (copied into ./tokens.css by
+   design/sync-assets.sh and imported in main.jsx before this file).
+   Use var(--name) below; never type a color literal. */
 * {
   box-sizing: border-box;
 }
@@ -88,7 +52,7 @@ a:focus-visible {
   padding: 24px;
   position: relative;
   background:
-    radial-gradient(circle at 20% 20%, rgba(232, 163, 61, 0.06), transparent 40%),
+    radial-gradient(circle at 20% 20%, color-mix(in srgb, var(--amber) 6%, transparent), transparent 40%),
     var(--bg);
 }
 
@@ -103,7 +67,7 @@ a:focus-visible {
   max-width: 380px;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: 32px;
 }
 
@@ -120,7 +84,7 @@ a:focus-visible {
 }
 
 .auth-title {
-  font-family: var(--font-mono);
+  font-family: var(--font-display);
   font-size: 20px;
   margin: 0 0 4px;
 }
@@ -147,7 +111,7 @@ a:focus-visible {
   width: 100%;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   padding: 10px 12px;
   color: var(--text);
   font-size: 14px;
@@ -160,7 +124,7 @@ a:focus-visible {
 
 .btn {
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   padding: 11px 16px;
   font-size: 14px;
   font-weight: 600;
@@ -183,7 +147,7 @@ a:focus-visible {
 
 .btn-primary {
   background: var(--amber);
-  color: #1a1103;
+  color: var(--on-accent);
 }
 
 .btn-ghost {
@@ -213,30 +177,30 @@ a:focus-visible {
 }
 
 .error-banner {
-  background: rgba(214, 95, 95, 0.12);
-  border: 1px solid rgba(214, 95, 95, 0.4);
-  color: #f0a8a8;
+  background: color-mix(in srgb, var(--red) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--red) 40%, transparent);
+  color: var(--red-soft);
   font-size: 13px;
   padding: 10px 12px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   margin-bottom: 16px;
 }
 
 /* Same reasoning as frontend/src/styles/index.css: pale pink text is
    tuned for a near-black page and disappears on an off-white one. */
 [data-theme="light"] .error-banner {
-  background: rgba(178, 59, 59, 0.08);
-  border-color: rgba(178, 59, 59, 0.35);
+  background: color-mix(in srgb, var(--red) 8%, transparent);
+  border-color: color-mix(in srgb, var(--red) 35%, transparent);
   color: var(--red);
 }
 
 .hint-banner {
-  background: rgba(232, 163, 61, 0.08);
-  border: 1px solid rgba(232, 163, 61, 0.3);
+  background: color-mix(in srgb, var(--amber) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--amber) 30%, transparent);
   color: var(--text-dim);
   font-size: 13px;
   padding: 10px 12px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   margin-bottom: 16px;
 }
 
@@ -282,7 +246,7 @@ a:focus-visible {
   align-items: center;
   gap: 10px;
   padding: 9px 10px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   color: var(--text-dim);
   text-decoration: none;
   font-size: 13px;
@@ -363,7 +327,7 @@ a:focus-visible {
   background: transparent;
   border: 1px solid var(--border);
   color: var(--text-dim);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   width: 34px;
   height: 34px;
   display: flex;
@@ -384,13 +348,13 @@ a:focus-visible {
   top: -4px;
   right: -4px;
   background: var(--amber);
-  color: #1a1103;
+  color: var(--on-accent);
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 600;
   min-width: 15px;
   height: 15px;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -432,7 +396,7 @@ a:focus-visible {
 }
 
 .page-title {
-  font-family: var(--font-mono);
+  font-family: var(--font-display);
   font-size: 22px;
   margin: 0;
 }
@@ -467,7 +431,7 @@ a:focus-visible {
 .app-card {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 20px;
   display: flex;
   flex-direction: column;
@@ -489,7 +453,7 @@ a:focus-visible {
 .app-card-icon {
   width: 36px;
   height: 36px;
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
   background: var(--panel-raised);
   border: 1px solid var(--border);
   display: flex;
@@ -502,7 +466,7 @@ a:focus-visible {
 }
 
 .app-card-name {
-  font-family: var(--font-mono);
+  font-family: var(--font-display);
   font-size: 15px;
   margin: 0;
 }
@@ -549,7 +513,7 @@ a:focus-visible {
   gap: 8px;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 20px;
+  border-radius: 999px;
   padding: 7px 14px 7px 10px;
   font-size: 12.5px;
 }
@@ -563,18 +527,18 @@ a:focus-visible {
 
 .status-dot.healthy {
   background: var(--teal);
-  box-shadow: 0 0 6px 1px rgba(79, 176, 165, 0.5);
+  box-shadow: 0 0 6px 1px color-mix(in srgb, var(--teal) 50%, transparent);
 }
 
 .status-dot.degraded {
   background: var(--amber);
-  box-shadow: 0 0 6px 1px rgba(232, 163, 61, 0.5);
+  box-shadow: 0 0 6px 1px color-mix(in srgb, var(--amber) 50%, transparent);
 }
 
 .status-dot.unhealthy,
 .status-dot.offline {
   background: var(--red);
-  box-shadow: 0 0 6px 1px rgba(214, 95, 95, 0.5);
+  box-shadow: 0 0 6px 1px color-mix(in srgb, var(--red) 50%, transparent);
 }
 
 .status-label {
@@ -594,7 +558,7 @@ a:focus-visible {
 .list-panel {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 
@@ -658,7 +622,7 @@ a:focus-visible {
   overflow-y: auto;
   background: var(--panel-raised);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
   z-index: 20;
 }
@@ -675,7 +639,7 @@ a:focus-visible {
 }
 
 .notif-item.unread {
-  background: rgba(232, 163, 61, 0.05);
+  background: color-mix(in srgb, var(--amber) 5%, transparent);
 }
 
 .notif-item-title {
@@ -701,7 +665,7 @@ a:focus-visible {
 .panel {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 22px;
 }
 
@@ -710,7 +674,7 @@ a:focus-visible {
 }
 
 .panel-title {
-  font-family: var(--font-mono);
+  font-family: var(--font-display);
   font-size: 14px;
   margin: 0 0 4px;
 }

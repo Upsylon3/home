@@ -10,6 +10,9 @@
     "test": "node --test"
   },
   "dependencies": {
+    "@fontsource/fredoka": "^5.3.0",
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "@fontsource/inter": "^5.3.0",
     "hash-wasm": "^4.12.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",

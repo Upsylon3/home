@@ -32,7 +32,7 @@ app.get("/", (req, res) => {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>HomeSync</title>
   <style>
-    body { font-family: -apple-system, system-ui, sans-serif; background: #14171c; color: #e8e6e1; max-width: 480px; margin: 60px auto; padding: 0 20px; line-height: 1.5; }
+    body { font-family: -apple-system, system-ui, sans-serif; background: #17120e; color: #f2e6cf; max-width: 480px; margin: 60px auto; padding: 0 20px; line-height: 1.5; }
     h1 { font-size: 20px; }
     code { background: #1d2128; padding: 2px 6px; border-radius: 4px; }
   </style>

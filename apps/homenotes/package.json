@@ -10,6 +10,9 @@
     "test": "node --test"
   },
   "dependencies": {
+    "@fontsource/fredoka": "^5.3.0",
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "@fontsource/inter": "^5.3.0",
     "dompurify": "^3.4.16",
     "marked": "^18.0.14",
     "react": "^19.3.0",

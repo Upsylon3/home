@@ -1,0 +1,147 @@
+/* ==========================================================================
+   design/tokens.css — the ONE place where Home's look is defined.
+
+   WHY THIS FILE EXISTS
+   Before, every app had its own copy of these colors typed into its own
+   stylesheet. Changing the look meant editing five files and hoping they
+   stayed identical. Now there is one file. Every app gets a copy of it
+   when you run ./design/sync-assets.sh (same pattern as our icons).
+
+   !! NEVER edit the copies in apps/<name>/src/styles/tokens.css !!
+   Those are copies. The next sync silently overwrites them.
+   Edit THIS file, then run:  ./design/sync-assets.sh
+
+   HOW TO READ IT (for newcomers)
+   A "CSS variable" (custom property) is a named value: --amber: #e0892b.
+   Anywhere else in our CSS, var(--amber) means "use whatever --amber is".
+   Change the value here and every place that uses the name updates.
+
+   THE LOOK: "Atari, 1977, but built today". Warm black vinyl, cream
+   paper, orange and brass. Retro in color and material; modern in layout
+   and readability. See docs about the design direction.
+   ========================================================================== */
+
+
+/* --------------------------------------------------------------------------
+   DARK THEME — "console". This is the default.
+   Warm brown-black, never cool gray. Surfaces get LIGHTER as they rise,
+   like layers of a console casing catching the light.
+   -------------------------------------------------------------------------- */
+:root {
+  /* Surfaces: page < panel < raised */
+  --bg: #17120e;            /* the page itself: warm black */
+  --panel: #221a13;         /* cards, sidebars */
+  --panel-raised: #2d231a;  /* things sitting on cards: menus, hovered rows */
+  --border: #4a3a2b;        /* thin dividers, walnut brown */
+
+  /* Text */
+  --text: #f2e6cf;          /* cream instead of pure white: easier on the eyes */
+  --text-dim: #b0a088;      /* secondary text: hints, timestamps */
+
+  /* Brand + status colors. Each one MEANS something, so we never use
+     them as pure decoration. (Color is never the only signal either:
+     always pair it with an icon or a word.) */
+  --amber: #e0892b;         /* brand accent + "needs attention" */
+  --amber-dim: #7d5426;     /* quiet version of the accent */
+  --teal: #4aaaa5;          /* "healthy" / informational: 70s teal */
+  --red: #e0664a;           /* "danger": rust red */
+
+  /* Text that sits ON a colored surface (e.g. the label inside an
+     amber button). Dark brown on amber reads better than pure black. */
+  --on-accent: #1f1205;
+  /* Soft red for error text on a tinted red background */
+  --red-soft: #f3b09f;
+
+  /* The four signature stripe colors (the Atari-era parallel bands).
+     Used by .stripe-band below and later by gauges and headers. */
+  --stripe-1: #e8b04a;      /* gold */
+  --stripe-2: #e0892b;      /* orange */
+  --stripe-3: #c4492e;      /* rust */
+  --stripe-4: #7a3b22;      /* brown */
+
+  /* Woodgrain: a base walnut plus a lighter grain line. Only ever used
+     on ONE "hero" surface per screen. Restraint is the whole trick. */
+  --wood-base: #5e3a22;
+  --wood-grain: rgba(0, 0, 0, 0.12);
+
+  /* Shape: chunkier than before (they were 4 to 8px). Use these names
+     instead of typing pixel values so all corners stay consistent. */
+  --radius-sm: 6px;         /* small controls: buttons, inputs, tags */
+  --radius-md: 10px;        /* cards, dialogs */
+  --radius-lg: 16px;        /* big hero panels */
+
+  /* Fonts. The real font files are bundled with each app (no Google CDN,
+     Home must work offline). The lists after the first name are
+     fallbacks if a file ever fails to load. */
+  --font-sans: "Inter", system-ui, sans-serif;           /* reading text */
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace; /* numbers, labels */
+  --font-display: "Fredoka", "Inter", system-ui, sans-serif; /* headings */
+}
+
+
+/* --------------------------------------------------------------------------
+   LIGHT THEME — "manual". Same names, different values.
+   The app turns this on by putting data-theme="light" on <html>
+   (see each app's src/theme.js). Think ivory instruction-booklet paper.
+   In light mode surfaces get slightly DARKER as they rise (you can't go
+   lighter than paper), and accent colors are deepened so they stay
+   readable on a pale page. Contrast was checked against WCAG AA.
+   -------------------------------------------------------------------------- */
+[data-theme="light"] {
+  --bg: #f3e9d2;
+  --panel: #ebdfc3;
+  --panel-raised: #e0d2b0;
+  --border: #cdbb94;
+
+  --text: #2b2118;
+  --text-dim: #66563f;
+
+  --amber: #8a4e0e;
+  --amber-dim: #b9946a;
+  --teal: #276868;
+  --red: #a03522;
+
+  --on-accent: #fff6e6;     /* light cream on the (now dark) amber */
+  --red-soft: #7a2415;      /* dark red text on a pale red tint */
+
+  --wood-base: #a9744a;     /* lighter walnut so it suits a bright page */
+  --wood-grain: rgba(60, 30, 10, 0.14);
+}
+
+
+/* --------------------------------------------------------------------------
+   SHARED HELPERS
+   Tiny reusable pieces built from the tokens above.
+   -------------------------------------------------------------------------- */
+
+/* The signature stripe band: four equal slices of color.
+   A gradient with "hard stops" (two positions on one color) gives crisp
+   bands instead of a smooth blur. Drop class="stripe-band" on any <div>. */
+.stripe-band {
+  height: 12px;
+  background: linear-gradient(
+    to bottom,
+    var(--stripe-1) 0 25%,
+    var(--stripe-2) 25% 50%,
+    var(--stripe-3) 50% 75%,
+    var(--stripe-4) 75% 100%
+  );
+}
+
+/* Fake woodgrain with no image file: thin repeating lines over a base
+   color. 2px line, 7px gap, running vertically. */
+.woodgrain {
+  background:
+    repeating-linear-gradient(90deg, var(--wood-grain) 0 2px, transparent 2px 7px),
+    var(--wood-base);
+}
+
+/* Headings get the chunky display font. Anything with its own
+   font-family (e.g. a label using --font-mono) still wins, because a
+   class is more specific than a bare h1/h2/h3. */
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+}

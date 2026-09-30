@@ -29,6 +29,17 @@ for app in "${FRONTENDS[@]}"; do
   echo "synced icons -> $app/public/icons/"
 done
 
+# Design tokens (colors, radii, fonts, stripe band, woodgrain) go to EVERY
+# frontend, into src/styles/ right next to that app's own index.css. Each
+# app's main.jsx imports this copy BEFORE index.css, so index.css can use
+# var(--amber) and friends. Same rule as the icons: edit design/tokens.css
+# only; the copies below get overwritten on every run.
+for app in "${FRONTENDS[@]}"; do
+  mkdir -p "$app/src/styles"
+  cp design/tokens.css "$app/src/styles/tokens.css"
+  echo "synced tokens.css -> $app/src/styles/tokens.css"
+done
+
 # AppIcon.jsx only goes where it's actually imported today: Home (app
 # launcher cards + sidebar app list) and the three sibling apps whose
 # Layout.jsx renders a branded sidebar/topbar (HomeMedia, HomeNotes,

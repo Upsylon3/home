@@ -61,6 +61,20 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "com.squareup.okhttp3:*"
         update-types: ["version-update:semver-major"]
+      # Newer AndroidX Compose/Navigation/Lifecycle releases require
+      # Android Gradle Plugin 9.1+ and compileSdk 37, and this project is
+      # held on AGP 8.13 (see apps/homesync-android/build.gradle.kts), which
+      # caps at compileSdk 36. A PR for any of these fails the build with
+      # "requires Android Gradle plugin 9.1.0 or higher" (seen on the
+      # Compose BOM 2026.09.00 PR). So only patch updates are offered, until
+      # the AGP 9 migration (docs/ROADMAP.md item 11) is done deliberately.
+      # If another AndroidX PR fails with that same message, add it here.
+      - dependency-name: "androidx.compose:compose-bom"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "androidx.navigation:*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "androidx.lifecycle:*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
 
   # --- Dockerfiles: homecore + every app under apps/ (node:22-slim, and
   # nginx:1.30-alpine for the 5 frontends) ---

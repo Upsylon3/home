@@ -91,6 +91,22 @@ first (see below).
    which changes how paths are rewritten and needs testing with a real
    stack, plus a friendly "this app is unavailable" page for a 502.
 
+11. **Migrate HomeSync Android to AGP 9 (when ready).** The app is
+   deliberately held on Android Gradle Plugin 8.13 because AGP 9 bundles
+   its own Kotlin support, which conflicts with the separately-applied
+   `org.jetbrains.kotlin.android` plugin and needs KSP and the Compose
+   plugin checked against it (see the comment in
+   `apps/homesync-android/build.gradle.kts`). The cost of staying is that
+   the AndroidX libraries are moving on without it: AGP 8.13 caps at
+   compileSdk 36, and the current Compose BOM, Navigation (2.10) and
+   Lifecycle (2.11) require AGP 9.1+ and compileSdk 37, so those updates
+   fail CI and Dependabot is told to skip them. More AndroidX libraries
+   will join that list over time, so this gets harder to postpone. Do it
+   in one deliberate change: AGP and Gradle 9, remove the Kotlin plugin
+   line, raise `compileSdk`, then lift the `ignore` rules in
+   `.github/dependabot.yml`. Not urgent while the app has never been run
+   on a device, but worth doing before it has users.
+
 **Settled, not open questions anymore** (kept here so the reasoning
 isn't lost): TLS approach (private overlay, not public certs —
 `SECURITY.md`), HomeVault's origin (shared, with CSP — `SECURITY.md`),

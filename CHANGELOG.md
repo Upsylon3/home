@@ -123,6 +123,16 @@ root `package.json`.
   yet compiled any of the app's own Kotlin sources, so more errors may
   follow.
 
+### Changed
+- `.github/dependabot.yml` no longer offers minor or major updates of the
+  Compose BOM, `androidx.navigation:*` or `androidx.lifecycle:*`. Found
+  when the Compose BOM PR (2025.10.01 to 2026.09.00) failed `android.yml`
+  with "requires Android Gradle plugin 9.1.0 or higher" and "compile
+  against version 37 or later": the new BOM pulls in Navigation 2.10.2 and
+  Lifecycle 2.11.0, and AGP 8.13, which the app is deliberately held on,
+  caps at compileSdk 36. Patch updates still arrive. Added
+  `docs/ROADMAP.md` item 11 for the AGP 9 migration that would lift this.
+
 ### Confirmed
 After the fixes above, `ci.yml` (tests and frontend builds, dependency
 audit, and the Docker build and smoke test) and `android.yml` (debug APK

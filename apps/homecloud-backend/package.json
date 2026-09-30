@@ -13,12 +13,12 @@
     "@home/homecore-client": "^1.0.0",
     "better-sqlite3": "^11.10.0",
     "cors": "^2.8.5",
-    "dotenv": "^18.0.0",
+    "dotenv": "^18.0.4",
     "express": "^5.2.1",
     "express-rate-limit": "^8.7.0",
     "helmet": "^8.3.0",
     "multer": "^2.0.0",
-    "sharp": "^0.35.3",
+    "sharp": "^0.35.5",
     "yazl": "^3.3.1"
   }
 }

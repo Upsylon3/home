@@ -43,6 +43,17 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 10
+    # The Kotlin compiler plugin, the Compose compiler plugin and KSP have
+    # to move together: the Compose plugin must match the Kotlin version
+    # exactly (see apps/homesync-android/build.gradle.kts), and KSP must
+    # support that Kotlin version. Dependabot otherwise opens one PR per
+    # plugin, and merging one alone leaves the build mismatched until the
+    # others land (which happened with Kotlin 2.4.20 and the Compose plugin).
+    groups:
+      kotlin-toolchain:
+        patterns:
+          - "org.jetbrains.kotlin*"
+          - "com.google.devtools.ksp"
     ignore:
       # These majors can't be taken one PR at a time, because each depends
       # on the others being moved with it. A single Dependabot PR would
@@ -75,6 +86,13 @@ updates:
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
       - dependency-name: "androidx.lifecycle:*"
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      # core-ktx is different: 1.19.0 is where it starts requiring AGP 9.1 /
+      # compileSdk 37, but earlier releases are fine, so block only that
+      # line and keep accepting 1.14 to 1.18.x. (Reported by other projects
+      # on AGP 8; it has not been tried on this one, so if a 1.18.x PR
+      # fails the build the same way, tighten this.)
+      - dependency-name: "androidx.core:core-ktx"
+        versions: [">=1.19.0"]
 
   # --- Dockerfiles: homecore + every app under apps/ (node:22-slim, and
   # nginx:1.30-alpine for the 5 frontends) ---

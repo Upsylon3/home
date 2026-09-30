@@ -130,8 +130,17 @@ root `package.json`.
   with "requires Android Gradle plugin 9.1.0 or higher" and "compile
   against version 37 or later": the new BOM pulls in Navigation 2.10.2 and
   Lifecycle 2.11.0, and AGP 8.13, which the app is deliberately held on,
-  caps at compileSdk 36. Patch updates still arrive. Added
-  `docs/ROADMAP.md` item 11 for the AGP 9 migration that would lift this.
+  caps at compileSdk 36. Patch updates still arrive. `androidx.core:core-ktx`
+  is blocked only from 1.19.0 up (where it starts needing the same), so
+  1.14 to 1.18.x are still offered. Added `docs/ROADMAP.md` item 11 for the
+  AGP 9 migration that would lift all of this.
+
+- `.github/dependabot.yml` groups the Kotlin, Compose-compiler and KSP
+  plugins into one PR (`kotlin-toolchain`). Dependabot had opened them
+  separately, and merging the Kotlin 2.4.20 PR on its own left the Compose
+  plugin on 2.3.20, which `apps/homesync-android/build.gradle.kts` says
+  must match Kotlin exactly. Not yet seen working: the next Kotlin bump
+  should arrive as a single combined PR.
 
 ### Confirmed
 After the fixes above, `ci.yml` (tests and frontend builds, dependency

@@ -5,6 +5,61 @@ All notable changes to this project are documented here. Format follows
 [SemVer](https://semver.org/): one version number for the whole
 ecosystem (see root `package.json`), bumped on any meaningful release.
 
+## [Unreleased] — Documentation sync after [1.1.4]
+
+A docs-only pass: every number, version and status claim in `README.md`
+and `docs/` was checked against the repo at `0fd25b0`, and the ones that
+had drifted were corrected. The only non-doc file touched is one stale
+comment in the root `package.json`.
+
+### Fixed
+- **Test counts were out of date.** `README.md` and `docs/DEVELOPMENT.md`
+  said 190 across seven suites (44 / 39 / 18 / 24 / 20 / 27 / 18);
+  running every suite gives 207 across eight (45 / 41 / 18 / 24 / 20 /
+  28 / 20, plus 11 in `apps/homenotes`, the Markdown-sanitizer tests,
+  which neither listed). `docs/DEVELOPMENT.md` also said `apps/homevault`
+  was the only frontend with automated tests, which stopped being true
+  once HomeNotes got its own.
+- **HomeSync Android's status still read "never built"** in
+  `README.md`, `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md` and
+  `docs/ROADMAP.md`. Now says what [1.1.4] actually did: one real build
+  attempt, one bug found and fixed, and the toolchain upgrades since
+  still uncompiled.
+- **`docs/SECURITY.md`** still introduced HomeVault as "a design
+  document with no implementation yet", and still described the `qs`
+  `overrides` pin that [1.1.4] removed. Both corrected, and the
+  [1.1.4] Alpine/nginx bumps and Dependabot config are now recorded
+  there.
+- **`README.md` and `docs/ARCHITECTURE.md` called HomeVault "not yet
+  security-reviewed"**, which undersold the two self-review passes in
+  [1.1.0] and [1.1.3]. Now "self-reviewed twice, not independently
+  reviewed" — the independent review is still the open item.
+- **`docs/API.md` was missing `POST /api/admin/users/:id/reset-password`**,
+  the admin-panel substitute for an email reset flow. Found by comparing
+  the code's 114 route declarations against the doc.
+- **`docs/ROADMAP.md`** pointed at "item 4 above" for permission
+  enforcement, which isn't on that list (item 4 is the icon work), and
+  still said "HomeVault: everything" was deferred. Both corrected.
+- The root `package.json`'s `//test` comment listed five workspaces; the
+  script actually runs all eight suites.
+
+### Found, not changed
+- **`gateway/Dockerfile` is `FROM nginx:alpine`**, a floating tag, while
+  the five frontends were pinned to `nginx:1.30-alpine` in [1.1.4]. The
+  gateway is the one container that publishes a host port. Left alone
+  because no Docker was available to rebuild it; recorded in
+  `docs/SECURITY.md` and as `docs/ROADMAP.md` item 7.
+
+### Added
+- `docs/ROADMAP.md` items 7 (pin the gateway image) and 8 (triage
+  Dependabot's first PRs).
+
+Verified: `npm ci` on Node 22 is clean, all 207 tests pass both per
+suite and from the root `npm test`, all 5 frontends build, and `npm
+audit` reports 0 vulnerabilities. Not verified: anything Docker (not
+available here) or Android (no SDK here), and `docs/API.md` beyond a
+rough automated comparison of route names against the code.
+
 ## [1.1.4] — First real HomeSync Android build; full dependency audit
 
 The roadmap's next two items after [1.1.3]: `apps/homesync-android`'s

@@ -23,7 +23,7 @@
   "//version-policy": "One version number for the whole ecosystem, bumped on every meaningful release across any service — simplest thing that works for a project this size. Individual package.json files under apps/ and packages/ have their own version fields for npm/Docker tooling's sake, but this root version is the one that matters for release notes (see CHANGELOG.md).",
 
   "scripts": {
-    "//test": "Runs every workspace's own `test` script, one at a time, stopping at the first failure — homecore, apps/homecloud-backend, apps/homemedia-backend, apps/homenotes-backend, and apps/homesync-backend.",
+    "//test": "Runs every workspace's own `test` script, one at a time, stopping at the first failure — homecore, the six backends under apps/ (homecloud, homemedia, homenotes, homesync, homevault), and the two frontends that have tests (apps/homenotes, apps/homevault).",
     "test": "npm run test --workspaces --if-present",
 
     "//install:all": "Redundant with plain `npm install` once workspaces are set up (that already installs every workspace's deps) — kept as an explicit, discoverable alias for anyone skimming this file.",

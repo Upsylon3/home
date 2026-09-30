@@ -241,8 +241,8 @@ problem:
 | HomeMedia | Built |
 | HomeNotes | Built |
 | HomeSync backend | Built and tested |
-| HomeSync Android app | Written, not yet build-verified — see `docs/DEVELOPMENT.md` |
-| HomeVault | **v0 built** — core loop (create/unlock/recover a vault, add/view/edit/delete items) implemented and tested; **not yet security-reviewed** — see `docs/SECURITY.md`'s "HomeVault v0" section before trusting it with anything real |
+| HomeSync Android app | Written; first real build in 1.1.4 found and fixed one bug, not re-verified since and never run on a device — see `docs/DEVELOPMENT.md` |
+| HomeVault | **v0 built** — core loop (create/unlock/recover a vault, add/view/edit/delete items) implemented and tested; **self-reviewed twice, not independently reviewed** — see `docs/SECURITY.md`'s "HomeVault v0" section before trusting it with anything real |
 | HomeTasks, HomeMonitor, HomeAI, HomeBridge | Not started |
 
 ## 8. Future ecosystem map

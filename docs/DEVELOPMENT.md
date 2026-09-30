@@ -177,13 +177,14 @@ npm test
 Or one service at a time:
 
 ```bash
-cd homecore && npm test                    # 44 tests
-cd apps/homecloud-backend && npm test      # 39 tests
+cd homecore && npm test                    # 45 tests
+cd apps/homecloud-backend && npm test      # 41 tests
 cd apps/homemedia-backend && npm test      # 18 tests
 cd apps/homenotes-backend && npm test      # 24 tests
 cd apps/homesync-backend && npm test       # 20 tests
-cd apps/homevault-backend && npm test      # 27 tests
-cd apps/homevault && npm test              # 18 tests — crypto.js only, see below
+cd apps/homevault-backend && npm test      # 28 tests
+cd apps/homevault && npm test              # 20 tests — crypto.js only, see below
+cd apps/homenotes && npm test              # 11 tests — markdown.js only, see below
 ```
 
 All use Node's built-in test runner (`node --test`) — no extra
@@ -191,25 +192,33 @@ test-framework dependency. Each test file gets its own fresh, isolated
 temp SQLite database, and `node --test` runs each file in its own
 process, so tests can't leak state into each other.
 
-`apps/homevault` is the one frontend with real tests — its client-side
-encryption module (`src/crypto.js`) is framework-free on purpose, so it
-can be tested directly with `node --test` the same way HomeSync's
-`pathPlanner.js` is, rather than only indirectly through rendering UI.
-No other frontend has automated tests yet.
+Two frontends have real tests, and both test one small module rather
+than the UI. `apps/homevault` tests its client-side encryption
+(`src/crypto.js`), and `apps/homenotes` tests its Markdown sanitizer
+(`src/markdown.js`, the fix for the stored XSS found in 1.1.1). Both
+modules are framework-free on purpose, so `node --test` can run them
+directly, the same way it runs HomeSync's `pathPlanner.js`, instead of
+reaching them only through rendering UI. `home`, `homecloud` and
+`homemedia` have no automated tests yet.
 
 If you change a frontend, also run `npm run build` in that app — the
 test suites above don't catch a build-time error in a `.jsx` file.
 
 ## HomeSync Android
 
-`apps/homesync-android/` has never been built with a real Android
-toolchain in the environment this codebase was developed in — there's no
-CI or sandbox here with the Android SDK. Static review (imports resolve,
-no dangling references) is clean, and the pure-Kotlin sync/hashing logic
-(`SyncLogic.kt`, zero Android dependencies) has its own JUnit tests. But
-**a first Gradle sync and a real device/emulator run should be the first
-thing anyone picking this up does** — treat it as unverified until then,
-not as done.
+`apps/homesync-android/` has had exactly one real build attempt so far,
+in 1.1.4. Gradle got as far as linking resources and failed because the
+app's theme inherits from a style that lives in the classic Material
+Components library, which wasn't declared as a dependency. That was
+fixed (see `CHANGELOG.md`), and it is the only part of the app that has
+been checked against a real Android toolchain. The Gradle, Kotlin and
+Compose upgrades made in the same release were reasoned through against
+each tool's release notes, not compiled, and the app has never run on a
+device or emulator. The pure-Kotlin sync/hashing logic (`SyncLogic.kt`,
+zero Android dependencies) has its own JUnit tests.
+**A fresh Gradle sync, then a real device/emulator run, should be the
+first thing anyone picking this up does** — treat it as unverified until
+then, not as done.
 
 To try it: open `apps/homesync-android/` in Android Studio, let Gradle
 sync, connect a device or start an emulator, and hit Run. On the login

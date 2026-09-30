@@ -27,6 +27,7 @@ shared activity/notifications feed. No files live here.
 | GET | `/api/admin/activity` | *(admin)* HomeCloud-scoped activity feed, every user |
 | POST | `/api/admin/users/:id/disabled` \| `/role` \| `/quota` | *(admin)* Account management |
 | POST | `/api/admin/users/:id/2fa/disable` | *(admin)* Reset a lost-phone 2FA |
+| POST | `/api/admin/users/:id/reset-password` | *(admin)* Set a new password for someone who forgot theirs; revokes their sessions |
 | GET | `/api/core/health` | *(no auth)* Liveness/storage check |
 | GET | `/api/core/system` | System info (version, uptime) |
 | GET | `/api/core/users/me` | Identity fields HomeCore itself owns (displayName) |

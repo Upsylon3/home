@@ -17,8 +17,8 @@ you choose to set that up.
 | **HomeCloud** | File storage: folders, sharing, Trash, 2FA, admin panel | Built |
 | **HomeMedia** | Photo/video library — albums, favorites, EXIF, no storage of its own | Built |
 | **HomeNotes** | A Markdown notes workspace | Built |
-| **HomeSync** | Android app that backs up phone photos/videos to HomeCloud | Backend built and tested; Android app not yet build-verified — see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) |
-| **HomeVault** | Client-side-encrypted password/secrets manager | **v0 built, not yet security-reviewed** — see [docs/SECURITY.md](docs/SECURITY.md) before storing anything real |
+| **HomeSync** | Android app that backs up phone photos/videos to HomeCloud | Backend built and tested; Android app had its first real build in 1.1.4 (one bug found and fixed) but hasn't been re-verified since, or run on a device — see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) |
+| **HomeVault** | Client-side-encrypted password/secrets manager | **v0 built, self-reviewed twice, not independently reviewed** — see [docs/SECURITY.md](docs/SECURITY.md) before storing anything real |
 | **HomeCore** | Shared identity, sessions, permissions, and the app registry — no UI of its own | Built |
 | HomeTasks, HomeMonitor, HomeAI | To-dos, system monitor, assistant | Not started — see [docs/ROADMAP.md](docs/ROADMAP.md) |
 
@@ -89,18 +89,22 @@ docs/                  Architecture, security, API reference, deployment, roadma
 
 ## Tests
 
-190 automated tests across 6 services, run with `npm test` from the
-repo root (or inside any one service's own folder):
+207 automated tests across 8 suites (6 backends, 2 frontends), run with
+`npm test` from the repo root (or inside any one suite's own folder):
 
 ```
-homecore                44 tests
-apps/homecloud-backend  39 tests
+homecore                45 tests
+apps/homecloud-backend  41 tests
 apps/homemedia-backend  18 tests
 apps/homenotes-backend  24 tests
 apps/homesync-backend   20 tests
-apps/homevault-backend  27 tests
-apps/homevault          18 tests  (src/crypto.js — the one frontend with real tests)
+apps/homevault-backend  28 tests
+apps/homevault          20 tests  (src/crypto.js — the client-side encryption)
+apps/homenotes          11 tests  (src/markdown.js — the XSS sanitizer)
 ```
+
+The other three frontends (`home`, `homecloud`, `homemedia`) have no
+automated tests; for those, `npm run build` is the check.
 
 See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for how to run them and
 what each layer covers.
@@ -121,7 +125,7 @@ what each layer covers.
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — a from-scratch production
   setup, backups, upgrading
 - [docs/SECURITY.md](docs/SECURITY.md) — what's protecting this today,
-  and HomeVault's (not yet built) threat model
+  and HomeVault's threat model and v0 status
 - [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md) — visual direction,
   for anyone designing a new screen
 - [docs/ROADMAP.md](docs/ROADMAP.md) — what's next

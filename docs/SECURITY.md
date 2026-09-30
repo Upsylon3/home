@@ -1,7 +1,8 @@
 # Security
 
 Two parts: what's actually protecting the app today, and HomeVault's
-threat model — a design document with no implementation yet.
+threat model — the design v0 was built from, plus what has and hasn't
+been checked since.
 
 ## Part A — implemented today
 
@@ -39,10 +40,14 @@ threat model — a design document with no implementation yet.
 - The batch-zip feature uses `yazl` (one small dependency) rather than
   a heavier alternative, specifically to avoid a larger transitive
   dependency tree.
-- A moderate-severity `qs` advisory (pulled in transitively through
-  every backend's `express`/`body-parser`) is patched via an `overrides`
-  pin in the root `package.json`, without needing a breaking Express 5
-  upgrade — see that file's own comment.
+- Every backend is on Express 5, which resolves a patched `qs` on its
+  own. An earlier moderate-severity `qs` advisory (in Express 4's
+  dependency tree) used to be patched by an `overrides` pin in the root
+  `package.json`; that pin was removed in [1.1.4] once `npm ls qs` and
+  `npm audit` confirmed it was no longer needed.
+- `.github/dependabot.yml` opens weekly update PRs for npm, Gradle and
+  the Dockerfiles, so a new advisory or an end-of-life base image shows
+  up as a PR instead of waiting for the next manual review.
 
 **Resolved since the last review:** every frontend's `vite` (and its
 `esbuild` dependency) previously carried four dev-server-only advisories
@@ -73,6 +78,13 @@ low-risk (same Debian base, same package manager, nothing else in any
 Dockerfile references a Node-20-specific detail), but building and
 booting the full stack once is still worth doing explicitly before this
 is considered fully closed.
+
+**Resolved in [1.1.4], same theme as the Node bump:**
+`services/backup/Dockerfile` moved off Alpine 3.20 (end-of-life
+2026-04-30) to `alpine:3.22`, and the five frontend Dockerfiles moved
+from `nginx:1.27-alpine` to `nginx:1.30-alpine`, which carries several
+CVE fixes the older line lacks. Like the Node bump, none of this has
+been built with Docker in the environment it was done in.
 
 ## What's not covered yet
 
@@ -112,6 +124,13 @@ is considered fully closed.
   disabled status, not credentials — low enough stakes that changing
   it wasn't treated as urgent, but worth a conscious call rather than
   an unnoticed gap.
+- **The gateway's base image isn't pinned.** `gateway/Dockerfile` is
+  `FROM nginx:alpine`, a floating tag, while the five frontend
+  Dockerfiles were pinned to `nginx:1.30-alpine` in [1.1.4]. The gateway
+  is the one container that publishes a host port, so a surprise
+  upgrade or a stale cached image matters most there. Found while
+  checking these docs against the repo; not changed, since there was no
+  Docker available to rebuild and boot it afterwards.
 - No email-based password reset (an admin-panel reset is the intentional
   substitute — no outgoing mail server to run).
 - No account-deletion flow — only disable. See

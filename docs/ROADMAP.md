@@ -21,11 +21,15 @@ first (see below).
    status callout for exactly what's been verified by automated test
    versus what still needs human review. Nothing real should go into a
    HomeVault vault before this happens.
-2. **HomeSync Android's first real build.** The app (including the
-   previously-missing `data/` package) is written and statically
-   reviewed, but has never been through a real Gradle sync or run on a
-   device/emulator — see `DEVELOPMENT.md`. Not a blocker for anything
-   else — other apps can proceed in parallel while this is pending.
+2. **HomeSync Android: confirm the build, then run it.** 1.1.4 had the
+   app's first real Gradle build, which failed at resource linking and
+   was fixed (a missing Material Components dependency). The Gradle,
+   Kotlin and Compose upgrades made in that same release were never
+   compiled, so the first step is a fresh Gradle sync on a machine with
+   the Android SDK, and the second is a real device or emulator run,
+   which has never happened — see `DEVELOPMENT.md`. Not a blocker for
+   anything else — other apps can proceed in parallel while this is
+   pending.
 3. **HomeVault follow-ups deferred out of v0**: soft-delete/undo for a
    deleted item, benchmarking Argon2id's parameters against real
    minimum self-hosting hardware (v0 ships OWASP's default, untested
@@ -43,12 +47,22 @@ first (see below).
    broken), but a real deviation worth resolving deliberately rather
    than leaving as an accident of history.
 6. **Run `docker-compose build && docker-compose up` end-to-end** to
-   confirm the `node:22-slim` base-image bump (see `SECURITY.md`)
+   confirm the `node:22-slim`, `nginx:1.30-alpine` and `alpine:3.22`
+   base-image bumps (see `SECURITY.md`)
    actually builds and boots every service — done from an environment
    without Docker available, so this was reasoned through (same Debian
    base, no Node-20-specific detail anywhere else in any Dockerfile,
    the native `better-sqlite3` build confirmed to have no conflicting
    engine requirement) but never run.
+7. **Pin the gateway's base image.** `gateway/Dockerfile` is still
+   `FROM nginx:alpine` (a floating tag) while the frontends are on
+   `nginx:1.30-alpine` — see `SECURITY.md`. A one-line change, but do it
+   together with item 6, since both need a Docker rebuild to confirm.
+8. **Triage Dependabot's first PRs** (`.github/dependabot.yml`, added in
+   1.1.4). Majors are deliberately left out of the weekly group so each
+   one gets read on its own. `better-sqlite3` is the one to be careful
+   with: a bump to 13 was tried and reverted in 1.1.4 (see its
+   changelog entry for why).
 
 **Settled, not open questions anymore** (kept here so the reasoning
 isn't lost): TLS approach (private overlay, not public certs —
@@ -73,8 +87,9 @@ generic per-app dashboard stat (staying hardcoded per app for now).
   battery-percentage threshold are **decided against** — whole-file
   retry and WorkManager's built-in `requiresBatteryNotLow` constraint
   stay as the permanent design, not gaps waiting to be filled.
-- **HomeVault:** everything — see `SECURITY.md` for the prerequisites
-  that come before any of it.
+- **HomeVault:** soft-delete/undo for an item, benchmarking Argon2id on
+  minimum hardware, and an admin-facing vault-reset action — see item 3
+  above. The core vault itself is built (v0).
 
 ## Cross-module ideas brainstorm (speculative)
 
@@ -137,7 +152,7 @@ reintroduced later as a casual "nice to have."
 
 **Two blockers show up repeatedly across the ideas above** — worth
 fixing once rather than working around per-idea: permission enforcement
-still being declarative (item 4 above), and HomeCloud's file
+still being declarative (see `SECURITY.md`), and HomeCloud's file
 authorization being strictly owner-only (blocks any genuinely
 multi-user version of the ideas above — a shared album, a
 household-shared life-event bundle).

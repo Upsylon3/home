@@ -12,6 +12,24 @@ function greeting() {
   return "Good evening";
 }
 
+// Turns the raw health report from HomeCore into ONE short sentence plus a
+// light color for the hero's status lamp. We always show the sentence as
+// well as the colored dot, so nobody has to rely on color to understand it.
+//
+// `health` looks like { checks: { database: "healthy", storage: "degraded" } },
+// or null while the request is still in flight or if HomeCore is unreachable.
+function summarizeHealth(health) {
+  if (!health) return { tone: "pending", text: "Checking systems…" };
+
+  // Collect the names of every check that is NOT "healthy".
+  const problems = Object.entries(health.checks)
+    .filter(([, state]) => state !== "healthy")
+    .map(([name]) => name);
+
+  if (problems.length === 0) return { tone: "healthy", text: "All systems normal" };
+  return { tone: "degraded", text: `Needs attention: ${problems.join(", ")}` };
+}
+
 export default function Dashboard() {
   const { user } = useOutletContext();
   const [apps, setApps] = useState(null);
@@ -47,14 +65,29 @@ export default function Dashboard() {
     };
   }, []);
 
+  const heroHealth = summarizeHealth(health);
+
   return (
     <div className="page">
-      <div className="page-header">
-        <p className="page-eyebrow">Home</p>
-        <h1 className="page-title">
-          {greeting()}, {user.displayName || user.username}
-        </h1>
-      </div>
+      {/* The "hero": a woodgrain frame around a dark label plate, like the
+          front panel of a 1970s console. The look is all CSS (.hero*, and
+          .woodgrain / .stripe-band from design/tokens.css). This markup only
+          supplies the words. */}
+      <header className="hero woodgrain">
+        <div className="hero-plate">
+          <p className="page-eyebrow">Home</p>
+          <h1 className="page-title hero-title">
+            {greeting()}, {user.displayName || user.username}
+          </h1>
+          {/* role="status" makes screen readers announce this line when it changes */}
+          <p className="hero-status" role="status">
+            <span className={`status-dot ${heroHealth.tone}`} aria-hidden="true" />
+            {heroHealth.text}
+          </p>
+          {/* The signature stripes, running edge to edge along the plate's bottom */}
+          <div className="stripe-band hero-stripes" aria-hidden="true" />
+        </div>
+      </header>
 
       {loadError && <div className="error-banner">{loadError}</div>}
 

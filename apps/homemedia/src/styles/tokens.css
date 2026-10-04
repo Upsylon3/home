@@ -58,17 +58,34 @@
   --stripe-2: #e0892b;      /* orange */
   --stripe-3: #c4492e;      /* rust */
   --stripe-4: #7a3b22;      /* brown */
+  --band-height: 12px;      /* thickness of a stripe band; "Full" makes it taller */
 
   /* Woodgrain: a base walnut plus a lighter grain line. Only ever used
      on ONE "hero" surface per screen. Restraint is the whole trick. */
   --wood-base: #5e3a22;
   --wood-grain: rgba(0, 0, 0, 0.12);
 
+  /* The cream border of a photo "print" (HomeMedia's lightbox). Deliberately
+     NOT themed: the lightbox backdrop is dark in both themes, so the frame
+     is cream in both. */
+  --print-frame: #f2e6cf;
+
   /* Shape: chunkier than before (they were 4 to 8px). Use these names
      instead of typing pixel values so all corners stay consistent. */
   --radius-sm: 6px;         /* small controls: buttons, inputs, tags */
   --radius-md: 10px;        /* cards, dialogs */
   --radius-lg: 16px;        /* big hero panels */
+
+  /* Thickness of the outline on "physical" things (buttons, cards,
+     checkboxes). Thin 1px lines are for quiet dividers; chunky 2px is
+     for things you can press or pick up. */
+  --border-width: 2px;
+
+  /* How far a button sticks up from the page, like a console key.
+     Pressing it slides it down by this much. Setting this to 0px turns
+     the raised-key effect off everywhere (a future "retro intensity
+     = Off" setting will do exactly that). */
+  --press: 3px;
 
   /* Fonts. The real font files are bundled with each app (no Google CDN,
      Home must work offline). The lists after the first name are
@@ -85,7 +102,8 @@
    (see each app's src/theme.js). Think ivory instruction-booklet paper.
    In light mode surfaces get slightly DARKER as they rise (you can't go
    lighter than paper), and accent colors are deepened so they stay
-   readable on a pale page. Contrast was checked against WCAG AA.
+   readable on a pale page. Every accent was checked against WCAG AA
+   (4.5:1) on ALL THREE light surfaces, the raised one being the hardest.
    -------------------------------------------------------------------------- */
 [data-theme="light"] {
   --bg: #f3e9d2;
@@ -96,9 +114,9 @@
   --text: #2b2118;
   --text-dim: #66563f;
 
-  --amber: #8a4e0e;
+  --amber: #834909;
   --amber-dim: #b9946a;
-  --teal: #276868;
+  --teal: #235f5f;
   --red: #a03522;
 
   --on-accent: #fff6e6;     /* light cream on the (now dark) amber */
@@ -106,6 +124,24 @@
 
   --wood-base: #a9744a;     /* lighter walnut so it suits a bright page */
   --wood-grain: rgba(60, 30, 10, 0.14);
+}
+
+
+/* --------------------------------------------------------------------------
+   RETRO INTENSITY — Off / Subtle / Full   (see design/retro.js)
+   The setting is written on <html> as data-retro="off|subtle|full".
+   No attribute, or "subtle", means the defaults above, so Subtle needs no
+   rules of its own. The two other levels only override a few tokens here;
+   the rules that hide or add whole effects live in components.css.
+   (":root[...]" is more specific than ":root", so these win.)
+   -------------------------------------------------------------------------- */
+:root[data-retro="off"] {
+  --press: 0px;             /* flat buttons: nothing sticks up */
+}
+
+:root[data-retro="full"] {
+  --press: 4px;             /* deeper keys */
+  --band-height: 20px;      /* taller stripe bands */
 }
 
 
@@ -118,7 +154,7 @@
    A gradient with "hard stops" (two positions on one color) gives crisp
    bands instead of a smooth blur. Drop class="stripe-band" on any <div>. */
 .stripe-band {
-  height: 12px;
+  height: var(--band-height);
   background: linear-gradient(
     to bottom,
     var(--stripe-1) 0 25%,

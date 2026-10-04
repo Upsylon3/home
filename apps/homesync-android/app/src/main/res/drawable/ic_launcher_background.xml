@@ -4,5 +4,5 @@
      gradient, so the amber mark in the foreground layer stays legible at
      launcher-icon size. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-    <solid android:color="#14171C" />
+    <solid android:color="#17120E" />
 </shape>

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../api.js";
 import { useVault } from "../vaultContext.jsx";
 import { CopyGlyph } from "../components/icons.jsx";
+import RetroControl from "../components/RetroControl.jsx";
 import {
   DEFAULT_KDF_PARAMS,
   VERIFIER_PLAINTEXT,
@@ -139,7 +140,13 @@ export default function Settings({ onVaultUpdated }) {
 
   return (
     <div style={{ padding: "20px 24px", maxWidth: 560 }}>
-      <h2 style={{ marginTop: 0 }}>Change master password</h2>
+      <h2 style={{ marginTop: 0 }}>Appearance</h2>
+      <p style={{ color: "var(--text-dim)", fontSize: 13 }}>
+        Retro intensity: how strongly the 1970s console styling shows.
+      </p>
+      <RetroControl />
+
+      <h2 style={{ marginTop: 32 }}>Change master password</h2>
       <p style={{ color: "var(--text-dim)", fontSize: 13 }}>
         Your vault key doesn't change — only how it's protected does. Every item stays exactly as it is.
       </p>

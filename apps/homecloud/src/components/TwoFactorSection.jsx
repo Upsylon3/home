@@ -112,6 +112,8 @@ export default function TwoFactorSection({ totpEnabled, onChanged }) {
             Scan this with your authenticator app, then enter the 6-digit code
             it shows.
           </p>
+          {/* #fff is deliberate and must NOT become a theme color: QR codes need a
+              plain white background around them or phone scanners fail to read them. */}
           <div style={{ display: "flex", justifyContent: "center", background: "#fff", padding: 16, borderRadius: 6, marginBottom: 16 }}>
             <QRCodeSVG value={otpauthUrl} size={180} />
           </div>

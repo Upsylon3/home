@@ -18,6 +18,9 @@ import "@fontsource/fredoka/latin-600.css";
 // index.css uses them.
 import "./styles/tokens.css";
 import "./styles/index.css";
+// Shared buttons/cards/checkboxes (copy of design/components.css). Imported
+// AFTER index.css on purpose: on a tie, the shared rule wins.
+import "./styles/components.css";
 
 // This app is served under the /vault/ path prefix (see gateway/nginx.conf
 // and this app's own vite.config.js `base: "/vault/"`), not at the domain

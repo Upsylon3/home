@@ -122,52 +122,8 @@ a:focus-visible {
   border-color: var(--amber-dim);
 }
 
-.btn {
-  border: none;
-  border-radius: var(--radius-sm);
-  padding: 11px 16px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: filter 0.15s ease;
-}
-
-.btn:hover {
-  filter: brightness(1.08);
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-block {
-  width: 100%;
-}
-
-.btn-primary {
-  background: var(--amber);
-  color: var(--on-accent);
-}
-
-.btn-ghost {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text);
-}
-
-.btn-danger-ghost {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--red);
-  padding: 6px 10px;
-  font-size: 12px;
-}
-
-.btn-sm {
-  padding: 6px 10px;
-  font-size: 12px;
-}
+/* Buttons (.btn, .btn-primary, .btn-ghost, ...) and the storage gauge
+   now live in design/components.css, shared by every app. */
 
 .switch-row {
   margin-top: 18px;
@@ -527,18 +483,18 @@ a:focus-visible {
 
 .status-dot.healthy {
   background: var(--teal);
-  box-shadow: 0 0 6px 1px color-mix(in srgb, var(--teal) 50%, transparent);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.25); /* molded-dome shading, hard-edged: no glow */
 }
 
 .status-dot.degraded {
   background: var(--amber);
-  box-shadow: 0 0 6px 1px color-mix(in srgb, var(--amber) 50%, transparent);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.25); /* molded-dome shading, hard-edged: no glow */
 }
 
 .status-dot.unhealthy,
 .status-dot.offline {
   background: var(--red);
-  box-shadow: 0 0 6px 1px color-mix(in srgb, var(--red) 50%, transparent);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.25); /* molded-dome shading, hard-edged: no glow */
 }
 
 .status-label {
@@ -793,32 +749,8 @@ a:focus-visible {
   border-color: var(--amber-dim);
 }
 
-.segmented {
-  display: inline-flex;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  flex-shrink: 0;
-}
-
-.segmented button {
-  background: var(--panel);
-  border: none;
-  color: var(--text-dim);
-  font-family: var(--font-sans);
-  font-size: 13px;
-  padding: 8px 14px;
-  cursor: pointer;
-}
-
-.segmented button + button {
-  border-left: 1px solid var(--border);
-}
-
-.segmented button.active {
-  background: var(--panel-raised);
-  color: var(--text);
-}
+/* .segmented (the All / Photos / Videos filter) is styled by
+   design/components.css, shared with the other apps. */
 
 .loading-state {
   color: var(--text-dim);
@@ -1168,4 +1100,79 @@ a:focus-visible {
     width: 36px;
     height: 36px;
   }
+}
+
+
+/* ==========================================================================
+   THE GALLERY  (Atari refresh, phase 5)
+   Photos are treated like prints: chunkier borders, albums that look like
+   a small stack, and a cream print frame in the lightbox.
+   ========================================================================== */
+.photo-grid {
+  gap: 8px;
+}
+
+.photo-tile {
+  border-width: var(--border-width);
+  transition: border-color 0.15s ease;
+}
+
+.photo-tile:hover {
+  border-color: var(--amber-dim);
+}
+
+/* An album cover has a hard offset shadow behind it, like a print lying on
+   top of another. "4px 4px 0" = move right 4, down 4, no blur. */
+.album-card-cover {
+  border-width: var(--border-width);
+  box-shadow: 4px 4px 0 var(--border);
+  transition: transform 0.12s ease-out, box-shadow 0.12s ease-out;
+}
+
+.album-card:hover .album-card-cover {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0 var(--amber-dim);
+}
+
+/* The photo in the lightbox gets a cream print frame. */
+.lightbox-image {
+  border: 5px solid var(--print-frame);
+  border-radius: 2px;
+}
+
+/* "Full": CRT scanlines over the whole lightbox. Same recipe as the Home
+   dashboard hero: faint dark lines every 3px plus darkened edges, in a
+   see-through layer that lets every click pass through. */
+:root[data-retro="full"] .lightbox-overlay::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.14) 0 1px, transparent 1px 3px),
+    radial-gradient(ellipse at center, transparent 60%, rgba(0, 0, 0, 0.4) 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .album-card-cover {
+    transition: none;
+  }
+
+  .album-card:hover .album-card-cover {
+    transform: none;
+  }
+}
+
+/* Retro intensity OFF: flat prints, no frame, no stacked shadow. */
+:root[data-retro="off"] .album-card-cover {
+  box-shadow: none;
+}
+
+:root[data-retro="off"] .album-card:hover .album-card-cover {
+  transform: none;
+  box-shadow: none;
+}
+
+:root[data-retro="off"] .lightbox-image {
+  border: none;
 }

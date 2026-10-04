@@ -122,52 +122,8 @@ a:focus-visible {
   border-color: var(--amber-dim);
 }
 
-.btn {
-  border: none;
-  border-radius: var(--radius-sm);
-  padding: 11px 16px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: filter 0.15s ease;
-}
-
-.btn:hover {
-  filter: brightness(1.08);
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-block {
-  width: 100%;
-}
-
-.btn-primary {
-  background: var(--amber);
-  color: var(--on-accent);
-}
-
-.btn-ghost {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text);
-}
-
-.btn-danger-ghost {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--red);
-  padding: 6px 10px;
-  font-size: 12px;
-}
-
-.btn-sm {
-  padding: 6px 10px;
-  font-size: 12px;
-}
+/* Buttons (.btn, .btn-primary, .btn-ghost, ...) and the storage gauge
+   now live in design/components.css, shared by every app. */
 
 .switch-row {
   margin-top: 18px;
@@ -527,18 +483,18 @@ a:focus-visible {
 
 .status-dot.healthy {
   background: var(--teal);
-  box-shadow: 0 0 6px 1px color-mix(in srgb, var(--teal) 50%, transparent);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.25); /* molded-dome shading, hard-edged: no glow */
 }
 
 .status-dot.degraded {
   background: var(--amber);
-  box-shadow: 0 0 6px 1px color-mix(in srgb, var(--amber) 50%, transparent);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.25); /* molded-dome shading, hard-edged: no glow */
 }
 
 .status-dot.unhealthy,
 .status-dot.offline {
   background: var(--red);
-  box-shadow: 0 0 6px 1px color-mix(in srgb, var(--red) 50%, transparent);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.25); /* molded-dome shading, hard-edged: no glow */
 }
 
 .status-label {
@@ -1137,4 +1093,42 @@ a:focus-visible {
   .note-editor-title {
     font-size: 21px;
   }
+}
+
+
+/* ==========================================================================
+   THE STUDY  (Atari refresh, phase 5)
+   Notes read like index cards, and the editor is ruled paper.
+   ========================================================================== */
+.note-card {
+  border-width: var(--border-width);
+}
+
+/* The same hard amber edge used on file rows and the active nav item:
+   one "this is the thing you're pointing at" signal everywhere. */
+.note-card:hover {
+  box-shadow: inset 3px 0 0 var(--amber);
+}
+
+/* Ruled paper. --note-line is exactly one text line tall (font size x line
+   height from .note-editor-textarea), so each rule sits under a line of
+   text. The gradient draws 1px of line color at the bottom of every
+   --note-line-tall slice. background-attachment: local makes the rules
+   scroll with the text instead of staying put. */
+.note-editor-textarea {
+  --note-line: calc(14.5px * 1.7);
+  padding: 0; /* the browser's default padding would push text off the rules */
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(var(--note-line) - 1px),
+    color-mix(in srgb, var(--border) 70%, transparent) calc(var(--note-line) - 1px),
+    color-mix(in srgb, var(--border) 70%, transparent) var(--note-line)
+  );
+  background-attachment: local;
+}
+
+/* Retro intensity OFF: plain blank page. */
+:root[data-retro="off"] .note-editor-textarea {
+  background: none;
 }

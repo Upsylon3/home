@@ -19,6 +19,13 @@
                 : "dark"
               : pref;
           document.documentElement.setAttribute("data-theme", resolved);
+          // Retro intensity (off | subtle | full), applied before first paint
+          // for the same reason as the theme above. See design/retro.js.
+          var retro = localStorage.getItem("home-retro");
+          document.documentElement.setAttribute(
+            "data-retro",
+            retro === "off" || retro === "full" ? retro : "subtle"
+          );
           if (resolved === "light") {
             var meta = document.querySelector('meta[name="theme-color"]');
             if (meta) meta.setAttribute("content", "#f3e9d2");
@@ -31,6 +38,9 @@
     </script>
 
     <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/svg+xml" href="%BASE_URL%favicon.svg" />
+    <link rel="icon" type="image/png" href="%BASE_URL%favicon.png" />
+    <link rel="apple-touch-icon" href="%BASE_URL%apple-touch-icon.png" />
     <meta name="theme-color" content="#17120e" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />

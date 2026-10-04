@@ -122,12 +122,12 @@ export default function AppIcon({ name, size = 20, className }) {
         d={FRAME_PATH}
         fill="none"
         stroke="currentColor"
-        strokeWidth={2}
+        strokeWidth={3}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       {showGlyph && (
-        <g fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+        <g fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
           {glyph}
         </g>
       )}

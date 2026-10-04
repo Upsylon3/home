@@ -18,6 +18,9 @@ import "@fontsource/fredoka/latin-600.css";
 // index.css uses them.
 import "./styles/tokens.css";
 import "./styles/index.css";
+// Shared buttons/cards/checkboxes (copy of design/components.css). Imported
+// AFTER index.css on purpose: on a tie, the shared rule wins.
+import "./styles/components.css";
 
 // Unlike apps/homecloud, apps/homemedia, and apps/homenotes, Home is
 // served at the domain root ("/", both in gateway/nginx.conf and this

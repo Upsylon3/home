@@ -400,7 +400,7 @@ export default function Dashboard({ user, onLogout }) {
         {error && <div className="error-banner">{error}</div>}
 
         {pctUsed >= 90 && (
-          <div className="error-banner" style={{ background: "rgba(232,163,61,0.1)", borderColor: "rgba(232,163,61,0.4)", color: "var(--amber)" }}>
+          <div className="error-banner is-warn">
             You're using {formatBytes(quota.usedBytes)} of your {formatBytes(quota.quotaBytes)} quota
             ({Math.round(pctUsed)}%). Delete or empty Trash to free up space.
           </div>

@@ -30,7 +30,7 @@ private val DarkScheme = darkColorScheme(
 
 private val LightScheme = lightColorScheme(
     primary = AmberTextLight,
-    onPrimary = AmberOnLabel,
+    onPrimary = AmberOnLabelLight, // cream: dark text on the deep amber was only 2.8:1
     background = LightBg,
     onBackground = LightText,
     surface = LightPanel,

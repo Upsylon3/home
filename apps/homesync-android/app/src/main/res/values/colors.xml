@@ -6,5 +6,5 @@
          (isSystemInDarkTheme() → the same system day/night signal this
          resource qualifier already follows). The values-night/ variant
          below covers the dark case. -->
-    <color name="window_background">#F6F2EA</color>
+    <color name="window_background">#F3E9D2</color>
 </resources>

@@ -1,51 +1,42 @@
+// FolderGrid — the folders shown above the file list, drawn as little
+// game "cartridges" on a shelf. Each one has a striped label along its top
+// edge, like the label on an Atari cartridge.
+//
+// All of the looks live in CSS (.folder-grid and .folder-card in
+// styles/index.css). This used to be styled with inline `style={{...}}`
+// objects, which cannot react to the theme, to hover, or to the retro
+// intensity setting. Class names can, so the styling moved to CSS and this
+// component now only describes the structure.
 export default function FolderGrid({ folders, onOpen, onRename, onDelete }) {
+  // Nothing to show: render nothing at all (not even an empty box).
   if (folders.length === 0) return null;
 
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 20 }}>
+    <div className="folder-grid">
       {folders.map((f) => (
-        <div
-          key={f.id}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
-            border: "1px solid var(--border)",
-            borderRadius: 6,
-            padding: "6px 6px 6px 12px",
-            background: "var(--panel)"
-          }}
-        >
-          <button
-            onClick={() => onOpen(f.id)}
-            style={{
-              background: "none",
-              border: "none",
-              color: "var(--text)",
-              cursor: "pointer",
-              fontFamily: "var(--font-mono)",
-              fontSize: 13,
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "4px 4px"
-            }}
-          >
-            <span style={{ color: "var(--amber)" }}>▸</span> {f.name}
+        <div key={f.id} className="folder-card">
+          {/* The main button: opens the folder. */}
+          <button type="button" className="folder-open" onClick={() => onOpen(f.id)}>
+            <span className="folder-arrow" aria-hidden="true">▸</span> {f.name}
           </button>
+
+          {/* Small secondary actions. aria-label tells screen readers which
+              folder each ✎ / ✕ belongs to (a bare "✎" says nothing). */}
           <button
+            type="button"
+            className="folder-action"
             onClick={() => onRename(f)}
             title="Rename folder"
             aria-label={`Rename ${f.name}`}
-            style={{ background: "none", border: "none", color: "var(--text-dim)", cursor: "pointer", fontSize: 13, padding: 6 }}
           >
             ✎
           </button>
           <button
+            type="button"
+            className="folder-action folder-action-danger"
             onClick={() => onDelete(f)}
             title="Delete folder"
             aria-label={`Delete ${f.name}`}
-            style={{ background: "none", border: "none", color: "var(--red)", cursor: "pointer", fontSize: 13, padding: 6 }}
           >
             ✕
           </button>

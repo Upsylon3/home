@@ -29,15 +29,36 @@ for app in "${FRONTENDS[@]}"; do
   echo "synced icons -> $app/public/icons/"
 done
 
-# Design tokens (colors, radii, fonts, stripe band, woodgrain) go to EVERY
+# Design tokens + shared components (buttons, cards, checkboxes, gauge) go to EVERY
 # frontend, into src/styles/ right next to that app's own index.css. Each
-# app's main.jsx imports this copy BEFORE index.css, so index.css can use
-# var(--amber) and friends. Same rule as the icons: edit design/tokens.css
+# app's main.jsx imports tokens.css BEFORE index.css (so index.css can use
+# var(--amber) and friends) and components.css AFTER it (so the shared
+# pieces win ties). Same rule as the icons: edit the files in design/
 # only; the copies below get overwritten on every run.
 for app in "${FRONTENDS[@]}"; do
   mkdir -p "$app/src/styles"
   cp design/tokens.css "$app/src/styles/tokens.css"
   echo "synced tokens.css -> $app/src/styles/tokens.css"
+  cp design/components.css "$app/src/styles/components.css"
+  echo "synced components.css -> $app/src/styles/components.css"
+done
+
+# Retro intensity (Off / Subtle / Full): the storage helper goes next to each
+# app's theme.js, the 3-choice control next to its other components. Every
+# app offers the setting, so every app gets both files.
+for app in "${FRONTENDS[@]}"; do
+  cp design/retro.js "$app/src/retro.js"
+  cp design/RetroControl.jsx "$app/src/components/RetroControl.jsx"
+  echo "synced retro.js + RetroControl.jsx -> $app/src"
+done
+
+# Browser-tab and home-screen icons, generated from the icon set by
+# design/make-favicons.mjs (run that first if an icon changed). Each app gets
+# its OWN icon, copied into its public/ folder, which the build serves as-is.
+for app in "${FRONTENDS[@]}"; do
+  name="$(basename "$app")"
+  cp design/favicons/"$name"/* "$app/public/"
+  echo "synced favicons -> $app/public"
 done
 
 # AppIcon.jsx only goes where it's actually imported today: Home (app

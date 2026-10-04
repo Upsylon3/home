@@ -4,6 +4,7 @@ import { api, setToken } from "../api.js";
 import { formatDate, describeActivity } from "../utils.js";
 import TwoFactorSection from "../components/TwoFactorSection.jsx";
 import ThemeToggle from "../components/ThemeToggle.jsx";
+import RetroControl from "../components/RetroControl.jsx";
 
 export default function Settings({ user, onLogout }) {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -89,6 +90,14 @@ export default function Settings({ user, onLogout }) {
         </div>
 
         <div className="auth-card" style={{ maxWidth: 420, marginBottom: 24 }}>
+          <h1 className="auth-title" style={{ fontSize: 16 }}>Appearance</h1>
+          <p className="auth-subtitle">
+            Retro intensity: how strongly the 1970s console styling shows.
+          </p>
+          <RetroControl />
+        </div>
+
+        <div className="auth-card" style={{ maxWidth: 420, marginBottom: 24 }}>
           <h1 className="auth-title" style={{ fontSize: 16 }}>Change password</h1>
           <p className="auth-subtitle">
             Changing your password automatically signs out every other device
@@ -97,7 +106,7 @@ export default function Settings({ user, onLogout }) {
 
           {error && <div className="error-banner">{error}</div>}
           {success && (
-            <div className="error-banner" style={{ background: "rgba(79,176,165,0.1)", borderColor: "rgba(79,176,165,0.4)", color: "var(--teal)" }}>
+            <div className="error-banner is-ok">
               {success}
             </div>
           )}

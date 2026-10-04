@@ -14,6 +14,56 @@ redesigns.
 
 ------------------------------------------------------------------------
 
+------------------------------------------------------------------------
+
+# Addendum: the Atari 1970s direction
+
+*Added with version 1.2.0. This addendum **supersedes** the lines it names
+below; everything else in this document still stands. The working version
+of this, with the current palette values, lives in
+`docs/DESIGN_SYSTEM.md`.*
+
+Home now has a concrete visual identity: **Atari, 1977, built today.**
+Warm black vinyl, cream paper, orange and brass, painted stripes, a little
+woodgrain. It follows the way a modern retro-styled car works: retro in
+color, material and small details, modern in layout, readability and
+accessibility.
+
+**What it changes**
+
+-   **Section 6 (Color):** the neutral foundation is **warm brown-black
+    and cream**, not near-black/charcoal and gray. The primary accent is
+    orange (amber in the code). Status colors keep their meaning, with
+    teal for healthy and rust red for danger.
+-   **Section 7 (Light and dark):** dark is warm brown-black, light is
+    ivory paper. The "two lighting conditions in one building" idea is
+    unchanged.
+-   **Section 10 (Typography):** headings use a chunky rounded face
+    (Fredoka), reading text stays Inter, labels and numbers stay IBM Plex
+    Mono. This is the "headings can have personality" allowance in use.
+    All fonts are self-hosted.
+-   **Section 11 (Iconography):** same family and frame, with heavier
+    strokes.
+-   **Sections 16, 17, 18, 21 (HomeCloud, HomeMedia, HomeNotes,
+    HomeVault):** each room now has a retro expression (cartridge
+    folders, print-style photos, ruled paper, a restrained brass edge).
+
+**What it does not change**
+
+-   Principle "Calm before energetic" still governs. The default level is
+    **Subtle**, and louder styling is opt-in.
+-   **No glow, ever.** Section 2 already says no glowing borders, and the
+    1970s look is physical (wood, plastic, painted stripes), not neon.
+    Hard-edged shadows only.
+-   Accessibility is part of the aesthetic: contrast, visible focus,
+    reduced motion, never color alone.
+-   **Do not copy Atari's logo, wordmark or other trademarks.** Take the
+    feel only.
+
+**Retro intensity** is a person-level setting (**Off / Subtle / Full**) in
+every app's Settings page, so the style is something you choose rather
+than something you get.
+
 # 1. The central idea
 
 **Home should feel like your own private digital place.**
@@ -200,6 +250,8 @@ A good test:
 
 # 6. Color philosophy
 
+> **Updated by the Atari addendum:** the foundation is warm brown-black and cream, with an orange accent. See the addendum near the top of this file.
+
 Use a restrained neutral foundation:
 
 -   near-black / deep charcoal
@@ -227,6 +279,8 @@ giving every application a completely unrelated palette.
 ------------------------------------------------------------------------
 
 # 7. Light and dark themes
+
+> **Updated by the Atari addendum:** dark is warm brown-black, light is ivory paper.
 
 Dark mode should feel like a natural environment, not a blackened
 version of light mode.
@@ -287,6 +341,8 @@ Avoid decorative borders around everything.
 
 # 10. Typography
 
+> **Updated by the Atari addendum:** headings use Fredoka; reading text stays Inter; labels and numbers use IBM Plex Mono; all self-hosted.
+
 Typography should be highly readable.
 
 Prefer: - clean sans-serif UI typography - strong hierarchy - restrained
@@ -303,6 +359,8 @@ while retaining the shared UI font around it.
 ------------------------------------------------------------------------
 
 # 11. Iconography
+
+> **Updated by the Atari addendum:** same family, heavier strokes (frame 3, glyph 2.4).
 
 Icons should be: - simple - geometric - consistent - recognizable -
 preferably outlined or lightly weighted

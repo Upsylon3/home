@@ -122,52 +122,8 @@ a:focus-visible {
   border-color: var(--amber-dim);
 }
 
-.btn {
-  border: none;
-  border-radius: var(--radius-sm);
-  padding: 11px 16px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: filter 0.15s ease;
-}
-
-.btn:hover {
-  filter: brightness(1.08);
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-block {
-  width: 100%;
-}
-
-.btn-primary {
-  background: var(--amber);
-  color: var(--on-accent);
-}
-
-.btn-ghost {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text);
-}
-
-.btn-danger-ghost {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--red);
-  padding: 6px 10px;
-  font-size: 12px;
-}
-
-.btn-sm {
-  padding: 6px 10px;
-  font-size: 12px;
-}
+/* Buttons (.btn, .btn-primary, .btn-ghost, ...) and the storage gauge
+   now live in design/components.css, shared by every app. */
 
 .switch-row {
   margin-top: 18px;
@@ -527,18 +483,23 @@ a:focus-visible {
 
 .status-dot.healthy {
   background: var(--teal);
-  box-shadow: 0 0 6px 1px color-mix(in srgb, var(--teal) 50%, transparent);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.25); /* molded-dome shading, hard-edged: no glow */
 }
 
 .status-dot.degraded {
   background: var(--amber);
-  box-shadow: 0 0 6px 1px color-mix(in srgb, var(--amber) 50%, transparent);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.25); /* molded-dome shading, hard-edged: no glow */
 }
 
 .status-dot.unhealthy,
 .status-dot.offline {
   background: var(--red);
-  box-shadow: 0 0 6px 1px color-mix(in srgb, var(--red) 50%, transparent);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.25); /* molded-dome shading, hard-edged: no glow */
+}
+
+/* "Still checking": an unlit lamp. No glow, because nothing is known yet. */
+.status-dot.pending {
+  background: var(--text-dim);
 }
 
 .status-label {
@@ -764,4 +725,147 @@ a:focus-visible {
   .page {
     padding: 20px 18px;
   }
+}
+
+
+/* ==========================================================================
+   DASHBOARD HERO  (Atari refresh, phase 4)
+   Layers, outside in:
+     .hero         woodgrain frame (the .woodgrain class from tokens.css
+                   supplies the wood; here we add shape and a raised edge)
+     .hero-plate   a dark "label plate" set into the frame
+     .hero-stripes the four signature stripes along the plate's bottom edge
+   Home-only on purpose: ONE woodgrain surface per screen is the rule.
+   ========================================================================== */
+.hero {
+  border-radius: var(--radius-lg);
+  padding: 10px;
+  margin-bottom: 28px;
+  /* a darker wood edge, made by mixing the wood color with black */
+  border: var(--border-width) solid color-mix(in srgb, var(--wood-base) 55%, #000);
+  /* top highlight + a solid "wall" underneath so the frame sits up like a
+     console casing (same trick as the buttons; --press can flatten it) */
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 var(--press) 0 color-mix(in srgb, var(--wood-base) 45%, #000);
+}
+
+.hero-plate {
+  background: var(--bg);
+  border: var(--border-width) solid color-mix(in srgb, var(--wood-base) 35%, #000);
+  border-radius: var(--radius-md);
+  padding: 22px 24px 0;
+  overflow: hidden; /* clips the stripes to the plate's rounded corners */
+}
+
+.hero-title {
+  font-size: 30px;
+  line-height: 1.15;
+}
+
+/* The status line under the greeting: a lamp plus words. */
+.hero-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 20px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+/* Negative side margins cancel the plate's padding so the stripes run
+   from one edge of the plate to the other. */
+.hero-stripes {
+  margin: 0 -24px;
+}
+
+@media (max-width: 600px) {
+  .hero-title {
+    font-size: 24px;
+  }
+
+  .hero-plate {
+    padding: 18px 16px 0;
+  }
+
+  .hero-stripes {
+    margin: 0 -16px;
+  }
+}
+
+
+/* ==========================================================================
+   ROCKER SWITCH on each app card  (decorative; see AppCard.jsx)
+   A small slot with a sliding knob. Off = knob left and dim.
+   On = knob right and amber. Position AND color both change, so it still
+   reads for someone who can't tell the colors apart.
+   ========================================================================== */
+.rocker {
+  position: relative;
+  width: 34px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: 5px;
+  background: var(--bg);
+  border: var(--border-width) solid var(--border);
+}
+
+.rocker::after {
+  content: "";
+  position: absolute;
+  top: 1px;
+  bottom: 1px;
+  left: 1px; /* off position */
+  width: 14px;
+  border-radius: 3px;
+  background: var(--text-dim);
+  transition: left 0.12s ease-out;
+}
+
+.rocker.on::after {
+  left: 15px; /* inner slot is 30px wide: 30 - 14 (knob) - 1 (gap) */
+  background: var(--amber);
+}
+
+/* A switched-off app looks switched off. */
+.app-card.is-off {
+  opacity: 0.7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rocker::after {
+    transition: none;
+  }
+}
+
+
+/* ==========================================================================
+   RETRO INTENSITY "FULL": CRT scanlines on the dashboard hero
+   Only shows when the person picked Full (see design/retro.js).
+   ::after makes a see-through layer laid OVER the plate, made of:
+     1. thin dark horizontal lines every 3px  (the scanlines)
+     2. a soft darkening toward the edges      (the screen's vignette)
+   pointer-events:none lets clicks pass straight through it.
+   The lines are kept faint so the text stays comfortably readable.
+   ========================================================================== */
+.hero-plate {
+  position: relative; /* so the overlay can be positioned against the plate */
+}
+
+:root[data-retro="full"] .hero-plate::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.14) 0 1px, transparent 1px 3px),
+    radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.35) 100%);
+}
+
+/* On the pale light theme, black lines look dirty: use warm brown, fainter. */
+:root[data-theme="light"][data-retro="full"] .hero-plate::after {
+  background:
+    repeating-linear-gradient(to bottom, rgba(60, 30, 10, 0.07) 0 1px, transparent 1px 3px),
+    radial-gradient(ellipse at center, transparent 55%, rgba(60, 30, 10, 0.14) 100%);
 }

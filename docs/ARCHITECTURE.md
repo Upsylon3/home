@@ -140,27 +140,29 @@ started.
 A single public entry point (`gateway/nginx.conf`, published at
 container port 8080) that puts every frontend behind one browser origin.
 
-**Correction (found during the security review that produced
-`docs/SECURITY.md`'s "Shared-origin XSS" entry):** this section used to
-claim the single origin gives every frontend a *shared login*, by
-reading/writing one common `homecloud_token` key in `localStorage`.
-That's not what the code does, and never was — there is no
-session-sharing mechanism anywhere in this codebase (no shared cookie,
-no token forwarded on cross-app navigation, no silent re-auth against
-HomeCore). Each frontend keeps its own key — `home_token`,
-`homecloud_token`, `homemedia_token`, `homenotes_token`,
-`homevault_token` (`apps/*/src/api.js`) — and each independently
-prompts for login, against the same HomeCore identity backend, with the
-same account credentials. `hc_sessions` (HomeCore's session table)
-tracks those logins individually for "sign out everywhere" and the
-active-sessions list — it doesn't unify them into one.
+**Shared login (fixed in 1.9.0):** the single origin only makes a shared
+login *possible* — browsers share `localStorage` per origin, so every
+frontend has to read and write the same key, and for a long time they
+didn't. An earlier correction in this section recorded that each app kept
+its own key (`home_token`, `homecloud_token`, `homemedia_token`,
+`homenotes_token`, `homevault_token`) and so each independently prompted
+for login. That was the cause of "I have to sign in to every app" even
+with the gateway in place. All five now go through one module,
+`design/session.js` (copied to each app's `src/session.js` by
+`design/sync-assets.sh`), which uses the single key `home_session_token`.
+Signing in to any app signs you in to all of them; signing out of one
+signs out of all. On first load after the upgrade, an existing per-app
+token is adopted and the old keys are deleted, so nobody is logged out by
+the change. There is still no cookie, no token forwarded on navigation
+and no silent re-auth against HomeCore — it is one stored token, read by
+every app. `hc_sessions` therefore records one session per sign-in
+instead of one per app.
 
-What the single origin actually buys is simpler routing (the table
-below) and, once TLS exists, one termination point — and, as the direct
-flip side of that, one shared *attack* surface: a same-origin script
-can read **any** app's token regardless of which key it's under, which
-is exactly the premise behind `docs/SECURITY.md`'s "Shared-origin XSS"
-threat-catalog entry.
+What the single origin also costs, as the direct flip side: one shared
+*attack* surface. A same-origin script can read the token whatever the
+key is called, which is exactly the premise behind `docs/SECURITY.md`'s
+"Shared-origin XSS" threat-catalog entry — sharing the key changes
+nothing about that.
 
 Routing, as implemented:
 
@@ -171,7 +173,7 @@ Routing, as implemented:
 | `/media/` | HomeMedia's frontend |
 | `/notes/` | HomeNotes' frontend |
 | `/sync/` | HomeSync's plain info page (no real UI — the Android app is the actual client) |
-| `/api/homemedia/` | HomeMedia's backend |
+| `/api/homemedia/` | HomeMedia's backend (its `/upload` and `/stream/` paths have their own rules with request/response buffering turned off, so big uploads and videos stream instead of being held in full by the gateway) |
 | `/api/homesync/` | HomeSync's backend |
 | `/api/homenotes/` | HomeNotes' backend |
 | `/api/homecloud/` | HomeCloud's backend (`apps/homecloud-backend`) |

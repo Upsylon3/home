@@ -152,3 +152,22 @@ export function TrashGlyph(props) {
     </svg>
   );
 }
+
+export function MusicGlyph(props) {
+  return (
+    <svg viewBox="0 0 20 20" width={props.size || 18} height={props.size || 18} {...common}>
+      <path d="M8 14.5V4.5l8-1.8v10" />
+      <circle cx="5.8" cy="14.7" r="2.2" />
+      <circle cx="13.8" cy="12.9" r="2.2" />
+    </svg>
+  );
+}
+
+export function UploadGlyph(props) {
+  return (
+    <svg viewBox="0 0 20 20" width={props.size || 18} height={props.size || 18} {...common}>
+      <path d="M10 13V3.5M6.2 7 10 3.2 13.8 7" />
+      <path d="M3.5 13v2.5a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V13" />
+    </svg>
+  );
+}

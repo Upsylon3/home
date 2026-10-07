@@ -55,7 +55,10 @@ if (!process.env.HOMECORE_INTERNAL_SECRET || process.env.HOMECORE_INTERNAL_SECRE
   );
 }
 
+const { TRUSTED_PROXIES } = require("./rateLimiter");
+
 const app = express();
+app.set("trust proxy", TRUSTED_PROXIES);
 
 // Sets a battery of protective HTTP response headers (blocks MIME sniffing,
 // disables framing to prevent clickjacking, etc). We disable the default

@@ -10,6 +10,7 @@ const filesRoutes = require("./files");
 const foldersRoutes = require("./folders");
 const publicShareRoutes = require("./publicShare");
 const internalUsageRoutes = require("./internalUsage");
+const { TRUSTED_PROXIES } = require("./rateLimiter");
 
 if (!process.env.HOMECORE_INTERNAL_SECRET || process.env.HOMECORE_INTERNAL_SECRET === "change_this_to_a_long_random_string") {
   console.warn(
@@ -20,6 +21,7 @@ if (!process.env.HOMECORE_INTERNAL_SECRET || process.env.HOMECORE_INTERNAL_SECRE
 }
 
 const app = express();
+app.set("trust proxy", TRUSTED_PROXIES);
 app.use(helmet({ contentSecurityPolicy: false }));
 
 const corsOrigins = (process.env.CORS_ORIGIN || "*").split(",").map((s) => s.trim());

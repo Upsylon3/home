@@ -1,6 +1,6 @@
 {
   "name": "home",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "private": true,
   "description": "Home — a self-hosted personal/family cloud ecosystem. This root package.json exists purely to tie every Node-based service and frontend together as one npm workspace, so `npm install` at the repo root installs everything in one pass instead of eight separate `cd X && npm install` steps. It is not itself published or run.",
 

@@ -35,3 +35,35 @@ test("the auth rate limiter blocks after too many requests from one IP, with a 4
   assert.ok(results.slice(0, 10).every((s) => s === 401), "the first 10 requests should be normal 401s, not blocked");
   assert.ok(results.slice(10).every((s) => s === 429), "requests past the limit should be blocked with 429");
 });
+
+// Behind the gateway every request arrives from the gateway's own address,
+// so the limiter has to read the real visitor from X-Forwarded-For — else
+// one person's wrong guesses lock everybody out. In this test the "gateway"
+// is just this machine (127.0.0.1), which is trusted, so a header on the
+// request is believed the same way a real gateway's would be.
+test("the limiter counts each real visitor separately when requests come through a proxy", async () => {
+  const attempt = (forwardedFor) =>
+    makeClient(baseUrl).post(
+      "/api/auth/login",
+      { username: "nobody", password: "wrong-password" },
+      { headers: { "X-Forwarded-For": forwardedFor } }
+    );
+
+  for (let i = 0; i < 11; i++) await attempt("198.51.100.10"); // visitor A burns their allowance
+  assert.equal((await attempt("198.51.100.10")).status, 429, "visitor A is blocked");
+  assert.equal((await attempt("198.51.100.20")).status, 401, "visitor B is unaffected");
+});
+
+test("a visitor can't dodge the limiter by inventing a different address in X-Forwarded-For", async () => {
+  const attempt = (forwardedFor) =>
+    makeClient(baseUrl).post(
+      "/api/auth/login",
+      { username: "nobody", password: "wrong-password" },
+      { headers: { "X-Forwarded-For": forwardedFor } }
+    );
+
+  // The real visitor is 203.0.113.7 — the proxy appends it LAST. Whatever
+  // they typed before it is theirs to fake, and must not matter.
+  for (let i = 0; i < 11; i++) await attempt(`10.99.99.${i}, 203.0.113.7`);
+  assert.equal((await attempt("1.2.3.4, 203.0.113.7")).status, 429);
+});

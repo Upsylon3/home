@@ -1,21 +1,12 @@
-// Home authenticates against the exact same backend and JWTs as HomeCloud
-// (§27: one identity provider, not one per application) — same
-// /api/auth/login, same token format. It's a different browser origin than
-// HomeCloud's own frontend though (separate dev server / container), so it
-// keeps its own localStorage key rather than sharing HomeCloud's. True
-// cross-app session sharing needs the reverse-proxy gateway described in
-// §25-26, which is future work, not part of this milestone — see
-// AppCard's "Launch" behavior for how that limitation shows up in the UI.
-const TOKEN_KEY = "home_token";
-
-export function getToken() {
-  return localStorage.getItem(TOKEN_KEY);
-}
-
-export function setToken(token) {
-  if (token) localStorage.setItem(TOKEN_KEY, token);
-  else localStorage.removeItem(TOKEN_KEY);
-}
+// Home authenticates against the exact same backend and JWTs as every
+// other app (§27: one identity provider, not one per application) — same
+// /api/auth/login, same token format — and, behind the gateway, the same
+// browser origin, so it shares one stored login with them too.
+// The login is shared by every Home app — see session.js (copied from
+// design/session.js) for how and why. Re-exported so existing
+// `import { getToken, setToken } from "./api.js"` lines keep working.
+import { getToken, setToken } from "./session.js";
+export { getToken, setToken };
 
 async function request(path, options = {}) {
   const token = getToken();

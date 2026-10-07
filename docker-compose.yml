@@ -193,6 +193,40 @@ services:
     expose: ["80"]
 
   # ---------------------------------------------------------------------
+  # Optional: a public HTTPS address (Caddy).
+  #
+  # Does nothing unless you start it with `--profile public`:
+  #   docker compose --profile public up -d
+  # A "profile" is Compose's way of saying "only run this service when I
+  # explicitly ask", so an ordinary `docker compose up` on a home LAN is
+  # completely unchanged. Needs HOME_DOMAIN set in a root .env file and
+  # ports 80 + 443 open to the internet — see docs/DEPLOYMENT.md,
+  # "A permanent address from anywhere", for the full steps and the security
+  # trade-off of leaving the home network.
+  # ---------------------------------------------------------------------
+
+  tls:
+    image: caddy:2-alpine
+    profiles: ["public"]
+    restart: unless-stopped
+    environment:
+      # `:-` = empty if unset. (`:?` would make EVERY compose command fail
+      # for people who never use this profile, because Compose reads the
+      # whole file even for services it isn't starting.)
+      HOME_DOMAIN: ${HOME_DOMAIN:-}
+    depends_on: [gateway]
+    ports:
+      - "80:80"      # Let's Encrypt's ownership check + redirect to https
+      - "443:443"    # the real thing
+      - "443:443/udp" # HTTP/3
+    volumes:
+      - ./gateway/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Certificates live here. Keep this volume: if it's wiped, Caddy has to
+      # request new certificates, and Let's Encrypt limits how often it will.
+      - caddy_data:/data
+      - caddy_config:/config
+
+  # ---------------------------------------------------------------------
   # Operational services.
   # ---------------------------------------------------------------------
 
@@ -220,3 +254,5 @@ volumes:
   homenotes_data:
   homesync_data:
   homevault_data:
+  caddy_data:
+  caddy_config:

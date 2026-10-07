@@ -1,20 +1,13 @@
-// Same identity provider as everywhere else (§27) — different browser
-// origin from HomeCloud/Home/HomeMedia, so its own localStorage key, same
-// as each of those. HomeNotes' own calls (/api/homenotes/*) and
-// HomeCloud's shared ones (/api/auth/*, /api/files/*) are both plain
-// relative fetches — nginx routes each prefix to the right backend (see
-// nginx.conf), so the browser never needs to know there are two services
-// behind this one origin.
-const TOKEN_KEY = "homenotes_token";
-
-export function getToken() {
-  return localStorage.getItem(TOKEN_KEY);
-}
-
-export function setToken(token) {
-  if (token) localStorage.setItem(TOKEN_KEY, token);
-  else localStorage.removeItem(TOKEN_KEY);
-}
+// Same identity provider as everywhere else (§27). HomeNotes' own calls
+// (/api/homenotes/*) and HomeCore's shared ones (/api/auth/*) are both
+// plain relative fetches — nginx routes each prefix to the right backend
+// (see nginx.conf), so the browser never needs to know there are two
+// services behind this one origin.
+// The login is shared by every Home app — see session.js (copied from
+// design/session.js) for how and why. Re-exported so existing
+// `import { getToken, setToken } from "./api.js"` lines keep working.
+import { getToken, setToken } from "./session.js";
+export { getToken, setToken };
 
 async function request(path, options = {}) {
   const token = getToken();

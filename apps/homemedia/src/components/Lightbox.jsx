@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, fetchImageBlob } from "../api.js";
-import AuthImage from "./AuthImage.jsx";
+import { api } from "../api.js";
+import MediaView from "./MediaView.jsx";
 import { XGlyph, ChevronLeftGlyph, ChevronRightGlyph, StarGlyph, InfoGlyph } from "./icons.jsx";
 
 function formatBytes(bytes) {
@@ -18,31 +18,6 @@ function formatBytes(bytes) {
 function formatShutter(seconds) {
   if (!seconds) return null;
   return seconds < 1 ? `1/${Math.round(1 / seconds)}s` : `${seconds}s`;
-}
-
-function LightboxVideo({ fileId }) {
-  const [src, setSrc] = useState(null);
-
-  useEffect(() => {
-    let objectUrl = null;
-    let cancelled = false;
-    fetchImageBlob(api.fullImageUrl(fileId)).then((url) => {
-      if (cancelled) {
-        URL.revokeObjectURL(url);
-        return;
-      }
-      objectUrl = url;
-      setSrc(url);
-    });
-    return () => {
-      cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [fileId]);
-
-  if (!src) return <div className="lightbox-video-loading">Loading video…</div>;
-  // eslint-disable-next-line jsx-a11y/media-has-caption -- personal home videos, no caption tracks exist to attach
-  return <video src={src} controls autoPlay className="lightbox-video" />;
 }
 
 // files/index/onIndexChange, rather than a single file, so prev/next
@@ -93,11 +68,7 @@ export default function Lightbox({ files, index, onClose, onIndexChange, onToggl
     <div className="lightbox-overlay" onClick={onClose}>
       <div className="lightbox-content" onClick={(e) => e.stopPropagation()}>
         <div className="lightbox-media">
-          {file.kind === "image" ? (
-            <AuthImage src={api.fullImageUrl(file.id)} alt={file.name} className="lightbox-image" />
-          ) : (
-            <LightboxVideo fileId={file.id} />
-          )}
+          <MediaView file={file} />
         </div>
 
         {index > 0 && (

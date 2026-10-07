@@ -9,6 +9,8 @@ const { db } = require("./db"); // ensures tables + data directories exist befor
 const { requireAuth, HOMECORE_URL } = require("@home/homecore-client");
 const libraryRoutes = require("./library");
 const collectionsRoutes = require("./collections");
+const uploadRoutes = require("./upload");
+const { ticketRouter, streamRouter } = require("./stream");
 
 const app = express();
 app.use(helmet({ contentSecurityPolicy: false }));
@@ -28,6 +30,14 @@ app.get("/api/homemedia/health", (req, res) => {
   res.json({ status: "ok", homecoreUrl: HOMECORE_URL });
 });
 
+// The stream route is registered BEFORE the requireAuth mounts below on
+// purpose: Express tries routes in order, and a <video>/<audio>/<img> tag
+// can't send a login header, so its ticket (see stream.js) is the only
+// credential it has. Moving this line below them would 401 every playback.
+app.use("/api/homemedia/stream", streamRouter);
+
+app.use("/api/homemedia", requireAuth, uploadRoutes);
+app.use("/api/homemedia", requireAuth, ticketRouter);
 app.use("/api/homemedia", requireAuth, libraryRoutes);
 app.use("/api/homemedia", requireAuth, collectionsRoutes);
 

@@ -19,4 +19,18 @@ function createRateLimiter(options) {
   return rateLimit(options);
 }
 
-module.exports = { createRateLimiter };
+// Which proxies in front of this service we believe when they say who the
+// real visitor is (the X-Forwarded-For header). Without this, Express sees
+// every request as coming from the gateway container, so the login rate
+// limiter below treated ALL visitors as ONE person: 10 wrong guesses from
+// anyone locked everyone out. Harmless on a home LAN; a lock-out lever the
+// moment the server is reachable from the internet.
+//
+// "Private addresses only" is deliberate: the gateway and the optional TLS
+// proxy live on Docker's private network, so their word is trusted, while
+// a header typed by a visitor is only believed up to the first public
+// address Express meets reading right to left — a visitor can't invent
+// their own identity to dodge the limit.
+const TRUSTED_PROXIES = "loopback, linklocal, uniquelocal";
+
+module.exports = { createRateLimiter, TRUSTED_PROXIES };

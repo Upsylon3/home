@@ -2,13 +2,14 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "../api.js";
 import PhotoGrid from "../components/PhotoGrid.jsx";
 import Lightbox from "../components/Lightbox.jsx";
+import Uploader from "../components/Uploader.jsx";
 
 export default function Library() {
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
-  const [type, setType] = useState(""); // "" | "image" | "video"
+  const [type, setType] = useState(""); // "" | "image" | "video" | "audio"
   const [lightboxIndex, setLightboxIndex] = useState(null);
 
   const load = useCallback(async () => {
@@ -63,7 +64,11 @@ export default function Library() {
             <button className={type === "video" ? "active" : ""} onClick={() => setType("video")}>
               Videos
             </button>
+            <button className={type === "audio" ? "active" : ""} onClick={() => setType("audio")}>
+              Music
+            </button>
           </div>
+          <Uploader onDone={load} />
         </div>
       </div>
 
@@ -78,8 +83,8 @@ export default function Library() {
           onToggleFavorite={handleToggleFavorite}
           emptyMessage={
             search
-              ? "No photos or videos match your search."
-              : "No photos or videos yet — anything you upload to HomeCloud shows up here automatically."
+              ? "Nothing matches your search."
+              : "Nothing here yet — use Upload, or drop files onto this page. Photos, videos and music you add to HomeCloud show up here too."
           }
         />
       )}

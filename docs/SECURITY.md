@@ -24,6 +24,17 @@ been checked since.
   192-bit random token, rate-limited separately from login (60 / 15
   minutes / IP), and stop working the instant the underlying file is
   trashed.
+- The login **rate limiter counts each real visitor separately.**
+  Behind the gateway every request reaches the backends from the
+  gateway's own address, and the limiter used to key on that — so
+  everyone shared one allowance of 10 attempts per 15 minutes, and anyone
+  able to reach the login page could lock every user out by burning it.
+  Fixed in 1.9.0: the gateway forwards `X-Forwarded-For`, and HomeCore
+  and HomeCloud's backend read the visitor's address from it, but only
+  past proxies on private addresses (`TRUSTED_PROXIES` in each
+  `rateLimiter.js`), so a visitor can't type a fake address to dodge the
+  limit (`homecore/test/rateLimiting.test.js`). The other backends don't
+  rate-limit anything themselves.
 - Per-file upload cap (1 GB) and per-user quota (default 5 GB,
   admin-overridable).
 - File/folder/note ownership enforced server-side on every route —
@@ -96,7 +107,15 @@ them on (merged only after the same CI run passed) to `alpine:3.24` and
   cert — simpler to operate correctly for a self-hosted family server,
   and avoids the recurring cost of managing public certificates for
   something that was never meant to be reachable by the open internet.
-  See `DEPLOYMENT.md`.
+  See `DEPLOYMENT.md`. **Opt-in exception (1.9.0):** for people who need
+  to reach the server from somewhere a private network client can't be
+  installed (a locked-down work PC), `DEPLOYMENT.md` documents an
+  optional public HTTPS front door (Caddy, started only with
+  `--profile public`). That is a deliberate step away from the decision
+  above, not a replacement for it: it puts the login screen — and, on the
+  shared origin, HomeVault's encrypted blobs — on the public internet,
+  so treat the overlay network as the safer default and read the
+  trade-offs in that section first.
 - **Permission enforcement is declarative, not enforced.** Applications
   declare intended permissions in their manifest (HomeCore's application
   registry), but no code path currently checks a permission before
@@ -274,7 +293,7 @@ re-wrap, not an O(n) re-encryption of the whole vault.
 |---|---|
 | **Server/DB compromise** | Everything stored is ciphertext + minimal metadata — the core promise the whole design exists for, including making a leaked backup harmless as long as Argon2id parameters resist offline attack. |
 | **Network interception** | Blocking prerequisite: the gateway has no TLS yet. Not shippable for a password manager without it, even on a "trusted" home LAN. |
-| **Shared-origin XSS** | Every app on the gateway's single origin shares one security perimeter — a stored XSS bug in *any* app can read *every* app's token out of `localStorage`, HomeVault's included, regardless of each app keeping its own key name (`home_token`, `homecloud_token`, `homemedia_token`, `homenotes_token`, `homevault_token` — see `ARCHITECTURE.md` §5; same-origin script access doesn't care that the keys differ). **Decided:** stay on the shared origin (simpler ops, one cert, consistent with every other app) rather than a separate origin just for HomeVault, on the condition that the mitigation is real, not aspirational: a strict CSP project-wide, no unsanitized `dangerouslySetInnerHTML`/`innerHTML` with untrusted content anywhere, and the decrypted vault key kept tab-lifetime-only, never in `localStorage`. **That condition was violated in practice, found, and fixed during this review:** HomeNotes' Markdown preview rendered `marked.parse()` output straight into `dangerouslySetInnerHTML` with zero sanitization — a real, confirmed path from a note's content (including pasted content, completely ordinary use of a notes app) to a script that reads every app's token, HomeVault's included. Fixed by routing through `DOMPurify.sanitize()` (`apps/homenotes/src/markdown.js`, tested in `apps/homenotes/test/markdown.test.js`); see `CHANGELOG.md`. Re-confirmed via grep that this was the *only* `dangerouslySetInnerHTML`/raw-HTML-injection site in `apps/*/src` — worth re-checking on every future app addition, not a one-time sweep. |
+| **Shared-origin XSS** | Every app on the gateway's single origin shares one security perimeter — a stored XSS bug in *any* app can read *every* app's token out of `localStorage`, HomeVault's included, regardless of what the key is called (since 1.9.0 all apps share one, `home_session_token` — see `ARCHITECTURE.md` §5; before that each app had its own, and same-origin script access never cared that the keys differed). **Decided:** stay on the shared origin (simpler ops, one cert, consistent with every other app) rather than a separate origin just for HomeVault, on the condition that the mitigation is real, not aspirational: a strict CSP project-wide, no unsanitized `dangerouslySetInnerHTML`/`innerHTML` with untrusted content anywhere, and the decrypted vault key kept tab-lifetime-only, never in `localStorage`. **That condition was violated in practice, found, and fixed during this review:** HomeNotes' Markdown preview rendered `marked.parse()` output straight into `dangerouslySetInnerHTML` with zero sanitization — a real, confirmed path from a note's content (including pasted content, completely ordinary use of a notes app) to a script that reads every app's token, HomeVault's included. Fixed by routing through `DOMPurify.sanitize()` (`apps/homenotes/src/markdown.js`, tested in `apps/homenotes/test/markdown.test.js`); see `CHANGELOG.md`. Re-confirmed via grep that this was the *only* `dangerouslySetInnerHTML`/raw-HTML-injection site in `apps/*/src` — worth re-checking on every future app addition, not a one-time sweep. |
 | **Sibling application overreach via HomeCore** | HomeCore's permission system is declarative, not enforced (see above). Encryption itself — not HomeCore's authorization layer — is what actually stops this: a fully compromised sibling app still only gets ciphertext. |
 | **Malicious/compromised HomeVault backend code** | Structurally limited — the server is never sent plaintext to begin with, so there's nothing to exfiltrate unless the *client* is also compromised. |
 | **HomeCore admin overreach** | An admin can disable an account or force a full vault reset (destroying the wrapped key — the user loses their own vault too), but cannot decrypt existing items. No admin-only route should ever return decrypted contents, for any reason including support requests. |

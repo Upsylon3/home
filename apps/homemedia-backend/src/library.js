@@ -4,19 +4,14 @@ const sharp = require("sharp");
 const exifr = require("exifr");
 const { db, thumbnailPath } = require("./db");
 const { asyncHandler } = require("./asyncHandler");
-const { listFiles, downloadFile } = require("./homecloudClient");
+const { listMediaFiles, downloadFile } = require("./homecloudClient");
+const { KINDS, kindOfFile } = require("./mediaKinds");
 
 const router = express.Router();
 
 // Larger than HomeCloud's own 320px file-manager row icon — sized for a
 // gallery grid tile or lightbox filmstrip, not a table row.
 const THUMBNAIL_SIZE = 640;
-
-function kindFromMimetype(mimetype) {
-  if (mimetype && mimetype.startsWith("image/")) return "image";
-  if (mimetype && mimetype.startsWith("video/")) return "video";
-  return null;
-}
 
 // Keeps only the fields actually meaningful for "EXIF display" (camera,
 // lens, exposure, capture date, dimensions, GPS if present) rather than
@@ -37,22 +32,23 @@ function sanitizeExif(raw) {
   return Object.keys(out).length > 0 ? out : null;
 }
 
-// GET /library?type=image|video&search=&favorite=true&albumId=N
+// GET /library?type=image|video|audio&search=&favorite=true&albumId=N
 // Flat, sorted (newest first) list — timeline grouping is a presentation
 // concern the frontend handles, not something baked into this response.
 router.get(
   "/library",
   asyncHandler(async (req, res) => {
     const wantType = req.query.type;
-    if (wantType && !["image", "video"].includes(wantType)) {
-      return res.status(400).json({ error: "type must be 'image' or 'video'." });
+    if (wantType && !KINDS.includes(wantType)) {
+      return res.status(400).json({ error: "type must be 'image', 'video' or 'audio'." });
     }
 
-    const [images, videos] = await Promise.all([
-      wantType && wantType !== "image" ? { files: [] } : listFiles(req.token, "image"),
-      wantType && wantType !== "video" ? { files: [] } : listFiles(req.token, "video")
-    ]);
-    let files = [...images.files, ...videos.files].map((f) => ({ ...f, kind: kindFromMimetype(f.mimetype) }));
+    // Always fetch everything and filter afterwards: a type filter has to
+    // be applied to HomeMedia's own `kind` (which also understands files
+    // HomeCloud labelled "application/octet-stream"), not to HomeCloud's
+    // raw mimetype buckets.
+    let files = await listMediaFiles(req.token);
+    if (wantType) files = files.filter((f) => f.kind === wantType);
 
     const favoriteIds = new Set(
       db.prepare("SELECT file_id FROM favorites WHERE user_id = ?").all(req.user.id).map((r) => r.file_id)
@@ -105,7 +101,11 @@ router.get(
     const original = await downloadFile(req.token, fileId);
     if (!original) return res.status(404).json({ error: "File not found." });
 
-    const kind = kindFromMimetype(original.contentType);
+    const kind = kindOfFile({ mimetype: original.contentType });
+    // Only photos and videos are cached in media_index (its `kind` column
+    // only allows those two). Music has no EXIF, so there is nothing worth
+    // caching — answer straight away.
+    if (kind === "audio") return res.json({ exif: null });
     let exif = null;
     if (kind === "image") {
       try {
@@ -144,10 +144,10 @@ router.get(
     const original = await downloadFile(req.token, fileId);
     if (!original) return res.status(404).json({ error: "File not found." });
 
-    if (kindFromMimetype(original.contentType) !== "image") {
+    if (kindOfFile({ mimetype: original.contentType }) !== "image") {
       // A real poster frame for video needs a decoder this service
       // deliberately doesn't carry (see README's HomeMedia section) — the
-      // frontend shows a generic video tile instead of a real preview.
+      // frontend shows a generic video/music tile instead of a real preview.
       return res.status(404).json({ error: "No thumbnail available for this file." });
     }
 

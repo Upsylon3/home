@@ -52,7 +52,7 @@ File storage: upload, folders, Trash, share links.
 | GET | `/api/homecloud/health` | *(no auth)* |
 | GET | `/api/homecloud/files/quota` | Usage/quota for the current user |
 | GET | `/api/homecloud/files` | List files (optionally `?folderId=`) |
-| GET | `/api/homecloud/files/all?type=image\|video` | Cross-folder listing by mime type (used by HomeMedia) |
+| GET | `/api/homecloud/files/all?type=image\|video\|audio\|application` | Cross-folder listing by mime type (used by HomeMedia) |
 | GET | `/api/homecloud/files/trash` | List trashed files |
 | GET | `/api/homecloud/files/shares` | List this user's share links |
 | POST | `/api/homecloud/files/upload` | Upload (multipart, field `file`) |
@@ -74,13 +74,18 @@ File storage: upload, folders, Trash, share links.
 
 ## HomeMedia backend (`/api/homemedia`)
 
-Photo/video library. Stores no media itself — every file byte is fetched
-from HomeCloud on demand.
+Photo, video and music library. Stores no media itself — every file byte
+is fetched from HomeCloud on demand, and uploads made here are stored by
+HomeCloud (in a top-level `HomeMedia` folder).
 
 | Method | Path | What it does |
 |---|---|---|
 | GET | `/api/homemedia/health` | *(no auth)* |
-| GET | `/api/homemedia/library` | Timeline-grouped photo/video library |
+| GET | `/api/homemedia/library?type=image\|video\|audio` | Photo/video/music library (animated GIFs count as photos) |
+| GET | `/api/homemedia/upload-folder` | Id of the HomeCloud folder uploads go to (created on first use) |
+| POST | `/api/homemedia/upload` | Upload one file (multipart, field `file`, optional `folderId`); streamed straight to HomeCloud |
+| POST | `/api/homemedia/:fileId/ticket` | Short-lived playback link for one file — what `<video>`, `<audio>` and `<img>` tags load, since they can't send a login header |
+| GET | `/api/homemedia/stream/:ticket` | *(no auth — the ticket is the credential)* Streams the file, with Range support so seeking works |
 | GET | `/api/homemedia/:fileId/exif` | Cached EXIF data for one file |
 | GET | `/api/homemedia/:fileId/thumbnail` | Gallery-quality thumbnail (640px) |
 | GET/POST | `/api/homemedia/albums` | List / create albums |

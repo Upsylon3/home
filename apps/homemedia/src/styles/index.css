@@ -1176,3 +1176,105 @@ a:focus-visible {
 :root[data-retro="off"] .lightbox-image {
   border: none;
 }
+
+/* ---- Uploading, music tiles, and the streaming viewer ------------------ */
+
+/* The list of files being uploaded, under the Library header. */
+.upload-list {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.upload-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 12px;
+  padding: 8px 12px;
+  background: var(--panel);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+.upload-item-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.upload-item-status {
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+}
+/* Errors are shown in words AND colour, never colour alone. */
+.upload-item.is-error {
+  border-color: var(--red);
+}
+.upload-item.is-error .upload-item-status {
+  color: var(--red);
+}
+.upload-item-bar {
+  grid-column: 1 / -1;
+  width: 100%;
+  height: 6px;
+  accent-color: var(--amber);
+}
+
+/* Full-screen hint while a file is being dragged over the page. */
+.drop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
+  border: 4px dashed var(--amber);
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 22px;
+  pointer-events: none; /* never block the drop itself */
+}
+
+/* A music tile: note icon over the file name. */
+.photo-tile-audio {
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  text-align: center;
+}
+.photo-tile-audio-name {
+  max-width: 100%;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* The viewer's non-photo states: loading text, errors, and the music player. */
+.lightbox-message {
+  color: var(--text-dim);
+  font-size: 13px;
+  text-align: center;
+  max-width: 320px;
+}
+.lightbox-audio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  color: var(--text-dim);
+  max-width: 100%;
+}
+.lightbox-audio-name {
+  color: var(--text);
+  font-family: var(--font-display);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lightbox-audio audio {
+  width: min(420px, 100%);
+}

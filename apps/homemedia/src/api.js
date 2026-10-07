@@ -1,22 +1,14 @@
 // Same identity provider as HomeCloud and Home (§27: one identity
 // provider, not one per application) — same /api/auth/login, same JWTs.
-// Different browser origin from either of them though, so it keeps its
-// own localStorage key rather than assuming a shared one; see Home's
-// api.js for the same note. HomeMedia's own domain-specific calls
-// (/api/homemedia/*) and HomeCloud's shared ones (/api/auth/*,
-// /api/files/*) are both plain relative fetches — nginx routes each
-// prefix to the right backend (see nginx.conf), so the browser never
-// needs to know there are two services behind this one origin.
-const TOKEN_KEY = "homemedia_token";
-
-export function getToken() {
-  return localStorage.getItem(TOKEN_KEY);
-}
-
-export function setToken(token) {
-  if (token) localStorage.setItem(TOKEN_KEY, token);
-  else localStorage.removeItem(TOKEN_KEY);
-}
+// HomeMedia's own domain-specific calls (/api/homemedia/*) and
+// HomeCore's shared ones (/api/auth/*) are both plain relative fetches —
+// nginx routes each prefix to the right backend (see nginx.conf), so the
+// browser never needs to know there are two services behind this one origin.
+// The login is shared by every Home app — see session.js (copied from
+// design/session.js) for how and why. Re-exported so existing
+// `import { getToken, setToken } from "./api.js"` lines keep working.
+import { getToken, setToken } from "./session.js";
+export { getToken, setToken };
 
 async function request(path, options = {}) {
   const token = getToken();
@@ -64,6 +56,44 @@ export async function fetchImageBlob(url) {
   return URL.createObjectURL(blob);
 }
 
+// Uploads one file through HomeMedia (which hands it to HomeCloud for
+// storage). Uses XMLHttpRequest instead of fetch() because fetch still has
+// no way to report UPLOAD progress, and a progress bar is the difference
+// between "it's working" and "is it frozen?" on a 400 MB video.
+// Resolves with the stored file, rejects with a message fit to show a person.
+export function uploadMedia(file, folderId, onProgress) {
+  return new Promise((resolve, reject) => {
+    const form = new FormData();
+    if (folderId) form.append("folderId", String(folderId));
+    form.append("file", file); // the file goes last; fields before it are read first
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/homemedia/upload");
+    const token = getToken();
+    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress?.(e.loaded / e.total);
+    };
+    xhr.onerror = () => reject(new Error("Network error — the upload didn't finish."));
+    xhr.onload = () => {
+      let data = null;
+      try {
+        data = JSON.parse(xhr.responseText);
+      } catch {
+        // not JSON: fall through to the generic message below
+      }
+      if (xhr.status === 401) {
+        setToken(null);
+        window.dispatchEvent(new CustomEvent("homemedia:session-expired"));
+      }
+      if (xhr.status >= 200 && xhr.status < 300) resolve(data?.file);
+      else reject(new Error((data && data.error) || `Upload failed (${xhr.status}).`));
+    };
+    xhr.send(form);
+  });
+}
+
 export const api = {
   login: (username, password) =>
     request("/auth/login", { method: "POST", body: JSON.stringify({ username, password }) }),
@@ -77,7 +107,11 @@ export const api = {
   },
   exif: (fileId) => request(`/homemedia/${fileId}/exif`),
   thumbnailUrl: (fileId) => `/api/homemedia/${fileId}/thumbnail`,
-  fullImageUrl: (fileId) => `/api/files/${fileId}/download`,
+  // Asks for a short-lived link a <video>/<audio>/<img> tag can load
+  // directly (those tags can't send a login header). See
+  // homemedia-backend/src/stream.js for how tickets work.
+  mediaTicket: async (fileId) => (await request(`/homemedia/${fileId}/ticket`, { method: "POST" })).data.url,
+  uploadFolder: async () => (await request("/homemedia/upload-folder")).data.folderId,
 
   favorite: (fileId) => request(`/homemedia/favorites/${fileId}`, { method: "POST" }),
   unfavorite: (fileId) => request(`/homemedia/favorites/${fileId}`, { method: "DELETE" }),

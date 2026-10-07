@@ -61,8 +61,83 @@ before considering any other form of remote access, and definitely
 before HomeVault (once built — see `SECURITY.md`) is ever reachable this
 way.
 
-**Do not expose port 8080 directly to the public internet.** There is no
-TLS anywhere in this stack yet — see [SECURITY.md](SECURITY.md).
+**Do not expose port 8080 directly to the public internet.** It is plain
+HTTP with no TLS. If you need public access, use the HTTPS front door in
+"A permanent address from anywhere" below instead.
+
+## A permanent address from anywhere
+
+The LAN IP and Tailscale routes above cover home and private devices. This
+section is for the other case: reaching the server from a machine where you
+can't install anything (a work PC, say), on a cloud VM such as Oracle's
+Always Free tier. It is **opt-in** — nothing here runs unless you start it
+— and it is a real step away from "never expose this to the internet", so
+read the trade-offs at the end first.
+
+**If an old address "returned nothing", the usual causes are, in order:**
+
+1. **The IP changed.** An *ephemeral* public IP lives only as long as the
+   instance's network setup does; if the VM was recreated, or Oracle
+   reclaimed the address, the old number now points nowhere. A *reserved*
+   public IP is yours until you delete it.
+2. **The port was never opened at both layers.** Oracle blocks inbound
+   traffic in the cloud network (the subnet's security list, or a network
+   security group) **and** Oracle's Ubuntu images ship with their own
+   restrictive `iptables` rules on the VM. Opening only one of the two
+   still looks like "nothing there".
+3. **The work network blocks it.** Many company firewalls allow ordinary
+   web traffic on port 443 and drop plain HTTP on odd ports like `8080`
+   or to a bare IP. Port 443 with a real name almost always gets through.
+
+**The setup that avoids all three:**
+
+1. **Reserve the IP.** In the Oracle console: Networking → IP management →
+   Reserved public IPs → create one, then attach it to the VM's network
+   interface (the instance's VNIC → IPv4 addresses → edit → "Reserved
+   public IP"). Menu names move around between console versions; what you
+   are looking for is the *reserved* kind, not ephemeral. Oracle's
+   Always Free limits and charges are theirs to change — check the console
+   before relying on it staying free.
+2. **Give it a name.** Any domain works; a free DuckDNS name
+   (`yourname.duckdns.org`) is the quickest. Point it at the reserved IP.
+   Because the IP is now permanent, you set this once and never touch it.
+3. **Open ports 80 and 443** (not 8080) in the cloud security list or
+   network security group, *and* on the VM itself. On Oracle's Ubuntu
+   images that typically means:
+   ```bash
+   sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 80 -j ACCEPT
+   sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 443 -j ACCEPT
+   sudo netfilter-persistent save
+   ```
+   Port 80 is only for the certificate check and the redirect to https.
+4. **Tell Home the name** by creating a file named `.env` next to
+   `docker-compose.yml` (it is already git-ignored):
+   ```
+   HOME_DOMAIN=yourname.duckdns.org
+   ```
+5. **Start it with the public profile:**
+   ```bash
+   docker compose --profile public up -d
+   ```
+   A small Caddy container (`tls`) gets a free Let's Encrypt certificate
+   for that name, renews it automatically, and forwards everything to the
+   gateway. Open `https://yourname.duckdns.org`.
+
+Keep `8080` closed in the cloud firewall: the gateway is still published on
+it for LAN use, and it is plain HTTP.
+
+**The trade-offs, plainly:**
+
+- This puts the login page on the public internet. Login attempts are
+  rate-limited per visitor, but use strong passwords and turn on 2FA at
+  least for the admin account.
+- Every app shares one browser origin, so HomeVault's encrypted data is
+  reachable at the same address (its contents stay encrypted; see
+  `SECURITY.md`'s "Shared-origin XSS"). If you keep real secrets in
+  HomeVault, prefer the private-network route and use this only for the
+  rest.
+- If the work PC allows installing Tailscale, that is still the safer
+  answer and needs none of the above.
 
 ## Backups
 

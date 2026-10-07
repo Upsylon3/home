@@ -1,23 +1,18 @@
-// Same identity provider as everywhere else, own localStorage key, same
-// as every sibling app. HomeVault's own calls (/api/homevault/*) and
-// HomeCore's shared ones (/api/auth/*) are both plain relative fetches —
-// nginx routes each prefix to the right backend (see nginx.conf), so the
-// browser never needs to know there are two services behind this origin.
+// Same identity provider as everywhere else, and the same shared login.
+// HomeVault's own calls (/api/homevault/*) and HomeCore's shared ones
+// (/api/auth/*) are both plain relative fetches — nginx routes each prefix
+// to the right backend (see nginx.conf), so the browser never needs to
+// know there are two services behind this origin.
 //
 // Nothing in this file ever sees a plaintext secret — every value that
 // crosses this boundary is either already ciphertext or a public KDF
 // parameter (see src/crypto.js, which is the only place plaintext
 // secrets exist in this entire app, and only ever in memory).
-const TOKEN_KEY = "homevault_token";
-
-export function getToken() {
-  return localStorage.getItem(TOKEN_KEY);
-}
-
-export function setToken(token) {
-  if (token) localStorage.setItem(TOKEN_KEY, token);
-  else localStorage.removeItem(TOKEN_KEY);
-}
+// The login is shared by every Home app — see session.js (copied from
+// design/session.js) for how and why. Re-exported so existing
+// `import { getToken, setToken } from "./api.js"` lines keep working.
+import { getToken, setToken } from "./session.js";
+export { getToken, setToken };
 
 async function request(path, options = {}) {
   const token = getToken();

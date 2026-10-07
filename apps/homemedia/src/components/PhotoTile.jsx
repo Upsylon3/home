@@ -1,6 +1,6 @@
 import AuthImage from "./AuthImage.jsx";
 import { api } from "../api.js";
-import { StarGlyph, PlayGlyph } from "./icons.jsx";
+import { StarGlyph, PlayGlyph, MusicGlyph } from "./icons.jsx";
 
 export default function PhotoTile({ file, onOpen, onToggleFavorite }) {
   return (
@@ -12,6 +12,13 @@ export default function PhotoTile({ file, onOpen, onToggleFavorite }) {
           className="photo-tile-img"
           placeholder={<div className="photo-tile-placeholder" />}
         />
+      ) : file.kind === "audio" ? (
+        // Music has no picture to preview, so the tile shows a note and the
+        // file name — otherwise a grid of songs would be a wall of identical icons.
+        <div className="photo-tile-video-placeholder photo-tile-audio">
+          <MusicGlyph size={28} />
+          <span className="photo-tile-audio-name">{file.name}</span>
+        </div>
       ) : (
         <div className="photo-tile-video-placeholder">
           <PlayGlyph size={28} />

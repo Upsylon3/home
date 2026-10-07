@@ -1,0 +1,17 @@
+# The optional "public front door": gives Home a real https:// address that
+# works from anywhere (a work PC, a phone on mobile data). Only started when
+# you ask for it — see docs/DEPLOYMENT.md, "A permanent address from
+# anywhere". Not used at all for a plain home-LAN setup.
+#
+# {$HOME_DOMAIN} is read from the root .env file (e.g. myhome.duckdns.org).
+# Caddy sees that name, proves to Let's Encrypt that this server really is
+# that address, and then fetches AND renews the HTTPS certificate on its own.
+# For that to work the name must already point at this server, and ports 80
+# and 443 must be reachable from the internet.
+{$HOME_DOMAIN} {
+	# Everything goes to the existing gateway, which routes to each app
+	# exactly as it does on the LAN. Caddy adds the visitor's real address
+	# (X-Forwarded-For) itself, and streams large uploads and videos
+	# straight through without buffering them.
+	reverse_proxy gateway:80
+}

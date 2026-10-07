@@ -52,6 +52,14 @@ for app in "${FRONTENDS[@]}"; do
   echo "synced retro.js + RetroControl.jsx -> $app/src"
 done
 
+# The shared login (design/session.js): one localStorage key every app reads
+# and writes, so signing in to any app signs you in to all of them. Each
+# app's api.js imports it as ./session.js.
+for app in "${FRONTENDS[@]}"; do
+  cp design/session.js "$app/src/session.js"
+  echo "synced session.js -> $app/src/session.js"
+done
+
 # Browser-tab and home-screen icons, generated from the icon set by
 # design/make-favicons.mjs (run that first if an icon changed). Each app gets
 # its OWN icon, copied into its public/ folder, which the build serves as-is.

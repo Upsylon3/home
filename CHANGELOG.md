@@ -5,6 +5,90 @@ All notable changes to this project are documented here. Format follows
 [SemVer](https://semver.org/): one version number for the whole
 ecosystem (see root `package.json`), bumped on any meaningful release.
 
+## [1.9.0] — HomeMedia rework: upload, music, GIFs, a viewer that loads; one login; an optional public address
+
+### Added
+- **Uploading from HomeMedia.** An Upload button (and drag-and-drop
+  anywhere on the Library page) with a per-file progress list. Files are
+  stored by HomeCloud in a top-level `HomeMedia` folder; HomeMedia still
+  keeps no bytes of its own. The backend (`upload.js`) streams the browser's
+  upload straight through to HomeCloud without parsing or buffering it, so
+  it needs no upload library and uses almost no memory for a 1 GB video.
+  HomeCloud applies the same login check, quota and 1 GB limit as for an
+  upload made in HomeCloud itself.
+- **Music.** A "Music" filter, a tile per song, and an audio player in the
+  viewer. `GET /api/homemedia/library?type=audio` is new.
+- **Animated GIFs** play in the viewer: it now shows the original file, not
+  a re-encoded still. (Grid thumbnails remain a single frame.)
+- **Streaming playback.** `POST /api/homemedia/:fileId/ticket` returns a
+  short-lived link for one file, and `GET /api/homemedia/stream/:ticket`
+  streams it with Range support, so video starts at once and seeking works.
+  Tickets are random, expire (two hours after last use), die with the login
+  behind them, and live in memory only. See `stream.js` for why this is a
+  ticket and not the login token in the URL.
+- **`mediaKinds.js`:** a file counts as media by its mimetype, or failing
+  that its extension. Browsers send no mimetype for formats they don't know
+  (`.mkv`, `.flac`, `.m4a`, `.opus` on Windows), HomeCloud then stores
+  `application/octet-stream`, and such files used to be missing from the
+  library with no error anywhere.
+- **`design/session.js`**, copied to every app as `src/session.js` by
+  `design/sync-assets.sh`: the one place the login token is read and written.
+- **An optional public HTTPS address.** A `tls` service (Caddy, in
+  `docker-compose.yml`, behind `--profile public`) that gets and renews a
+  Let's Encrypt certificate for `HOME_DOMAIN`. Does nothing unless started.
+  Steps for a cloud VM, including the reserved-IP and two-layer firewall
+  pitfalls, are in `docs/DEPLOYMENT.md`.
+- 10 backend tests for the above (`homemedia-backend/test/media.test.js`),
+  5 for the shared session (`homenotes/test/session.test.js`), and 2 for
+  per-visitor rate limiting (`homecore/test/rateLimiting.test.js`).
+
+### Fixed
+- **HomeMedia's viewer loaded forever.** It requested the full-size file
+  from `/api/files/:id/download`, a path that went to HomeCore back when it
+  stored files and has returned 404 since HomeCloud got its own backend, so
+  every photo came up blank. The video path had no error handling at all,
+  so it showed "Loading video…" indefinitely. The viewer now loads through
+  the ticket route above, shows an error when a file genuinely can't be
+  loaded, and retries once with a fresh ticket first.
+- **Signing in to every app separately.** The gateway put the apps on one
+  origin, which makes sharing a login possible, but each app still stored
+  its token under its own key (`home_token`, `homecloud_token`,
+  `homemedia_token`, `homenotes_token`, `homevault_token`). They now share
+  `home_session_token`. An existing per-app login is adopted on first load
+  and the old keys removed, so nobody is signed out by the upgrade. Signing
+  out of one app signs out of all of them.
+- **One visitor's wrong passwords could lock everyone out.** Behind the
+  gateway every request reached HomeCore from the gateway's own address, and
+  the login rate limiter keyed on that, so all users shared one allowance of
+  10 attempts per 15 minutes. The gateway now forwards `X-Forwarded-For` and
+  HomeCore and HomeCloud's backend read it, trusting only proxies on private
+  addresses so a visitor can't invent an address to dodge the limit.
+- HomeMedia's gateway rules for `/api/homemedia/upload` and
+  `/api/homemedia/stream/` turn nginx's request/response buffering off. With
+  it on, a large upload sat at 100% until nginx had received all of it, and a
+  video could not start until it had fully arrived.
+
+### Changed
+- `GET /api/homemedia/library` always lists photos, videos and music
+  together, then filters; `?type=` accepts `image`, `video` or `audio`.
+- `docs/ARCHITECTURE.md` section 5 no longer says the apps have no shared
+  login; it describes the shared key and records the cause of the old
+  behaviour. `docs/SECURITY.md`, `docs/DEPLOYMENT.md` and `docs/API.md` are
+  updated to match.
+
+### Not verified
+- **Nothing here was run through the real gateway or Docker.** The backend
+  changes are covered by tests against real HomeCore, HomeCloud and HomeMedia
+  instances, and every frontend builds, but the new `gateway/nginx.conf`
+  locations, the `tls` service and the Caddyfile were written without
+  `nginx -t` or a Docker run available. Run `docker compose up --build -d`
+  once and try an upload and a video before relying on them.
+- The viewer and uploader were built but not exercised in a browser; the
+  tests cover the HTTP behaviour they depend on, not the React components.
+- HEIC photos are listed but have no thumbnail (the image library used for
+  thumbnails can't decode them), and browsers differ in which video and
+  audio formats they will play.
+
 ## [1.8.0] — Atari refresh: Android palette, contrast fixes, real favicons
 
 Closes out the remaining items from the refresh.

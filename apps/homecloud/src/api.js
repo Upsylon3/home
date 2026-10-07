@@ -1,13 +1,8 @@
-const TOKEN_KEY = "homecloud_token";
-
-export function getToken() {
-  return localStorage.getItem(TOKEN_KEY);
-}
-
-export function setToken(token) {
-  if (token) localStorage.setItem(TOKEN_KEY, token);
-  else localStorage.removeItem(TOKEN_KEY);
-}
+// The login is shared by every Home app — see session.js (copied from
+// design/session.js) for how and why. Re-exported so existing
+// `import { getToken, setToken } from "./api.js"` lines keep working.
+import { getToken, setToken } from "./session.js";
+export { getToken, setToken };
 
 async function request(path, options = {}) {
   const token = getToken();

@@ -169,6 +169,30 @@ function seedHomeNotesApplication() {
   return info.lastInsertRowid;
 }
 
+// HomeTasks: a real web frontend (at /tasks) plus its own backend. Like
+// HomeVault below, it has no dependency on HomeCloud: tasks are small rows in
+// its own database, so it needs no file permissions (empty grant).
+function seedHomeTasksApplication() {
+  const baseUrl = process.env.HOMETASKS_FRONTEND_URL || "/tasks";
+
+  const existing = db.prepare("SELECT id FROM hc_applications WHERE slug = 'hometasks'").get();
+  if (existing) {
+    db.prepare("UPDATE hc_applications SET base_url = ?, updated_at = datetime('now') WHERE id = ?").run(
+      baseUrl,
+      existing.id
+    );
+    return existing.id;
+  }
+
+  const info = db
+    .prepare(
+      `INSERT INTO hc_applications (slug, name, description, version, icon, base_url, health_url, enabled)
+       VALUES ('hometasks', 'HomeTasks', 'Tasks and projects', '0.1.0', '/icons/hometasks.svg', ?, '/api/hometasks/health', 1)`
+    )
+    .run(baseUrl);
+  return info.lastInsertRowid;
+}
+
 // The first application with no dependency on HomeCloud at all — it
 // stores its own encrypted blobs, never a real file (see
 // apps/homevault-backend/src/db.js). Its permission grant below is
@@ -204,6 +228,7 @@ function runSeed() {
   seedHomeMediaApplication();
   seedHomeSyncApplication();
   seedHomeNotesApplication();
+  seedHomeTasksApplication();
   return seedHomevaultApplication();
 }
 

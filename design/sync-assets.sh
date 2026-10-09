@@ -18,7 +18,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."   # repo root, regardless of where this is invoked from
 
-FRONTENDS=(apps/home apps/homecloud apps/homemedia apps/homenotes apps/homevault)
+FRONTENDS=(apps/home apps/homecloud apps/homemedia apps/homenotes apps/hometasks apps/homevault)
 # apps/homecloud has no shared branded Layout.jsx component yet (unlike
 # its four siblings) but it still gets the icon files themselves for
 # its favicon/manifest.
@@ -73,7 +73,7 @@ done
 # launcher cards + sidebar app list) and the three sibling apps whose
 # Layout.jsx renders a branded sidebar/topbar (HomeMedia, HomeNotes,
 # HomeVault).
-for app in apps/home apps/homemedia apps/homenotes apps/homevault; do
+for app in apps/home apps/homemedia apps/homenotes apps/hometasks apps/homevault; do
   mkdir -p "$app/src/components"
   cp design/AppIcon.jsx "$app/src/components/AppIcon.jsx"
   echo "synced AppIcon.jsx -> $app/src/components/AppIcon.jsx"

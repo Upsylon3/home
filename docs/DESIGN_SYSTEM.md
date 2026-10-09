@@ -17,10 +17,11 @@ be quietly sophisticated, not loudly impressive.
 
 ## The Atari direction (since 1.2.0)
 
-*Status: complete for every app that exists, as of 1.9.0. Phases 1 to 6
+*Status: complete for every app that exists, as of 1.10.0. Phases 1 to 6
 shipped across 1.2.0 to 1.8.0; 1.9.0 (HomeMedia's upload, music and viewer
 work) added screens that reuse the shared tokens and needed no new retro
-rules. This doc was last reconciled against the code at 1.9.0.*
+rules. 1.10.0 added HomeTasks, the first app built from this system from the
+start. This doc was last reconciled against the code at 1.10.0.*
 
 Home has a visual identity now: **Atari, 1977, built today.** Warm black
 vinyl, cream paper, orange and brass, painted stripes, a little woodgrain.
@@ -31,8 +32,11 @@ read. The retro lives at the edges.
 
 The rules that keep it tasteful:
 
-- **One hero detail per screen.** Woodgrain appears on exactly one surface
-  (Home's dashboard header). Everything else gets quieter touches.
+- **One hero detail per screen.** Woodgrain appears on at most one surface
+  per screen: the header of a page that has one. Today that is Home's
+  dashboard and HomeTasks' Today page (its "desk top"). Everything else gets
+  quieter touches, and screens that are mostly lists or forms get no wood at
+  all.
 - **Physical, never neon.** The 1970s look is wood, plastic and painted
   stripes. **No glow, anywhere**: no blurred `box-shadow`, no
   `text-shadow`, no pulsing halos. Shadows are hard-edged ("a wall under
@@ -93,7 +97,7 @@ shared across all apps (one `localStorage` key, `home-retro`).
 | Level | What you get |
 |---|---|
 | **Off** | Warm colors and fonts only. No stripes, woodgrain, raised buttons, rocker switches, cartridge label strips, print frames or ruled paper. The storage gauge becomes a plain solid bar. |
-| **Subtle** (default) | Stripe bands, the woodgrain dashboard header, raised "console key" buttons, cartridge folders, print frames, ruled note paper. |
+| **Subtle** (default) | Stripe bands, the woodgrain headers (Home and HomeTasks), raised "console key" buttons, cartridge folders, print frames, ruled note paper. |
 | **Full** | Louder: deeper buttons, taller stripe bands, and CRT scanlines with darkened edges over the dashboard header and the HomeMedia lightbox. |
 
 Full is still glow-free: the scanlines are thin dark lines and a darkened
@@ -110,7 +114,7 @@ Subtle.
 | HomeMedia | Gallery | Photos as prints: heavier borders, albums as a stack, cream print frame in the lightbox. The 1.9.0 additions (upload list, drag-and-drop overlay, music tiles, audio player) use only the shared tokens and have no retro effect of their own, so there is nothing for Off to remove |
 | HomeNotes | Study | Ruled paper that scrolls with the writing, index-card hover |
 | HomeVault | The safe | Restrained on purpose: a thin brass line instead of stripes, only a brass edge on hover |
-| HomeTasks | Desk | *Planned, not built.* Proposed: tasks as index cards on the desk, with the same hard amber edge as a HomeCloud row for "due today", red plus the word "Overdue" (never color alone), and a plain struck-through checked box when done. To be confirmed when the app is built |
+| HomeTasks | Desk | Woodgrain "desk top" header on the Today page only (the same wood frame, label plate and stripes as Home's hero, with the greeting and a due / overdue / open count line). Tasks are rows with the same hard amber edge as a HomeCloud row; "Overdue", "Today" and priority are always written as words on small outlined labels, with color only reinforcing them. Done tasks are struck through. Retro Off removes the wood and the edge, Full adds the scanlines over the header |
 | HomeSync | Connection | The Android app wears the same palette (`Color.kt`); it has no stripes or wood, since it is a quiet background service |
 
 ### Where it lives, and how to change it
@@ -139,7 +143,7 @@ file (HomeVault does this with `--auth-band-height` and `--auth-band-bg`).
 classes (`.btn`, `.panel`, `.segmented`...), never a typed-in color or a
 pixel radius, and give any new decoration an Off behavior.
 
-**When you build a new app** (HomeTasks is next): add its folder to the
+**When you build a new app** (HomeTasks, in 1.10.0, is the worked example): add its folder to the
 `FRONTENDS` list in `design/sync-assets.sh` and run the script, so it gets
 `tokens.css`, `components.css`, `retro.js`, `RetroControl.jsx`,
 `session.js` and its icon; import the CSS in the load order above; put

@@ -60,8 +60,8 @@ other Tier 1 app currently has a hard dependency on (see §4).
 `hc_permissions`, `hc_application_permissions`, `hc_activity_events`,
 `hc_notifications`, `hc_sessions`.
 
-Five applications are registered today: `homecloud`, `homemedia`,
-`homesync`, `homenotes`, `homevault` — pre-seeded by HomeCore's own
+Six applications are registered today: `homecloud`, `homemedia`,
+`homesync`, `homenotes`, `hometasks`, `homevault` — pre-seeded by HomeCore's own
 startup code (see §6). This is exactly the "before adding a fifth"
 point earlier notes on this shortcut flagged for reconsidering — the
 pattern still held up fine at this scale (one more `INSERT OR IGNORE`
@@ -85,7 +85,7 @@ Tier 0 — Foundation
   change — only registered against.
 
 Tier 1 — Independent apps
-  HomeCloud, HomeMedia, HomeSync, HomeNotes, HomeVault (future: HomeTasks,
+  HomeCloud, HomeMedia, HomeSync, HomeNotes, HomeTasks, HomeVault (future:
   HomeMonitor)
   Each has its own database, own process, own deploy. May declare a
   small number of HARD dependencies on another app's STABLE PUBLIC API
@@ -245,7 +245,7 @@ problem:
 | HomeSync backend | Built and tested |
 | HomeSync Android app | Written; builds and passes its unit tests in CI (`android.yml`), never run on a device — see `docs/DEVELOPMENT.md` |
 | HomeVault | **v0 built** — core loop (create/unlock/recover a vault, add/view/edit/delete items) implemented and tested; **self-reviewed twice, not independently reviewed** — see `docs/SECURITY.md`'s "HomeVault v0" section before trusting it with anything real |
-| HomeTasks | **Backend built and tested** (tasks, projects, due dates, priorities, search, completion); web app not started. Recurring tasks, reminders and assignment are deliberately not built yet, see `docs/ROADMAP.md` |
+| HomeTasks | **Built (v0.1)**: backend and web app (Today / Upcoming / All / Done, projects, due dates, priorities, search), tested; the web app was driven end to end in a headless browser. Recurring tasks, reminders and assignment are deliberately not built yet, see `docs/ROADMAP.md` |
 | HomeMonitor, HomeAI, HomeBridge | Not started |
 
 ## 8. Future ecosystem map

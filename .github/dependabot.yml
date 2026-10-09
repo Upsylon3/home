@@ -109,6 +109,7 @@ updates:
       - "/apps/homemedia-backend"
       - "/apps/homenotes"
       - "/apps/homenotes-backend"
+      - "/apps/hometasks"
       - "/apps/homesync-backend"
       - "/apps/hometasks-backend"
       - "/apps/homevault"

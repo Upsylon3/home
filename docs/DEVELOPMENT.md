@@ -49,12 +49,16 @@ cd apps/homesync-backend && HOMECORE_INTERNAL_URL=http://localhost:4000 \
 # the only backend with zero dependency on apps/homecloud-backend.
 cd apps/homevault-backend && HOMECORE_INTERNAL_URL=http://localhost:4000 npm run dev # :4600
 
+# HomeTasks' backend — also no HOMECLOUD_BACKEND_INTERNAL_URL (no files).
+cd apps/hometasks-backend && HOMECORE_INTERNAL_URL=http://localhost:4000 npm run dev # :4700
+
 # Frontends — each is independent, run whichever you're working on
 cd apps/home && npm run dev        # :5174
 cd apps/homecloud && npm run dev   # :5173
 cd apps/homemedia && npm run dev   # :5175
 cd apps/homenotes && npm run dev   # :5176
 cd apps/homevault && npm run dev   # :5177
+cd apps/hometasks && npm run dev   # :5178
 ```
 
 Visit whichever frontend's port you started. `homemedia-backend`,
@@ -91,6 +95,7 @@ nothing extra to type per-service.
 | HomeNotes backend + frontend *(optional)* | `4400` + `5176` |
 | HomeSync backend *(optional — Android app not launched by this)* | `4300` |
 | HomeVault backend + frontend *(optional — v0, not yet security-reviewed)* | `4600` + `5177` |
+| HomeTasks backend + frontend *(optional)* | `4700` + `5178` |
 
 It also creates any missing `.env` files (from each service's
 `.env.example`) and data directories on first run, and passes HomeCore
@@ -183,6 +188,7 @@ cd apps/homemedia-backend && npm test      # 18 tests
 cd apps/homenotes-backend && npm test      # 24 tests
 cd apps/homesync-backend && npm test       # 20 tests
 cd apps/hometasks-backend && npm test      # 33 tests
+cd apps/hometasks && npm test              # 5 tests — dates.js only, see below
 cd apps/homevault-backend && npm test      # 28 tests
 cd apps/homevault && npm test              # 20 tests — crypto.js only, see below
 cd apps/homenotes && npm test              # 11 tests — markdown.js only, see below
@@ -193,14 +199,18 @@ test-framework dependency. Each test file gets its own fresh, isolated
 temp SQLite database, and `node --test` runs each file in its own
 process, so tests can't leak state into each other.
 
-Two frontends have real tests, and both test one small module rather
-than the UI. `apps/homevault` tests its client-side encryption
+Three frontends have real tests, and each tests one small module rather
+than the UI. `apps/hometasks` tests its date helpers (`src/dates.js`: local
+"today", "Overdue" / "Tomorrow" wording, date arithmetic). The other two: `apps/homevault` tests its client-side encryption
 (`src/crypto.js`), and `apps/homenotes` tests its Markdown sanitizer
 (`src/markdown.js`, the fix for the stored XSS found in 1.1.1). Both
 modules are framework-free on purpose, so `node --test` can run them
 directly, the same way it runs HomeSync's `pathPlanner.js`, instead of
 reaching them only through rendering UI. `home`, `homecloud` and
-`homemedia` have no automated tests yet.
+`homemedia` have no automated tests yet. HomeTasks' pages were driven
+end to end in a headless browser when it was built (sign in, add, edit,
+tick off, delete, search, projects), but that script is not part of the
+repo.
 
 If you change a frontend, also run `npm run build` in that app — the
 test suites above don't catch a build-time error in a `.jsx` file.

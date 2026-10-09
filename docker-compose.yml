@@ -40,6 +40,7 @@ services:
       homecloud: { condition: service_started }
       homemedia: { condition: service_started }
       homenotes: { condition: service_started }
+      hometasks: { condition: service_started }
       homevault: { condition: service_started }
     ports: ["8080:80"] # the ONLY container that publishes a host port
 
@@ -149,9 +150,8 @@ services:
       start_period: 10s
       retries: 3
 
-  # HomeTasks: tasks and projects. Backend only so far (the web app comes
-  # next). It needs HomeCore to verify logins but NOT HomeCloud: tasks are
-  # small rows in its own database, there are no files.
+  # HomeTasks: tasks and projects. It needs HomeCore to verify logins but NOT
+  # HomeCloud: tasks are small rows in its own database, there are no files.
   hometasks-backend:
     build: { context: ., dockerfile: apps/hometasks-backend/Dockerfile }
     restart: unless-stopped
@@ -165,6 +165,12 @@ services:
       timeout: 5s
       start_period: 10s
       retries: 3
+
+  hometasks:
+    build: { context: ., dockerfile: apps/hometasks/Dockerfile }
+    restart: unless-stopped
+    depends_on: { hometasks-backend: { condition: service_healthy } }
+    expose: ["80"]
 
   homenotes:
     build: { context: ., dockerfile: apps/homenotes/Dockerfile }

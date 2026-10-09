@@ -5,39 +5,62 @@ All notable changes to this project are documented here. Format follows
 [SemVer](https://semver.org/): one version number for the whole
 ecosystem (see root `package.json`), bumped on any meaningful release.
 
-## [Unreleased] — HomeTasks backend; design doc brought up to date
+## [1.10.0] — HomeTasks: tasks and projects, backend and web app
 
 ### Added
 - **`apps/hometasks-backend`** (port 4700, route prefix `/api/hometasks`):
   projects and tasks with title, notes, priority (none/low/medium/high),
   an optional due date, and completion time. List filters for status,
   project, overdue / due today / upcoming / no date, and text search; a
-  `summary` endpoint for dashboard badges. Its own SQLite database, no
+  `summary` endpoint for the counts. Its own SQLite database, no
   dependency on HomeCloud (there are no files), logins verified by HomeCore
-  through `@home/homecore-client` like every other app.
-- 33 tests (`apps/hometasks-backend/test/`): pure unit tests for the
-  validation rules (including impossible dates like 2026-02-31) and
-  integration tests against a real HomeCore. They check, among other
-  things, that one person can never read, change, complete or delete
-  another's tasks or projects.
-- Wired into `docker-compose.yml` (service, volume, backup mount, gateway
-  dependency), `gateway/nginx.conf`, `.github/dependabot.yml`, the root
-  workspace list and `docs/API.md`.
+  through `@home/homecore-client` like every other app. The server never
+  guesses a time zone: the browser sends its own date as `?today=`.
+- **`apps/hometasks`** (dev port 5178, served at `/tasks/`): Today (overdue
+  and due today, under a woodgrain "desk top" header), Upcoming, All tasks,
+  Done, projects in the sidebar (create, rename, delete: deleting a project
+  keeps its tasks), quick add, an edit dialog with a two-click delete, search,
+  and Settings (theme, retro intensity). Phone layout with a bottom nav; a
+  project picker stands in for the hidden sidebar. Labels such as
+  "Overdue" and "high priority" are always words, never color alone.
+- Registered in HomeCore's app registry, so Home's dashboard shows a
+  HomeTasks card. Wired into `docker-compose.yml` (both services, a data
+  volume, backup mount, gateway dependency), `gateway/nginx.conf` (`/tasks/`
+  and `/api/hometasks/`), `.github/dependabot.yml`, the root workspace list,
+  `docs/API.md`, and `scripts/dev-home-ui.ps1` (the Windows launcher gets a
+  HomeTasks row).
+- `design/sync-assets.sh` and `design/make-favicons.mjs` know about
+  HomeTasks; its favicons are generated and committed in
+  `design/favicons/hometasks/`.
+- 33 backend tests (pure validation tests, including impossible dates like
+  2026-02-31, and integration tests against a real HomeCore that check one
+  person can never read, change, complete or delete another's tasks or
+  projects) and 5 frontend tests (`apps/hometasks/test/dates.test.js`).
 
 ### Changed
-- `docs/DESIGN_SYSTEM.md` reconciled with the code at 1.9.0: favicon exports
-  are recorded as done (1.8.0), `design/session.js` is listed, the HomeMedia
-  1.9.0 screens are covered, and there is a short checklist for adding a new
-  app's frontend to the design sync. HomeTasks gets a *proposed* row.
+- `docs/DESIGN_SYSTEM.md` reconciled with the code: favicon exports recorded
+  as done (1.8.0), `design/session.js` listed, the HomeMedia 1.9.0 screens
+  covered, a checklist for adding a new app, and the woodgrain rule
+  reworded from "one surface, Home's header" to "at most one per screen":
+  Home's dashboard and HomeTasks' Today page.
 
 ### Not built yet (deliberately)
-- The HomeTasks web app, recurring tasks, reminders and notifications,
-  assigning a task to a family member (needs the sharing model HomeCloud
-  does not have yet), and emitting events to the shared event bus.
+- Recurring tasks, reminders and notifications, assigning a task to a
+  family member (needs the sharing model HomeCloud does not have yet), and
+  emitting events to the shared event bus.
+- The `.hero` styles are copied from Home into HomeTasks. If a third app
+  wants them, move them into `design/components.css` instead of copying again.
 
-### Not verified
-- The compose service, nginx location and Dockerfile were written without
-  Docker available. Run `docker compose up --build -d` once.
+### Verified, and not
+- Verified: all suites pass; `npm run build` is clean; the web app was
+  driven end to end in a headless Chromium against real HomeCore and
+  hometasks-backend instances (sign in through the real screen, add, edit,
+  tick off, delete, search, projects) with no console errors, and checked
+  visually in light, dark, Retro Off and a 390px phone width.
+- **Not verified:** the compose services, the Dockerfiles and the nginx
+  `/tasks/` and `/api/hometasks/` rules were written without Docker. Run
+  `docker compose up --build -d` once. The Windows launcher change was not
+  run (no PowerShell here). Not checked: a screen reader, a real phone.
 
 ## [1.9.0] — HomeMedia rework: upload, music, GIFs, a viewer that loads; one login; an optional public address
 

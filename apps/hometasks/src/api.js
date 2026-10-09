@@ -68,7 +68,9 @@ export const api = {
     list: (params) => request(`/hometasks/tasks${qs(params)}`),
     create: (body) => request("/hometasks/tasks", { method: "POST", body: json(body) }),
     update: (id, body) => request(`/hometasks/tasks/${id}`, { method: "PATCH", body: json(body) }),
-    complete: (id) => request(`/hometasks/tasks/${id}/complete`, { method: "POST" }),
+    // `today` lets the server put a repeating task's NEXT copy after the
+    // person's own today (it never guesses a time zone).
+    complete: (id, today) => request(`/hometasks/tasks/${id}/complete${qs({ today })}`, { method: "POST" }),
     reopen: (id) => request(`/hometasks/tasks/${id}/reopen`, { method: "POST" }),
     remove: (id) => request(`/hometasks/tasks/${id}`, { method: "DELETE" })
   }

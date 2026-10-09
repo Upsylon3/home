@@ -110,11 +110,11 @@ person's time zone.
 | PATCH | `/api/hometasks/projects/:id` | Rename `{ name }` |
 | DELETE | `/api/hometasks/projects/:id` | Delete the project only; its tasks stay, with no project |
 | GET | `/api/hometasks/tasks` | List tasks. Filters: `status=open\|done\|all` (default open), `projectId`, `due=overdue\|today\|upcoming\|none` (with `today=`), `search` |
-| POST | `/api/hometasks/tasks` | Create `{ title, notes?, priority?, dueDate?, projectId? }`; priority is `none\|low\|medium\|high` |
+| POST | `/api/hometasks/tasks` | Create `{ title, notes?, priority?, dueDate?, repeat?, projectId? }`; priority is `none\|low\|medium\|high`; `repeat` is `none\|daily\|weekdays\|weekly\|monthly\|yearly` and needs a `dueDate` |
 | GET | `/api/hometasks/tasks/:id` | Read one task |
-| PATCH | `/api/hometasks/tasks/:id` | Change only the fields sent; `null` clears `dueDate` / `projectId` |
-| POST | `/api/hometasks/tasks/:id/complete` | Tick off (safe to repeat) |
-| POST | `/api/hometasks/tasks/:id/reopen` | Un-tick (safe to repeat) |
+| PATCH | `/api/hometasks/tasks/:id` | Change only the fields sent; `null` clears `dueDate` / `projectId`. A repeating task can't have its date cleared, and an undated task can't be made to repeat |
+| POST | `/api/hometasks/tasks/:id/complete?today=` | Tick off (safe to repeat). For a repeating task the task stays in Done and the response also carries `next`, the new copy with the following due date, always after `today`. Ticking twice never creates two copies |
+| POST | `/api/hometasks/tasks/:id/reopen` | Un-tick (safe to repeat). Removes the still-open next copy it created; answers `409` if that copy was already completed |
 | DELETE | `/api/hometasks/tasks/:id` | Delete permanently (there is no Trash for tasks) |
 
 ## HomeNotes backend (`/api/homenotes`)

@@ -14,6 +14,8 @@
 // words are clearer than magic numbers in JSON.
 const PRIORITIES = ["none", "low", "medium", "high"];
 
+const { REPEATS, isValidRepeat } = require("./recurrence");
+
 const MAX_TITLE_LENGTH = 200;
 const MAX_NOTES_LENGTH = 5000;
 const MAX_PROJECT_NAME_LENGTH = 60;
@@ -87,6 +89,13 @@ function validateDueDate(dueDate) {
   return { value: dueDate };
 }
 
+// How a task repeats. Optional: missing or null means "none" (a normal task).
+function validateRepeat(repeat) {
+  if (repeat === undefined || repeat === null) return { value: "none" };
+  if (!isValidRepeat(repeat)) return { error: `Repeat must be one of: ${REPEATS.join(", ")}.` };
+  return { value: repeat };
+}
+
 // A task's project is optional: null (or missing) means "no project".
 // Otherwise it must be a whole positive number. (Whether that project really
 // exists and belongs to this person is checked separately, against the
@@ -123,6 +132,7 @@ module.exports = {
   validateNotes,
   validatePriority,
   validateDueDate,
+  validateRepeat,
   validateProjectId,
   validateProjectName,
   parseId

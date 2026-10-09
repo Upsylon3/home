@@ -6,7 +6,7 @@ brainstorm — explicitly speculative, none of it committed.
 **Build order, decided:** HomeVault → HomeTasks → HomeBridge →
 HomeMonitor → HomeAI. HomeVault first because it's security-critical and
 already had a full threat model (`SECURITY.md`) — **v0 is now built**
-(see `ARCHITECTURE.md`'s status table), so HomeTasks came next (**built, v0.1: backend and web app; recurring tasks, reminders and assignment are the follow-ups**): the
+(see `ARCHITECTURE.md`'s status table), so HomeTasks came next (**built: backend, web app and repeating tasks; reminders and assignment are the follow-ups**): the
 highest everyday-value, most conventional build (CRUD app, no new
 architectural pattern needed). HomeBridge after that, once there are
 enough real apps for its cross-app ideas (`ROADMAP.md`'s brainstorm

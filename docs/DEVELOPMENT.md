@@ -187,8 +187,8 @@ cd apps/homecloud-backend && npm test      # 41 tests
 cd apps/homemedia-backend && npm test      # 18 tests
 cd apps/homenotes-backend && npm test      # 24 tests
 cd apps/homesync-backend && npm test       # 20 tests
-cd apps/hometasks-backend && npm test      # 33 tests
-cd apps/hometasks && npm test              # 5 tests — dates.js only, see below
+cd apps/hometasks-backend && npm test      # 54 tests
+cd apps/hometasks && npm test              # 7 tests — dates.js and repeat.js only, see below
 cd apps/homevault-backend && npm test      # 28 tests
 cd apps/homevault && npm test              # 20 tests — crypto.js only, see below
 cd apps/homenotes && npm test              # 11 tests — markdown.js only, see below
@@ -201,7 +201,7 @@ process, so tests can't leak state into each other.
 
 Three frontends have real tests, and each tests one small module rather
 than the UI. `apps/hometasks` tests its date helpers (`src/dates.js`: local
-"today", "Overdue" / "Tomorrow" wording, date arithmetic). The other two: `apps/homevault` tests its client-side encryption
+"today", "Overdue" / "Tomorrow" wording, date arithmetic) and the wording of repeat choices (`src/repeat.js`). The other two: `apps/homevault` tests its client-side encryption
 (`src/crypto.js`), and `apps/homenotes` tests its Markdown sanitizer
 (`src/markdown.js`, the fix for the stored XSS found in 1.1.1). Both
 modules are framework-free on purpose, so `node --test` can run them

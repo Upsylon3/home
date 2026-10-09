@@ -5,13 +5,17 @@
 // is scoped with `user_id = req.user.id`, so people only ever touch their own
 // tasks.
 //
-// NOT BUILT YET (on purpose, see docs/ROADMAP.md): recurring tasks,
-// reminders / notifications, assigning a task to another family member, and
+// REPEATING TASKS: ticking one off keeps it in Done and creates the next copy
+// with the next due date (the date maths lives in src/recurrence.js).
+//
+// NOT BUILT YET (on purpose, see docs/ROADMAP.md): reminders / notifications,
+// assigning a task to another family member, and
 // emitting events like "hometasks.task.completed" to the shared event bus.
 // Assignment in particular needs the multi-user sharing model HomeCloud
 // doesn't have yet, so it waits for that rather than being faked here.
 const express = require("express");
 const { db } = require("./db");
+const { nextDueDate } = require("./recurrence");
 const { asyncHandler } = require("./asyncHandler");
 const {
   priorityToName,
@@ -20,6 +24,7 @@ const {
   validateNotes,
   validatePriority,
   validateDueDate,
+  validateRepeat,
   validateProjectId,
   parseId
 } = require("./validation");
@@ -35,6 +40,7 @@ function serializeTask(row) {
     notes: row.notes,
     priority: priorityToName(row.priority),
     dueDate: row.due_date, // "YYYY-MM-DD" or null
+    repeat: row.repeat_rule, // "none", "daily", "weekdays", "weekly", "monthly" or "yearly"
     projectId: row.project_id, // number or null
     isDone: row.completed_at !== null,
     completedAt: row.completed_at,
@@ -168,6 +174,13 @@ router.post(
     const dueDate = validateDueDate(body.dueDate);
     if (dueDate.error) return res.status(400).json({ error: dueDate.error });
 
+    const repeat = validateRepeat(body.repeat);
+    if (repeat.error) return res.status(400).json({ error: repeat.error });
+    // A repeating task counts forward from its due date, so it needs one.
+    if (repeat.value !== "none" && dueDate.value === null) {
+      return res.status(400).json({ error: "A repeating task needs a due date." });
+    }
+
     const project = validateProjectId(body.projectId);
     if (project.error) return res.status(400).json({ error: project.error });
     const projectId = project.value;
@@ -175,9 +188,14 @@ router.post(
       return res.status(404).json({ error: "Project not found." });
     }
 
+    // The anchor is the date the series starts on (null for a normal task).
+    const anchor = repeat.value !== "none" ? dueDate.value : null;
     const info = db
-      .prepare("INSERT INTO tasks (user_id, project_id, title, notes, priority, due_date) VALUES (?, ?, ?, ?, ?, ?)")
-      .run(req.user.id, projectId, title.value, notes.value, priority.value, dueDate.value);
+      .prepare(
+        `INSERT INTO tasks (user_id, project_id, title, notes, priority, due_date, repeat_rule, repeat_anchor)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(req.user.id, projectId, title.value, notes.value, priority.value, dueDate.value, repeat.value, anchor);
 
     res.status(201).json({ task: serializeTask(findOwnTask(info.lastInsertRowid, req.user.id)) });
   })
@@ -212,7 +230,7 @@ router.patch(
     const has = (key) => Object.prototype.hasOwnProperty.call(body, key);
 
     // Start from the current values, overwrite whatever was sent.
-    let { title, notes, priority, due_date: dueDate, project_id: projectId } = task;
+    let { title, notes, priority, due_date: dueDate, project_id: projectId, repeat_rule: repeat, repeat_anchor: anchor } = task;
 
     if (has("title")) {
       const result = validateTitle(body.title);
@@ -234,6 +252,11 @@ router.patch(
       if (result.error) return res.status(400).json({ error: result.error });
       dueDate = result.value;
     }
+    if (has("repeat")) {
+      const result = validateRepeat(body.repeat);
+      if (result.error) return res.status(400).json({ error: result.error });
+      repeat = result.value;
+    }
     if (has("projectId")) {
       const result = validateProjectId(body.projectId);
       if (result.error) return res.status(400).json({ error: result.error });
@@ -243,19 +266,39 @@ router.patch(
       }
     }
 
+    // These two rules are checked on the FINAL values, so they hold whichever
+    // field the client changed: you can't clear the due date of a repeating
+    // task, and you can't make a task repeat while it has no due date.
+    if (repeat !== "none" && dueDate === null) {
+      return res.status(400).json({ error: "A repeating task needs a due date." });
+    }
+    // Changing the due date or the repeat starts the series afresh from the
+    // (new) due date. Leaving both alone keeps the original anchor.
+    if (has("dueDate") || has("repeat")) {
+      anchor = repeat !== "none" ? dueDate : null;
+    }
+
     db.prepare(
       `UPDATE tasks
-          SET title = ?, notes = ?, priority = ?, due_date = ?, project_id = ?, updated_at = datetime('now')
+          SET title = ?, notes = ?, priority = ?, due_date = ?, project_id = ?,
+              repeat_rule = ?, repeat_anchor = ?, updated_at = datetime('now')
         WHERE id = ? AND user_id = ?`
-    ).run(title, notes, priority, dueDate, projectId, task.id, req.user.id);
+    ).run(title, notes, priority, dueDate, projectId, repeat, anchor, task.id, req.user.id);
 
     res.json({ task: serializeTask(findOwnTask(task.id, req.user.id)) });
   })
 );
 
-// POST /api/hometasks/tasks/:id/complete — tick a task off.
+// POST /api/hometasks/tasks/:id/complete?today=YYYY-MM-DD — tick a task off.
+//
 // "Idempotent": ticking an already-finished task changes nothing and still
-// succeeds, so a double-click (or a retried request) can't cause trouble.
+// succeeds, so a double-click (or a retried request) can't cause trouble. In
+// particular it can never create the next copy of a repeating task twice:
+// the copy is only made on the one transition from open to done.
+//
+// For a REPEATING task, the response also carries `next`: the new copy with
+// the following due date (or null for a normal task). The browser sends its
+// own `today` so the next date is always in the person's future.
 router.post(
   "/tasks/:id/complete",
   asyncHandler(async (req, res) => {
@@ -263,17 +306,48 @@ router.post(
     const task = id && findOwnTask(id, req.user.id);
     if (!task) return res.status(404).json({ error: "Task not found." });
 
+    let nextId = null;
+
     if (task.completed_at === null) {
-      db.prepare("UPDATE tasks SET completed_at = datetime('now'), updated_at = datetime('now') WHERE id = ? AND user_id = ?").run(
-        task.id,
-        req.user.id
-      );
+      // A transaction makes "mark done" and "create the next copy" succeed or
+      // fail TOGETHER, so a crash in between can't leave a repeating task
+      // finished with nothing coming after it.
+      const completeTask = db.transaction(() => {
+        db.prepare("UPDATE tasks SET completed_at = datetime('now'), updated_at = datetime('now') WHERE id = ? AND user_id = ?").run(
+          task.id,
+          req.user.id
+        );
+
+        if (task.repeat_rule !== "none" && task.due_date) {
+          const today = resolveToday(req.query.today);
+          const nextDue = nextDueDate(task.repeat_rule, task.due_date, task.repeat_anchor || task.due_date, today);
+          const info = db
+            .prepare(
+              `INSERT INTO tasks (user_id, project_id, title, notes, priority, due_date, repeat_rule, repeat_anchor)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+            )
+            .run(req.user.id, task.project_id, task.title, task.notes, task.priority, nextDue, task.repeat_rule, task.repeat_anchor);
+          nextId = info.lastInsertRowid;
+          // Remember which copy this one created, so un-ticking can remove it.
+          db.prepare("UPDATE tasks SET spawned_task_id = ? WHERE id = ? AND user_id = ?").run(nextId, task.id, req.user.id);
+        }
+      });
+      completeTask();
     }
-    res.json({ task: serializeTask(findOwnTask(task.id, req.user.id)) });
+
+    res.json({
+      task: serializeTask(findOwnTask(task.id, req.user.id)),
+      next: nextId ? serializeTask(findOwnTask(nextId, req.user.id)) : null
+    });
   })
 );
 
 // POST /api/hometasks/tasks/:id/reopen — un-tick (also idempotent).
+//
+// If ticking this task created a next copy, un-ticking removes that copy
+// again, as long as it is still open, so one undo doesn't leave two live
+// copies behind. If the next copy has ALREADY been completed, the series has
+// moved on and we refuse (409) rather than quietly rewrite history.
 router.post(
   "/tasks/:id/reopen",
   asyncHandler(async (req, res) => {
@@ -282,10 +356,21 @@ router.post(
     if (!task) return res.status(404).json({ error: "Task not found." });
 
     if (task.completed_at !== null) {
-      db.prepare("UPDATE tasks SET completed_at = NULL, updated_at = datetime('now') WHERE id = ? AND user_id = ?").run(
-        task.id,
-        req.user.id
-      );
+      const reopenTask = db.transaction(() => {
+        if (task.spawned_task_id) {
+          const spawned = findOwnTask(task.spawned_task_id, req.user.id);
+          if (spawned && spawned.completed_at !== null) return "blocked";
+          if (spawned) db.prepare("DELETE FROM tasks WHERE id = ? AND user_id = ?").run(spawned.id, req.user.id);
+        }
+        db.prepare(
+          "UPDATE tasks SET completed_at = NULL, spawned_task_id = NULL, updated_at = datetime('now') WHERE id = ? AND user_id = ?"
+        ).run(task.id, req.user.id);
+        return "ok";
+      });
+
+      if (reopenTask() === "blocked") {
+        return res.status(409).json({ error: "Can't reopen this one: the next repeat has already been completed." });
+      }
     }
     res.json({ task: serializeTask(findOwnTask(task.id, req.user.id)) });
   })

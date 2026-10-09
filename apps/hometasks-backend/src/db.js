@@ -60,7 +60,18 @@ db.exec(`
     -- for free later on.
     completed_at TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    -- Repeating tasks (see src/recurrence.js):
+    --   repeat_rule       'none' for a normal task, else daily / weekdays /
+    --                     weekly / monthly / yearly.
+    --   repeat_anchor     the date the series started on; monthly and yearly
+    --                     repeats use it so a task set for the 31st doesn't
+    --                     get stuck on the 28th after February.
+    --   spawned_task_id   when a repeating task is ticked off, the id of the
+    --                     next copy we created, so un-ticking can remove it.
+    repeat_rule TEXT NOT NULL DEFAULT 'none',
+    repeat_anchor TEXT,
+    spawned_task_id INTEGER
   );
 
   -- Indexes are like the index at the back of a book: they make the
@@ -69,5 +80,23 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_id);
   CREATE INDEX IF NOT EXISTS idx_task_projects_user ON task_projects(user_id);
 `);
+
+// ---------- Migrations ----------
+// CREATE TABLE IF NOT EXISTS only helps on a FRESH database. Someone who
+// installed HomeTasks 1.10.0 already has a `tasks` table WITHOUT the repeat
+// columns, and "IF NOT EXISTS" will not touch it. So on every start we look at
+// the columns that really exist and add any that are missing. Their
+// defaults mean every existing task simply becomes a normal, non-repeating one,
+// and no data is lost.
+function addColumnIfMissing(table, column, definition) {
+  const existing = db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
+  if (!existing.includes(column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+}
+
+addColumnIfMissing("tasks", "repeat_rule", "TEXT NOT NULL DEFAULT 'none'");
+addColumnIfMissing("tasks", "repeat_anchor", "TEXT");
+addColumnIfMissing("tasks", "spawned_task_id", "INTEGER");
 
 module.exports = { db, DATA_DIR };

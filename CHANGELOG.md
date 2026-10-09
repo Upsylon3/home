@@ -5,6 +5,49 @@ All notable changes to this project are documented here. Format follows
 [SemVer](https://semver.org/): one version number for the whole
 ecosystem (see root `package.json`), bumped on any meaningful release.
 
+## [1.11.0] — HomeTasks: repeating tasks
+
+### Added
+- **Repeating tasks**: a task can repeat daily, every weekday (Mon to Fri),
+  weekly, monthly or yearly. Ticking one off keeps it in Done as a record and
+  creates the next copy (same title, notes, priority, project and repeat)
+  with the next due date. The date maths is in
+  `apps/hometasks-backend/src/recurrence.js`:
+  - The next date is always after the person's own "today", so a daily task
+    ignored for five days gives you tomorrow's copy, not five overdue ones.
+  - Monthly and yearly repeats remember the day the series started on, so a
+    task set for the 31st goes Jan 31, Feb 28, Mar 31 (no drift), and a
+    Feb 29 task returns on Feb 29 in the next leap year.
+  - A repeating task needs a due date (it counts forward from it), enforced
+    on create and on edit.
+- Ticking twice never makes two copies. Un-ticking removes the still-open next
+  copy it created, so one undo never leaves duplicates; if that next copy was
+  already completed, the API answers `409` and the app shows why, instead of
+  rewriting history. Ticking and creating the copy happen in one transaction.
+- Web app: a Repeat dropdown in the edit dialog (choosing a repeat on an
+  undated task fills in today), a "Repeats weekly" label on rows, and a
+  confirmation line after ticking ("Done. The next one is due Oct 16.").
+- **Database migration**: `db.js` now adds the three new columns
+  (`repeat_rule`, `repeat_anchor`, `spawned_task_id`) to an existing `tasks`
+  table on startup. Existing tasks simply become normal ones. Covered by a test
+  that builds a real 1.10.0-format database first.
+- Tests: hometasks-backend 33 to 54 (recurrence rules, API behavior,
+  migration), hometasks web app 5 to 7.
+
+### Not built yet (deliberately)
+- Every N days/weeks (the intervals are fixed at one), "repeat after I
+  complete it" (these repeat on a fixed schedule), and choosing weekdays such
+  as Mon/Wed/Fri. Reminders and assignment remain follow-ups.
+- Ending a series with a date or a count: stop it by choosing "Doesn't
+  repeat" in the edit dialog.
+
+### Verified, and not
+- Verified: all suites pass, the build is clean, and the full repeat flow was
+  driven in headless Chromium against real services (undated task made to
+  repeat, tick, next copy and notice, un-tick removes the copy, the 409 refusal).
+- Not verified: Docker (unchanged from 1.10.0, still never booted), the
+  Windows launcher, a real phone or screen reader.
+
 ## [1.10.0] — HomeTasks: tasks and projects, backend and web app
 
 ### Added

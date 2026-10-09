@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { api } from "../api.js";
-import { greeting } from "../dates.js";
+import { greeting, shortDate } from "../dates.js";
 import QuickAdd from "../components/QuickAdd.jsx";
 import TaskRow from "../components/TaskRow.jsx";
 import TaskDialog from "../components/TaskDialog.jsx";
@@ -40,6 +40,7 @@ export default function Tasks({ view }) {
   const [version, setVersion] = useState(0); // bump this number to reload the list
   const [renaming, setRenaming] = useState(null); // text of the rename box, or null
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [notice, setNotice] = useState(""); // a short "what just happened" message
 
   const project = view === "project" ? projects.find((p) => String(p.id) === projectId) : null;
   const showSearch = view === "all" || view === "done" || view === "project";
@@ -102,6 +103,13 @@ export default function Tasks({ view }) {
     };
   }, [view, projectId, query, today, version]);
 
+  // A confirmation message fades away by itself after a few seconds.
+  useEffect(() => {
+    if (!notice) return undefined;
+    const timer = setTimeout(() => setNotice(""), 6000);
+    return () => clearTimeout(timer);
+  }, [notice]);
+
   // After any change: reload this list AND the sidebar counts.
   async function refresh() {
     setVersion((v) => v + 1);
@@ -110,8 +118,14 @@ export default function Tasks({ view }) {
 
   async function handleToggle(task) {
     try {
-      if (task.isDone) await api.tasks.reopen(task.id);
-      else await api.tasks.complete(task.id);
+      if (task.isDone) {
+        await api.tasks.reopen(task.id);
+      } else {
+        const { data } = await api.tasks.complete(task.id, today);
+        // A repeating task creates its next copy: say when it is due, since
+        // that copy won't appear in this list if it is due later.
+        if (data.next) setNotice(`Done. The next one is due ${shortDate(data.next.dueDate, today)}.`);
+      }
       await refresh();
     } catch (err) {
       setError(err.message);
@@ -289,6 +303,13 @@ export default function Tasks({ view }) {
         </div>
       )}
 
+      {/* role="status": screen readers announce it politely */}
+      {notice && (
+        <div className="notice" role="status">
+          {notice}
+        </div>
+      )}
+
       {/* key resets QuickAdd's typed text when you move to another view */}
       {view !== "done" && (
         <QuickAdd key={`${view}-${projectId}`} defaultDueDate={view === "today" ? today : ""} onAdd={handleAdd} />
@@ -329,6 +350,7 @@ export default function Tasks({ view }) {
         <TaskDialog
           task={editing}
           projects={projects}
+          today={today}
           onSave={async (patch) => {
             await api.tasks.update(editing.id, patch);
             await refresh();

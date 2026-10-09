@@ -182,6 +182,7 @@ cd apps/homecloud-backend && npm test      # 41 tests
 cd apps/homemedia-backend && npm test      # 18 tests
 cd apps/homenotes-backend && npm test      # 24 tests
 cd apps/homesync-backend && npm test       # 20 tests
+cd apps/hometasks-backend && npm test      # 33 tests
 cd apps/homevault-backend && npm test      # 28 tests
 cd apps/homevault && npm test              # 20 tests — crypto.js only, see below
 cd apps/homenotes && npm test              # 11 tests — markdown.js only, see below

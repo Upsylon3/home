@@ -34,6 +34,7 @@ services:
       homemedia-backend: { condition: service_healthy }
       homenotes-backend: { condition: service_healthy }
       homesync-backend: { condition: service_healthy }
+      hometasks-backend: { condition: service_healthy }
       homevault-backend: { condition: service_healthy }
       home: { condition: service_started }
       homecloud: { condition: service_started }
@@ -148,6 +149,23 @@ services:
       start_period: 10s
       retries: 3
 
+  # HomeTasks: tasks and projects. Backend only so far (the web app comes
+  # next). It needs HomeCore to verify logins but NOT HomeCloud: tasks are
+  # small rows in its own database, there are no files.
+  hometasks-backend:
+    build: { context: ., dockerfile: apps/hometasks-backend/Dockerfile }
+    restart: unless-stopped
+    environment: { DATA_DIR: /data, HOMECORE_INTERNAL_URL: http://homecore:4000 }
+    volumes: [hometasks_data:/data]
+    expose: ["4700"]
+    depends_on: { homecore: { condition: service_healthy } }
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:4700/api/hometasks/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
   homenotes:
     build: { context: ., dockerfile: apps/homenotes/Dockerfile }
     restart: unless-stopped
@@ -244,6 +262,7 @@ services:
       - homemedia_data:/sources/homemedia:ro
       - homenotes_data:/sources/homenotes:ro
       - homesync_data:/sources/homesync:ro
+      - hometasks_data:/sources/hometasks:ro
       - homevault_data:/sources/homevault:ro
       - ./backups:/backups
 
@@ -253,6 +272,7 @@ volumes:
   homemedia_data:
   homenotes_data:
   homesync_data:
+  hometasks_data:
   homevault_data:
   caddy_data:
   caddy_config:

@@ -93,6 +93,30 @@ HomeCloud (in a top-level `HomeMedia` folder).
 | POST/DELETE | `/api/homemedia/albums/:id/items` \| `/items/:fileId` | Add / remove a photo from an album |
 | POST/DELETE | `/api/homemedia/favorites/:fileId` | Favorite / unfavorite a file |
 
+## HomeTasks backend (`/api/hometasks`)
+
+Tasks and projects. Every route except `health` needs a login, and every
+query is scoped to the person asking, so nobody can see or change anyone
+else's tasks. Dates are plain `YYYY-MM-DD` strings. The browser sends its own
+date as `?today=` for the date filters, because the server cannot know a
+person's time zone.
+
+| Method | Path | What it does |
+|---|---|---|
+| GET | `/api/hometasks/health` | *(no auth)* |
+| GET | `/api/hometasks/summary?today=` | Counts: `open`, `overdue`, `dueToday` |
+| GET | `/api/hometasks/projects` | List projects, each with its `openCount` |
+| POST | `/api/hometasks/projects` | Create a project `{ name }` |
+| PATCH | `/api/hometasks/projects/:id` | Rename `{ name }` |
+| DELETE | `/api/hometasks/projects/:id` | Delete the project only; its tasks stay, with no project |
+| GET | `/api/hometasks/tasks` | List tasks. Filters: `status=open\|done\|all` (default open), `projectId`, `due=overdue\|today\|upcoming\|none` (with `today=`), `search` |
+| POST | `/api/hometasks/tasks` | Create `{ title, notes?, priority?, dueDate?, projectId? }`; priority is `none\|low\|medium\|high` |
+| GET | `/api/hometasks/tasks/:id` | Read one task |
+| PATCH | `/api/hometasks/tasks/:id` | Change only the fields sent; `null` clears `dueDate` / `projectId` |
+| POST | `/api/hometasks/tasks/:id/complete` | Tick off (safe to repeat) |
+| POST | `/api/hometasks/tasks/:id/reopen` | Un-tick (safe to repeat) |
+| DELETE | `/api/hometasks/tasks/:id` | Delete permanently (there is no Trash for tasks) |
+
 ## HomeNotes backend (`/api/homenotes`)
 
 A Markdown notes workspace, with version history and folders.

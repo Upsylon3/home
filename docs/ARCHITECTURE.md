@@ -245,7 +245,8 @@ problem:
 | HomeSync backend | Built and tested |
 | HomeSync Android app | Written; builds and passes its unit tests in CI (`android.yml`), never run on a device — see `docs/DEVELOPMENT.md` |
 | HomeVault | **v0 built** — core loop (create/unlock/recover a vault, add/view/edit/delete items) implemented and tested; **self-reviewed twice, not independently reviewed** — see `docs/SECURITY.md`'s "HomeVault v0" section before trusting it with anything real |
-| HomeTasks, HomeMonitor, HomeAI, HomeBridge | Not started |
+| HomeTasks | **Backend built and tested** (tasks, projects, due dates, priorities, search, completion); web app not started. Recurring tasks, reminders and assignment are deliberately not built yet, see `docs/ROADMAP.md` |
+| HomeMonitor, HomeAI, HomeBridge | Not started |
 
 ## 8. Future ecosystem map
 

@@ -5,6 +5,40 @@ All notable changes to this project are documented here. Format follows
 [SemVer](https://semver.org/): one version number for the whole
 ecosystem (see root `package.json`), bumped on any meaningful release.
 
+## [Unreleased] — HomeTasks backend; design doc brought up to date
+
+### Added
+- **`apps/hometasks-backend`** (port 4700, route prefix `/api/hometasks`):
+  projects and tasks with title, notes, priority (none/low/medium/high),
+  an optional due date, and completion time. List filters for status,
+  project, overdue / due today / upcoming / no date, and text search; a
+  `summary` endpoint for dashboard badges. Its own SQLite database, no
+  dependency on HomeCloud (there are no files), logins verified by HomeCore
+  through `@home/homecore-client` like every other app.
+- 33 tests (`apps/hometasks-backend/test/`): pure unit tests for the
+  validation rules (including impossible dates like 2026-02-31) and
+  integration tests against a real HomeCore. They check, among other
+  things, that one person can never read, change, complete or delete
+  another's tasks or projects.
+- Wired into `docker-compose.yml` (service, volume, backup mount, gateway
+  dependency), `gateway/nginx.conf`, `.github/dependabot.yml`, the root
+  workspace list and `docs/API.md`.
+
+### Changed
+- `docs/DESIGN_SYSTEM.md` reconciled with the code at 1.9.0: favicon exports
+  are recorded as done (1.8.0), `design/session.js` is listed, the HomeMedia
+  1.9.0 screens are covered, and there is a short checklist for adding a new
+  app's frontend to the design sync. HomeTasks gets a *proposed* row.
+
+### Not built yet (deliberately)
+- The HomeTasks web app, recurring tasks, reminders and notifications,
+  assigning a task to a family member (needs the sharing model HomeCloud
+  does not have yet), and emitting events to the shared event bus.
+
+### Not verified
+- The compose service, nginx location and Dockerfile were written without
+  Docker available. Run `docker compose up --build -d` once.
+
 ## [1.9.0] — HomeMedia rework: upload, music, GIFs, a viewer that loads; one login; an optional public address
 
 ### Added

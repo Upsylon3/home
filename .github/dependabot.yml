@@ -110,6 +110,7 @@ updates:
       - "/apps/homenotes"
       - "/apps/homenotes-backend"
       - "/apps/homesync-backend"
+      - "/apps/hometasks-backend"
       - "/apps/homevault"
       - "/apps/homevault-backend"
     schedule:

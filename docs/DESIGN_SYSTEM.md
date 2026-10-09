@@ -17,6 +17,11 @@ be quietly sophisticated, not loudly impressive.
 
 ## The Atari direction (since 1.2.0)
 
+*Status: complete for every app that exists, as of 1.9.0. Phases 1 to 6
+shipped across 1.2.0 to 1.8.0; 1.9.0 (HomeMedia's upload, music and viewer
+work) added screens that reuse the shared tokens and needed no new retro
+rules. This doc was last reconciled against the code at 1.9.0.*
+
 Home has a visual identity now: **Atari, 1977, built today.** Warm black
 vinyl, cream paper, orange and brass, painted stripes, a little woodgrain.
 The idea is the one a modern retro-styled car follows: **retro in color,
@@ -102,9 +107,10 @@ Subtle.
 |---|---|---|
 | Home | Entrance | Woodgrain header on a dark label plate, stripe band, rocker switch on each app card showing on/off |
 | HomeCloud | Archive | Folders as cartridges (striped label strip), label-plate table header, amber edge on the row you point at, a drive-activity LED that flashes flat |
-| HomeMedia | Gallery | Photos as prints: heavier borders, albums as a stack, cream print frame in the lightbox |
+| HomeMedia | Gallery | Photos as prints: heavier borders, albums as a stack, cream print frame in the lightbox. The 1.9.0 additions (upload list, drag-and-drop overlay, music tiles, audio player) use only the shared tokens and have no retro effect of their own, so there is nothing for Off to remove |
 | HomeNotes | Study | Ruled paper that scrolls with the writing, index-card hover |
 | HomeVault | The safe | Restrained on purpose: a thin brass line instead of stripes, only a brass edge on hover |
+| HomeTasks | Desk | *Planned, not built.* Proposed: tasks as index cards on the desk, with the same hard amber edge as a HomeCloud row for "due today", red plus the word "Overdue" (never color alone), and a plain struck-through checked box when done. To be confirmed when the app is built |
 | HomeSync | Connection | The Android app wears the same palette (`Color.kt`); it has no stripes or wood, since it is a quiet background service |
 
 ### Where it lives, and how to change it
@@ -112,13 +118,14 @@ Subtle.
 `design/` is the single source of truth, and `./design/sync-assets.sh`
 copies it into every frontend. **Never edit the copies** (anything named
 `tokens.css`, `components.css`, `retro.js`, `RetroControl.jsx`,
-`AppIcon.jsx` under `apps/`): the next sync silently overwrites them.
+`session.js`, `AppIcon.jsx` under `apps/`): the next sync silently overwrites them.
 
 | File | What it holds |
 |---|---|
 | `design/tokens.css` | Every color, radius, font, stripe color, the `--press` key depth, and the Off/Full overrides |
 | `design/components.css` | Shared pieces: buttons, card surfaces, checkboxes, storage gauge, sign-in stripe band, segmented control, the active nav bar, and the Off behavior |
 | `design/retro.js`, `design/RetroControl.jsx` | The retro intensity setting and its three-choice control |
+| `design/session.js` | Not visual, but it lives here for the same reason: the one place the shared login token (`home_session_token`) is read and written, so signing in to any app signs you in to all of them (added in 1.9.0) |
 | `design/icons/`, `AppIcon.jsx`, `Wordmark.jsx` | The icon set |
 | `design/make-favicons.mjs`, `design/favicons/` | Browser-tab and home-screen icons, **generated from the icon set**. Run `node design/make-favicons.mjs && ./design/sync-assets.sh` only when an icon or the brand color changes; the generated files are committed |
 
@@ -131,6 +138,14 @@ file (HomeVault does this with `--auth-band-height` and `--auth-band-bg`).
 **When you build a new screen:** use `var(--...)` tokens and the shared
 classes (`.btn`, `.panel`, `.segmented`...), never a typed-in color or a
 pixel radius, and give any new decoration an Off behavior.
+
+**When you build a new app** (HomeTasks is next): add its folder to the
+`FRONTENDS` list in `design/sync-assets.sh` and run the script, so it gets
+`tokens.css`, `components.css`, `retro.js`, `RetroControl.jsx`,
+`session.js` and its icon; import the CSS in the load order above; put
+`<RetroControl />` on its Settings page; and add its icon to
+`design/make-favicons.mjs` if it should get a browser-tab icon. The
+`hometasks.svg` icon already exists in `design/icons/`.
 
 ## Five governing principles
 
@@ -225,8 +240,13 @@ anything under `design/`, which copies the canonical files out to every
 frontend that uses them. The next run of that script silently overwrites
 any local edit.
 
-**Not yet done:** PNG/ICO favicon exports (only HomeCloud's frontend has
-real PWA icon PNGs today) and an Android adaptive-icon split for
+**Favicons: done (1.8.0).** `design/make-favicons.mjs` generates a
+browser-tab and home-screen icon for every web app into `design/favicons/`,
+and `sync-assets.sh` copies each into its app's `public/` folder. The
+generated files are committed. HomeSync has none because it is the
+Android app, not a web page.
+
+**Not yet done:** an Android adaptive-icon split for
 `apps/homesync-android` — see `ROADMAP.md`.
 
 ### Superseded decisions (kept for history)
@@ -262,3 +282,6 @@ same choice as `--on-accent` on the web.
   vault behind them.
 - Adaptive-icon split for the Android launcher (the launcher icon is
   still the older sync-arrows mark, recolored).
+- HomeMedia's 1.9.0 upload list, music tiles and viewer were built and
+  styled with the shared tokens but not yet looked at in a real browser
+  (see the "Not verified" note in `CHANGELOG.md` 1.9.0).

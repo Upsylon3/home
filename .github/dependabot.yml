@@ -110,6 +110,8 @@ updates:
       - "/apps/homenotes"
       - "/apps/homenotes-backend"
       - "/apps/hometasks"
+      - "/apps/homemonitor"
+      - "/apps/homemonitor-backend"
       - "/apps/homesync-backend"
       - "/apps/hometasks-backend"
       - "/apps/homevault"

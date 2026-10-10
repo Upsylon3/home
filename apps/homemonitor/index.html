@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>HomeMonitor</title>
+
+    <!-- See ../frontend/index.html for why this has to be inline, first,
+         and dependency-free: it must run before any CSS paints. -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem("homecloud-theme");
+          var pref = stored === "light" || stored === "dark" ? stored : "system";
+          var resolved =
+            pref === "system"
+              ? window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches
+                ? "light"
+                : "dark"
+              : pref;
+          document.documentElement.setAttribute("data-theme", resolved);
+          // Retro intensity (off | subtle | full), applied before first paint
+          // for the same reason as the theme above. See design/retro.js.
+          var retro = localStorage.getItem("home-retro");
+          document.documentElement.setAttribute(
+            "data-retro",
+            retro === "off" || retro === "full" ? retro : "subtle"
+          );
+          if (resolved === "light") {
+            var meta = document.querySelector('meta[name="theme-color"]');
+            if (meta) meta.setAttribute("content", "#f3e9d2");
+          }
+        } catch (e) {
+          // Storage disabled (e.g. private browsing) — the default dark
+          // theme already baked into the CSS still applies fine.
+        }
+      })();
+    </script>
+
+    <link rel="manifest" href="%BASE_URL%manifest.json" />
+    <link rel="icon" type="image/svg+xml" href="%BASE_URL%favicon.svg" />
+    <link rel="icon" type="image/png" href="%BASE_URL%favicon.png" />
+    <link rel="apple-touch-icon" href="%BASE_URL%apple-touch-icon.png" />
+    <meta name="theme-color" content="#17120e" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="HomeMonitor" />
+
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

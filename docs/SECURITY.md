@@ -97,6 +97,26 @@ which builds those images and boots the stack. Dependabot has since moved
 them on (merged only after the same CI run passed) to `alpine:3.24` and
 `nginx:1.31-alpine`.
 
+## Machine-to-machine routes, and HomeMonitor
+
+- **One shared-secret check.** Every `/internal/...` route in HomeCore
+  (`events`, `users/usage`, `apps`, `notifications`) goes through
+  `homecore/src/internalAuth.js`, which compares the secret in constant time
+  (`crypto.timingSafeEqual`), so a wrong guess can't be refined by timing.
+  An unset secret still means nobody gets in.
+- **The two new endpoints are narrow.** `GET /internal/apps` returns only
+  slug, name, health path and enabled. `POST /internal/notifications` can
+  only create notifications for admins, with length limits on every field.
+- **HomeMonitor is admin-only, enforced on the server** (`requireAdmin` in
+  `apps/homemonitor-backend/src/app.js`); the web app's "Administrators only"
+  page is just courtesy. It reads and reports; nothing it exposes can change
+  the system.
+- **Least privilege in Docker.** The monitor container gets HomeCore's
+  `.env` only to obtain the shared internal secret, and `JWT_SECRET` is blanked
+  for it in `docker-compose.yml`, so it never holds the key that could forge
+  a login. It is NOT given the Docker socket (that would be root on the host);
+  its backups mount is read-only.
+
 ## What's not covered yet
 
 - **No TLS anywhere in the request chain.** The gateway terminates plain

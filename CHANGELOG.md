@@ -5,6 +5,79 @@ All notable changes to this project are documented here. Format follows
 [SemVer](https://semver.org/): one version number for the whole
 ecosystem (see root `package.json`), bumped on any meaningful release.
 
+## [1.12.0] — HomeMonitor: server, services and backups (admins only)
+
+### Added
+- **`apps/homemonitor-backend`** (port 4800, `/api/homemonitor`) and
+  **`apps/homemonitor`** (dev port 5179, served at `/monitor/`). Every 30
+  seconds it measures CPU, memory, load, uptime, network speed and disk use,
+  checks each registered app's health endpoint (and HomeCore's) with its
+  response time, and looks at the backup folder. Every few minutes it saves a
+  point of history, so there are 24-hour charts and a daily disk-usage record
+  with a rough "full in about N days" forecast (a straight-line fit; says
+  nothing until there are about 3 days of data or if the disk isn't growing).
+- **Alerts through HomeCore notifications**: a disk over 80% (resolves below
+  77%, so it doesn't flap), an app that fails two checks in a row, backups
+  older than 36 hours or missing. A notification is sent only when an alert
+  opens and when it resolves, never on every reading. If HomeCore can't be
+  reached the alert is retried on the next reading, never silently lost.
+- **Admin-only, enforced on the server.** A signed-in non-admin gets `403`
+  and the web app shows an "Administrators only" page (and stops polling).
+- Two new HomeCore endpoints for trusted services, using the shared secret:
+  `GET /internal/apps` (the registry, for health checks) and
+  `POST /internal/notifications` (create a notification for every enabled
+  admin). HomeCore had a notification inbox but nothing could create
+  notifications until now. HomeMonitor is registered in the app registry, so
+  Home's dashboard lists it.
+- The web app (utility-room look: no woodgrain, shared striped gauges, status
+  as words with a lamp, hand-drawn SVG charts) refreshes itself and fits a
+  phone width.
+- Wired into `docker-compose.yml` (backend, frontend, data volume, a
+  read-only mount of the backups folder, gateway dependencies, backup
+  coverage), `gateway/nginx.conf` (`/monitor/`, `/api/homemonitor/`),
+  `.github/dependabot.yml`, the workspace list, `scripts/dev-home-ui.ps1` (a
+  HomeMonitor row; alerts off and every app's address preset for dev), the
+  design sync and favicons, and `docs/API.md`.
+- Tests: homemonitor-backend 60 (system readings, health interpretation,
+  backup folder reading, every alert rule and its anti-spam behavior, the
+  forecast, history, the full tick loop, and an end-to-end test where a
+  filling disk becomes a notification in a real HomeCore admin's inbox),
+  homemonitor 13, HomeCore 45 to 51.
+
+### Changed
+- All HomeCore `/internal/...` routes now share one check
+  (`homecore/src/internalAuth.js`), which compares the secret in constant time.
+  Behavior is unchanged: a missing or wrong secret is still `401`.
+- `docs/ROADMAP.md`: the favicon line no longer says exports are missing
+  (done in 1.8.0). `README.md` and `docs/DEVELOPMENT.md` test counts corrected
+  to what each suite actually reports (homemedia-backend 28, homenotes 16 were
+  stale), 362 across 12 suites. `docs/DESIGN_SYSTEM.md` has a HomeMonitor
+  row. `docs/SECURITY.md` has a section on the internal routes and HomeMonitor.
+
+### Deliberately not built
+- **Docker container status.** It needs the Docker socket mounted in, which
+  is root on the host. Each app's health endpoint already says what is alive.
+  Disk SMART health is out for the same reason (host hardware access).
+- Per-app resource use, log viewing, and acting on the system (restart, clean
+  up). The monitor measures; it never changes anything.
+- **One honest limit:** inside Docker Desktop on Windows or macOS the CPU,
+  memory and disk numbers describe Docker's virtual machine, not the PC. On a
+  Linux server they are the real host.
+
+### Verified, and not
+- Verified: all 12 suites pass (362 tests), both builds are clean,
+  `npm audit` reports 0 vulnerabilities, `npm ci` is satisfied by the lockfile
+  for both new workspaces (dry run). The monitor was run against a real
+  HomeCore, measuring this machine for real, with a dead port and a 1% disk
+  threshold to force alerts: three alerts opened after the right number of
+  readings and all three arrived in the admin's inbox; stale and fresh backups
+  were told apart; a non-admin got the 403 page; the page fits 390px.
+- Not verified: Docker (the new compose services, Dockerfiles and nginx
+  rules were written without it, and the compose `JWT_SECRET: ""` override is
+  worth a glance on first boot), the Windows launcher, a real phone, a screen
+  reader, and how Home's dashboard bell displays these notifications (Home
+  was not run).
+
 ## [1.11.0] — HomeTasks: repeating tasks
 
 ### Added

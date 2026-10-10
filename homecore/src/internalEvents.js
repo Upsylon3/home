@@ -23,16 +23,9 @@ const { emitEvent, toEventType } = require("./homecore/events");
 
 const router = express.Router();
 
-function requireInternalSecret(req, res, next) {
-  const configured = process.env.HOMECORE_INTERNAL_SECRET;
-  const provided = req.headers["x-internal-secret"];
-  // Fail closed if the secret was never configured. An unset secret must
-  // never quietly mean "anyone gets in" — it must mean "nobody does."
-  if (!configured || !provided || provided !== configured) {
-    return res.status(401).json({ error: "Invalid or missing internal service credentials." });
-  }
-  next();
-}
+// The shared-secret check moved to ./internalAuth.js so every /internal/...
+// route uses the very same code (see that file's header comment).
+const { requireInternalSecret } = require("./internalAuth");
 
 router.post("/", requireInternalSecret, (req, res) => {
   const { userId, applicationSlug, action, targetName = null } = req.body || {};

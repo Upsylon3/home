@@ -60,15 +60,15 @@ other Tier 1 app currently has a hard dependency on (see §4).
 `hc_permissions`, `hc_application_permissions`, `hc_activity_events`,
 `hc_notifications`, `hc_sessions`.
 
-Six applications are registered today: `homecloud`, `homemedia`,
-`homesync`, `homenotes`, `hometasks`, `homevault` — pre-seeded by HomeCore's own
+Seven applications are registered today: `homecloud`, `homemedia`,
+`homesync`, `homenotes`, `hometasks`, `homemonitor`, `homevault` — pre-seeded by HomeCore's own
 startup code (see §6). This is exactly the "before adding a fifth"
 point earlier notes on this shortcut flagged for reconsidering — the
 pattern still held up fine at this scale (one more `INSERT OR IGNORE`
 function, no real complexity added), so it stayed. A sixth application
 is a reasonable point to actually build the real admin-driven install
-flow instead of extending this further. HomeTasks, HomeMonitor, and
-HomeAI are not registered — they don't exist yet.
+flow instead of extending this further. HomeAI is not registered — it
+doesn't exist yet.
 
 ## 4. The three-tier layering rule
 
@@ -85,8 +85,8 @@ Tier 0 — Foundation
   change — only registered against.
 
 Tier 1 — Independent apps
-  HomeCloud, HomeMedia, HomeSync, HomeNotes, HomeTasks, HomeVault (future:
-  HomeMonitor)
+  HomeCloud, HomeMedia, HomeSync, HomeNotes, HomeTasks, HomeMonitor,
+  HomeVault
   Each has its own database, own process, own deploy. May declare a
   small number of HARD dependencies on another app's STABLE PUBLIC API
   (never its database) — HomeMedia, HomeSync, and HomeNotes each declare
@@ -246,7 +246,8 @@ problem:
 | HomeSync Android app | Written; builds and passes its unit tests in CI (`android.yml`), never run on a device — see `docs/DEVELOPMENT.md` |
 | HomeVault | **v0 built** — core loop (create/unlock/recover a vault, add/view/edit/delete items) implemented and tested; **self-reviewed twice, not independently reviewed** — see `docs/SECURITY.md`'s "HomeVault v0" section before trusting it with anything real |
 | HomeTasks | **Built**: backend and web app (Today / Upcoming / All / Done, projects, due dates, priorities, search, repeating tasks), tested; the web app was driven end to end in a headless browser. Reminders and assignment are deliberately not built yet, see `docs/ROADMAP.md` |
-| HomeMonitor, HomeAI, HomeBridge | Not started |
+| HomeMonitor | **v0 built**: admin-only dashboard for CPU, memory, disk, each app's health, backup freshness and disk growth (with a rough "full in N days" forecast), plus alerts delivered as HomeCore notifications. Tier 1: it reads the app registry and posts notifications through two small new HomeCore endpoints, `GET /internal/apps` and `POST /internal/notifications` (shared-secret, machine to machine). No Docker socket, by design. Tested; the web app was driven in a headless browser against a real HomeCore, measuring the real machine |
+| HomeAI, HomeBridge | Not started |
 
 ## 8. Future ecosystem map
 

@@ -20,7 +20,9 @@ you choose to set that up.
 | **HomeSync** | Android app that backs up phone photos/videos to HomeCloud | Backend built and tested; Android app builds and passes its unit tests in CI, but has never been run on a device — see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) |
 | **HomeVault** | Client-side-encrypted password/secrets manager | **v0 built, self-reviewed twice, not independently reviewed** — see [docs/SECURITY.md](docs/SECURITY.md) before storing anything real |
 | **HomeCore** | Shared identity, sessions, permissions, and the app registry — no UI of its own | Built |
-| HomeTasks, HomeMonitor, HomeAI | To-dos, system monitor, assistant | Not started — see [docs/ROADMAP.md](docs/ROADMAP.md) |
+| **HomeTasks** | Tasks and projects, due dates, priorities, repeating tasks | Built — backend and web app, tested |
+| **HomeMonitor** | Server, services and backups at a glance, with alerts (admins only) | **v0 built** — backend and web app, tested |
+| HomeAI | Assistant | Not started — see [docs/ROADMAP.md](docs/ROADMAP.md) |
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how these fit
 together, and [docs/SECURITY.md](docs/SECURITY.md) for what's protecting
@@ -89,18 +91,22 @@ docs/                  Architecture, security, API reference, deployment, roadma
 
 ## Tests
 
-207 automated tests across 8 suites (6 backends, 2 frontends), run with
+362 automated tests across 12 suites (8 backends, 4 frontends), run with
 `npm test` from the repo root (or inside any one suite's own folder):
 
 ```
-homecore                45 tests
+homecore                51 tests
 apps/homecloud-backend  41 tests
-apps/homemedia-backend  18 tests
+apps/homemedia-backend  28 tests
 apps/homenotes-backend  24 tests
 apps/homesync-backend   20 tests
 apps/homevault-backend  28 tests
+apps/hometasks-backend  54 tests
+apps/homemonitor-backend 60 tests
 apps/homevault          20 tests  (src/crypto.js — the client-side encryption)
-apps/homenotes          11 tests  (src/markdown.js — the XSS sanitizer)
+apps/homenotes          16 tests  (src/markdown.js — the XSS sanitizer)
+apps/hometasks           7 tests  (src/dates.js, src/repeat.js — date and wording helpers)
+apps/homemonitor        13 tests  (src/format.js, src/chart.js — number formatting and chart maths)
 ```
 
 The other three frontends (`home`, `homecloud`, `homemedia`) have no

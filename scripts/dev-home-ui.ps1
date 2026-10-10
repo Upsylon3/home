@@ -19,6 +19,7 @@ $services = @(
     @{ Key='homecloud'; Name='HomeCloud'; Detail='Frontend  :5173 + backend :4500'; Path='apps\homecloud'; Backend='apps\homecloud-backend' },
     @{ Key='homemedia'; Name='HomeMedia'; Detail='Frontend  :5175 + backend :4200'; Path='apps\homemedia'; Backend='apps\homemedia-backend' },
     @{ Key='homenotes'; Name='HomeNotes'; Detail='Frontend  :5176 + backend :4400'; Path='apps\homenotes'; Backend='apps\homenotes-backend' },
+    @{ Key='homemonitor'; Name='HomeMonitor'; Detail='Frontend  :5179 + backend :4800'; Path='apps\homemonitor'; Backend='apps\homemonitor-backend' },
     @{ Key='hometasks'; Name='HomeTasks'; Detail='Frontend  :5178 + backend :4700'; Path='apps\hometasks'; Backend='apps\hometasks-backend' },
     @{ Key='homesync'; Name='HomeSync backend'; Detail='Backend   :4300 (Android client not launched)'; Path=$null; Backend='apps\homesync-backend' },
     @{ Key='homevault'; Name='HomeVault'; Detail='Frontend  :5177 + backend :4600 (v0, not yet security-reviewed)'; Path='apps\homevault'; Backend='apps\homevault-backend' }
@@ -27,7 +28,7 @@ $services = @(
 $form = New-Object System.Windows.Forms.Form
 $form.Text = 'Home — Development Launcher'
 $form.StartPosition = 'CenterScreen'
-$form.Size = New-Object System.Drawing.Size(470, 428)
+$form.Size = New-Object System.Drawing.Size(470, 466)
 $form.FormBorderStyle = 'FixedDialog'
 $form.MaximizeBox = $false
 
@@ -47,7 +48,7 @@ $form.Controls.Add($desc)
 $group = New-Object System.Windows.Forms.GroupBox
 $group.Text = 'Optional applications'
 $group.Location = New-Object System.Drawing.Point(22, 82)
-$group.Size = New-Object System.Drawing.Size(410, 223)
+$group.Size = New-Object System.Drawing.Size(410, 261)
 $form.Controls.Add($group)
 
 $checks = @{}
@@ -70,14 +71,14 @@ foreach ($svc in $services) {
 
 $selectAll = New-Object System.Windows.Forms.Button
 $selectAll.Text = 'Select all'
-$selectAll.Location = New-Object System.Drawing.Point(24, 320)
+$selectAll.Location = New-Object System.Drawing.Point(24, 358)
 $selectAll.Size = New-Object System.Drawing.Size(90, 30)
 $selectAll.Add_Click({ foreach ($c in $checks.Values) { $c.Checked = $true } })
 $form.Controls.Add($selectAll)
 
 $clear = New-Object System.Windows.Forms.Button
 $clear.Text = 'Clear'
-$clear.Location = New-Object System.Drawing.Point(120, 320)
+$clear.Location = New-Object System.Drawing.Point(120, 358)
 $clear.Size = New-Object System.Drawing.Size(70, 30)
 $clear.Add_Click({ foreach ($c in $checks.Values) { $c.Checked = $false } })
 $form.Controls.Add($clear)
@@ -85,7 +86,7 @@ $form.Controls.Add($clear)
 $launch = New-Object System.Windows.Forms.Button
 $launch.Text = 'Launch development stack'
 $launch.Font = New-Object System.Drawing.Font('Segoe UI', 9, [System.Drawing.FontStyle]::Bold)
-$launch.Location = New-Object System.Drawing.Point(210, 318)
+$launch.Location = New-Object System.Drawing.Point(210, 356)
 $launch.Size = New-Object System.Drawing.Size(222, 34)
 $form.Controls.Add($launch)
 $form.AcceptButton = $launch
@@ -94,11 +95,11 @@ $launch.Add_Click({
     try {
         $devSecret = 'home-dev-only-change-me'
 
-        foreach ($dir in @('homecore\data','apps\homecloud-backend\data','apps\homemedia-backend\data','apps\homenotes-backend\data','apps\homesync-backend\data','apps\hometasks-backend\data','apps\homevault-backend\data')) {
+        foreach ($dir in @('homecore\data','apps\homecloud-backend\data','apps\homemedia-backend\data','apps\homenotes-backend\data','apps\homesync-backend\data','apps\hometasks-backend\data','apps\homemonitor-backend\data','apps\homevault-backend\data')) {
             $full = Join-Path $root $dir
             if (-not (Test-Path $full)) { New-Item -ItemType Directory -Path $full -Force | Out-Null }
         }
-        foreach ($env in @('homecore\.env','apps\homecloud-backend\.env','apps\homemedia-backend\.env','apps\homenotes-backend\.env','apps\homesync-backend\.env','apps\hometasks-backend\.env','apps\homevault-backend\.env')) {
+        foreach ($env in @('homecore\.env','apps\homecloud-backend\.env','apps\homemedia-backend\.env','apps\homenotes-backend\.env','apps\homesync-backend\.env','apps\hometasks-backend\.env','apps\homemonitor-backend\.env','apps\homevault-backend\.env')) {
             $full = Join-Path $root $env
             if (-not (Test-Path $full)) {
                 $example = "$full.example"
@@ -167,6 +168,21 @@ $launch.Add_Click({
                 'HOMECLOUD_BACKEND_INTERNAL_URL=http://localhost:4500',
                 'HOMECORE_INTERNAL_SECRET=' + $devSecret
             ); Run='npm run dev' }
+        }
+        if ($checks['homemonitor'].Checked) {
+            # SERVICE_URLS tells the monitor where each app's health endpoint
+            # is in dev (there is no gateway). ALERTS_ENABLED=false keeps it from
+            # sending notifications about apps you simply didn't start.
+            $cmds += @{ Title='HomeMonitor backend - :4800'; Dir='apps\homemonitor-backend'; Env=@(
+                'PORT=4800',
+                'DATA_DIR=' + (Join-Path $root 'apps\homemonitor-backend\data'),
+                'HOMECORE_INTERNAL_URL=http://localhost:4000',
+                'HOMECORE_INTERNAL_SECRET=' + $devSecret,
+                'DISK_PATHS=data=' + $root,
+                'ALERTS_ENABLED=false',
+                'SERVICE_URLS=homecloud=http://localhost:4500,homemedia=http://localhost:4200,homesync=http://localhost:4300,homenotes=http://localhost:4400,hometasks=http://localhost:4700,homevault=http://localhost:4600,homemonitor=http://localhost:4800'
+            ); Run='npm run dev' }
+            $cmds += @{ Title='HomeMonitor frontend - :5179'; Dir='apps\homemonitor'; Env=@(); Run='npm run dev' }
         }
         if ($checks['hometasks'].Checked) {
             # Like HomeVault: no HOMECLOUD_BACKEND_INTERNAL_URL, because tasks

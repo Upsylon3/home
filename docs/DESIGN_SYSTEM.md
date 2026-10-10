@@ -17,11 +17,11 @@ be quietly sophisticated, not loudly impressive.
 
 ## The Atari direction (since 1.2.0)
 
-*Status: complete for every app that exists, as of 1.10.0. Phases 1 to 6
+*Status: complete for every app that exists, as of 1.12.0. Phases 1 to 6
 shipped across 1.2.0 to 1.8.0; 1.9.0 (HomeMedia's upload, music and viewer
 work) added screens that reuse the shared tokens and needed no new retro
-rules. 1.10.0 added HomeTasks, the first app built from this system from the
-start. This doc was last reconciled against the code at 1.10.0.*
+rules. 1.10.0 added HomeTasks and 1.12.0 added HomeMonitor, both built from this
+system from the start. This doc was last reconciled against the code at 1.12.0.*
 
 Home has a visual identity now: **Atari, 1977, built today.** Warm black
 vinyl, cream paper, orange and brass, painted stripes, a little woodgrain.
@@ -178,7 +178,7 @@ pixel radius, and give any new decoration an Off behavior.
 | HomeMedia | Gallery | Visual, image-first, immersive |
 | HomeNotes | Study | Quiet typography, minimal distraction |
 | HomeTasks | Desk | Practical, scannable |
-| HomeMonitor | Utility room | Precise, compact, technical |
+| HomeMonitor | Utility room | Dense mono type, hard edges, and **no woodgrain**: a dashboard of numbers wants none. Meters reuse the shared striped LED gauge from HomeCloud; services and backups are plain tables; charts are hand-drawn inline SVG (one amber line, no libraries). Status is always a word ("Up", "Down", "critical") with the lamp only reinforcing it, and "Unknown" gets a neutral grey lamp because not knowing is not a failure. No new retro effects, so there is nothing extra for Off to remove |
 | HomeVault | The safe | Restrained, security-conscious — nothing casual |
 | HomeAI | Library/assistant | Conversational, never visually dominant |
 | HomeSync | The connection to the outside world | Should almost disappear when working |

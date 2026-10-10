@@ -10,8 +10,8 @@ already had a full threat model (`SECURITY.md`) — **v0 is now built**
 highest everyday-value, most conventional build (CRUD app, no new
 architectural pattern needed). HomeBridge after that, once there are
 enough real apps for its cross-app ideas (`ROADMAP.md`'s brainstorm
-below) to actually matter. HomeMonitor and HomeAI last — lower urgency,
-and HomeAI specifically benefits from permission enforcement landing
+below) to actually matter. HomeMonitor (**v0 built**, see `ARCHITECTURE.md`)
+and HomeAI last — lower urgency, and HomeAI specifically benefits from permission enforcement landing
 first (see below).
 
 ## Near-term backlog
@@ -36,8 +36,8 @@ first (see below).
    against, say, a Raspberry Pi specifically), and an admin-facing
    vault-reset action for HomeCore (today only the account holder can
    delete their own vault).
-4. **Icon system finishing touches**: PNG/ICO favicon exports for every
-   frontend but HomeCloud's, and an Android adaptive-icon split — see
+4. **Icon system finishing touches**: the Android adaptive-icon split
+   (favicon exports for every web app are done, since 1.8.0) — see
    `DESIGN_SYSTEM.md`. Typeface and accent color are now final, not
    open questions.
 5. **Fix the `/api/auth`, `/api/admin`, `/api/activity` route-nesting

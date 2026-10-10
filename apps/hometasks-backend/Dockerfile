@@ -22,7 +22,7 @@ COPY . .
 
 # `npm ci` installs exactly what package-lock.json says, and fails if the
 # lockfile and package.json disagree. `--workspace` limits it to this service
-# (and what it depends on) instead of installing all every other workspace.
+# (and what it depends on) instead of installing every workspace.
 # `--omit=dev` skips test-only packages.
 RUN npm ci --omit=dev --workspace=apps/hometasks-backend
 

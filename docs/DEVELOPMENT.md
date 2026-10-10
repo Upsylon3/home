@@ -52,6 +52,12 @@ cd apps/homevault-backend && HOMECORE_INTERNAL_URL=http://localhost:4000 npm run
 # HomeTasks' backend — also no HOMECLOUD_BACKEND_INTERNAL_URL (no files).
 cd apps/hometasks-backend && HOMECORE_INTERNAL_URL=http://localhost:4000 npm run dev # :4700
 
+# HomeMonitor's backend — needs the SAME HOMECORE_INTERNAL_SECRET as HomeCore, for
+# the app list and notifications. In dev there is no gateway, so SERVICE_URLS says
+# where each app's health endpoint is, and ALERTS_ENABLED=false stops it sending
+# notifications about apps you didn't start. (dev-home-ui.ps1 sets all of this.)
+cd apps/homemonitor-backend && HOMECORE_INTERNAL_URL=http://localhost:4000 HOMECORE_INTERNAL_SECRET=<same as homecore> ALERTS_ENABLED=false npm run dev # :4800
+
 # Frontends — each is independent, run whichever you're working on
 cd apps/home && npm run dev        # :5174
 cd apps/homecloud && npm run dev   # :5173
@@ -59,6 +65,7 @@ cd apps/homemedia && npm run dev   # :5175
 cd apps/homenotes && npm run dev   # :5176
 cd apps/homevault && npm run dev   # :5177
 cd apps/hometasks && npm run dev   # :5178
+cd apps/homemonitor && npm run dev # :5179
 ```
 
 Visit whichever frontend's port you started. `homemedia-backend`,
@@ -96,6 +103,7 @@ nothing extra to type per-service.
 | HomeSync backend *(optional — Android app not launched by this)* | `4300` |
 | HomeVault backend + frontend *(optional — v0, not yet security-reviewed)* | `4600` + `5177` |
 | HomeTasks backend + frontend *(optional)* | `4700` + `5178` |
+| HomeMonitor backend + frontend *(optional — admin only)* | `4800` + `5179` |
 
 It also creates any missing `.env` files (from each service's
 `.env.example`) and data directories on first run, and passes HomeCore
@@ -182,16 +190,18 @@ npm test
 Or one service at a time:
 
 ```bash
-cd homecore && npm test                    # 45 tests
+cd homecore && npm test                    # 51 tests
 cd apps/homecloud-backend && npm test      # 41 tests
-cd apps/homemedia-backend && npm test      # 18 tests
+cd apps/homemedia-backend && npm test      # 28 tests
 cd apps/homenotes-backend && npm test      # 24 tests
 cd apps/homesync-backend && npm test       # 20 tests
 cd apps/hometasks-backend && npm test      # 54 tests
 cd apps/hometasks && npm test              # 7 tests — dates.js and repeat.js only, see below
+cd apps/homemonitor-backend && npm test    # 60 tests
+cd apps/homemonitor && npm test            # 13 tests — format.js and chart.js only, see below
 cd apps/homevault-backend && npm test      # 28 tests
 cd apps/homevault && npm test              # 20 tests — crypto.js only, see below
-cd apps/homenotes && npm test              # 11 tests — markdown.js only, see below
+cd apps/homenotes && npm test              # 16 tests — markdown.js only, see below
 ```
 
 All use Node's built-in test runner (`node --test`) — no extra
@@ -201,7 +211,7 @@ process, so tests can't leak state into each other.
 
 Three frontends have real tests, and each tests one small module rather
 than the UI. `apps/hometasks` tests its date helpers (`src/dates.js`: local
-"today", "Overdue" / "Tomorrow" wording, date arithmetic) and the wording of repeat choices (`src/repeat.js`). The other two: `apps/homevault` tests its client-side encryption
+"today", "Overdue" / "Tomorrow" wording, date arithmetic) and the wording of repeat choices (`src/repeat.js`). `apps/homemonitor` tests its number formatting (`src/format.js`) and the chart maths (`src/chart.js`: gaps in the data, flat lines, clamping). The other two: `apps/homevault` tests its client-side encryption
 (`src/crypto.js`), and `apps/homenotes` tests its Markdown sanitizer
 (`src/markdown.js`, the fix for the stored XSS found in 1.1.1). Both
 modules are framework-free on purpose, so `node --test` can run them

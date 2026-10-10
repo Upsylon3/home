@@ -38,10 +38,16 @@ shared activity/notifications feed. No files live here.
 | GET | `/api/core/notifications` | Notifications for the current user |
 | PATCH | `/api/core/notifications/:id/read` | Mark one as read |
 
-`POST /internal/events` and `GET /internal/users/usage` (not shown above)
-are machine-to-machine routes authenticated with a shared secret
-(`HOMECORE_INTERNAL_SECRET`), not a user token — see
-`homecore/src/internalEvents.js`.
+`POST /internal/events`, `GET /internal/users/usage`, `GET /internal/apps`
+and `POST /internal/notifications` (not shown above) are machine-to-machine
+routes authenticated with a shared secret (`HOMECORE_INTERNAL_SECRET`), not a
+user token. They all use the one check in `homecore/src/internalAuth.js`.
+
+- `GET /internal/apps` returns the registry as `{ apps: [{ slug, name, healthUrl, enabled }] }`
+  (first user: HomeMonitor's health checks).
+- `POST /internal/notifications` takes `{ applicationSlug, type, title, body?, data?, audience: "admins" }`
+  and creates one notification for every enabled admin account. Answers
+  `201 { delivered: n }`. `"admins"` is the only audience so far.
 
 ## HomeCloud backend (`/api/homecloud`, `/api/share`)
 
@@ -92,6 +98,24 @@ HomeCloud (in a top-level `HomeMedia` folder).
 | GET/PATCH/DELETE | `/api/homemedia/albums/:id` | View / rename / delete an album |
 | POST/DELETE | `/api/homemedia/albums/:id/items` \| `/items/:fileId` | Add / remove a photo from an album |
 | POST/DELETE | `/api/homemedia/favorites/:fileId` | Favorite / unfavorite a file |
+
+## HomeMonitor backend (`/api/homemonitor`)
+
+Server, service and backup visibility. **Administrators only**: every route
+except `health` needs a login, and a signed-in non-admin gets `403`.
+
+| Method | Path | What it does |
+|---|---|---|
+| GET | `/api/homemonitor/health` | *(no auth)* |
+| GET | `/api/homemonitor/status` | The latest reading: `system` (CPU %, memory, load, uptime, network), `disks`, `services` (up / degraded / down / unknown, with response time), `backups`, and the active `alerts` |
+| GET | `/api/homemonitor/history?hours=24` | Chart samples (CPU, memory, fullest disk, network), oldest first; 1 to 48 hours |
+| GET | `/api/homemonitor/disk-growth?days=90` | Daily disk usage per disk, plus a rough `forecast` (`daysUntilFull`, `bytesPerDay`) or `null` when there isn't enough history (about 3 days) or the disk isn't growing |
+
+Settings are environment variables, all optional (see `apps/homemonitor-backend/src/config.js`):
+`MONITOR_INTERVAL_SECONDS` (30), `DISK_PATHS` (`label=path,...`), `BACKUP_DIR`,
+`BACKUP_MAX_AGE_HOURS` (36), `DISK_ALERT_PERCENT` (80), `SERVICE_DOWN_CHECKS` (2),
+`GATEWAY_URL` / `SERVICE_URLS` (where to reach each app's health endpoint),
+`ALERTS_ENABLED` (`false` shows alerts on screen without sending notifications).
 
 ## HomeTasks backend (`/api/hometasks`)
 

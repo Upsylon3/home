@@ -1,0 +1,5 @@
+<svg viewBox="0 0 168 48" xmlns="http://www.w3.org/2000/svg">
+  <path d="M15,6 L33,6 A9,9 0 0 1 42,15 L42,33 A9,9 0 0 1 33,42 L30,42 L30,34 A2,2 0 0 0 28,32 L20,32 A2,2 0 0 0 18,34 L18,42 L15,42 A9,9 0 0 1 6,33 L6,15 A9,9 0 0 1 15,6 Z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="56" y="32" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif"
+        font-size="27" font-weight="600" letter-spacing="-0.3" fill="currentColor">Home</text>
+</svg>

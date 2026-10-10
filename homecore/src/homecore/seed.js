@@ -193,6 +193,31 @@ function seedHomeTasksApplication() {
   return info.lastInsertRowid;
 }
 
+// HomeMonitor: server, service and backup visibility (frontend at /monitor).
+// No dependency on HomeCloud (empty grant). It is the first app that PRODUCES
+// notifications, through POST /internal/notifications, so it must be
+// registered for those to be attributed to it.
+function seedHomeMonitorApplication() {
+  const baseUrl = process.env.HOMEMONITOR_FRONTEND_URL || "/monitor";
+
+  const existing = db.prepare("SELECT id FROM hc_applications WHERE slug = 'homemonitor'").get();
+  if (existing) {
+    db.prepare("UPDATE hc_applications SET base_url = ?, updated_at = datetime('now') WHERE id = ?").run(
+      baseUrl,
+      existing.id
+    );
+    return existing.id;
+  }
+
+  const info = db
+    .prepare(
+      `INSERT INTO hc_applications (slug, name, description, version, icon, base_url, health_url, enabled)
+       VALUES ('homemonitor', 'HomeMonitor', 'Server, services and backups', '0.1.0', '/icons/homemonitor.svg', ?, '/api/homemonitor/health', 1)`
+    )
+    .run(baseUrl);
+  return info.lastInsertRowid;
+}
+
 // The first application with no dependency on HomeCloud at all — it
 // stores its own encrypted blobs, never a real file (see
 // apps/homevault-backend/src/db.js). Its permission grant below is
@@ -229,6 +254,7 @@ function runSeed() {
   seedHomeSyncApplication();
   seedHomeNotesApplication();
   seedHomeTasksApplication();
+  seedHomeMonitorApplication();
   return seedHomevaultApplication();
 }
 

@@ -35,12 +35,14 @@ services:
       homenotes-backend: { condition: service_healthy }
       homesync-backend: { condition: service_healthy }
       hometasks-backend: { condition: service_healthy }
+      homemonitor-backend: { condition: service_healthy }
       homevault-backend: { condition: service_healthy }
       home: { condition: service_started }
       homecloud: { condition: service_started }
       homemedia: { condition: service_started }
       homenotes: { condition: service_started }
       hometasks: { condition: service_started }
+      homemonitor: { condition: service_started }
       homevault: { condition: service_started }
     ports: ["8080:80"] # the ONLY container that publishes a host port
 
@@ -152,6 +154,47 @@ services:
 
   # HomeTasks: tasks and projects. It needs HomeCore to verify logins but NOT
   # HomeCloud: tasks are small rows in its own database, there are no files.
+  # HomeMonitor: server, service and backup visibility (admin only). It
+  # measures; it never changes anything. It needs HomeCore for logins, the app
+  # list and notifications, and the gateway to check each app's health the way
+  # a browser would reach it. It does NOT get the Docker socket: that would be
+  # root on the host, and each app's health endpoint already says what is alive.
+  homemonitor-backend:
+    build: { context: ., dockerfile: apps/homemonitor-backend/Dockerfile }
+    restart: unless-stopped
+    # Same trick as homecloud-backend: homecore's .env supplies the matching
+    # HOMECORE_INTERNAL_SECRET. That file also holds HomeCore's JWT_SECRET,
+    # which this service has no use for, so it is blanked below: the monitor
+    # never holds the key that could forge a login.
+    env_file: [./homecore/.env]
+    environment:
+      PORT: "4800"
+      JWT_SECRET: ""
+      DATA_DIR: /data
+      HOMECORE_INTERNAL_URL: http://homecore:4000
+      GATEWAY_URL: http://gateway
+      # Which folders to measure for "disk used": the monitor's own data volume
+      # (same disk as every app's volume) and the host's backups folder.
+      DISK_PATHS: data=/data,backups=/backups
+      BACKUP_DIR: /backups
+    volumes:
+      - homemonitor_data:/data
+      - ./backups:/backups:ro
+    expose: ["4800"]
+    depends_on: { homecore: { condition: service_healthy } }
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:4800/api/homemonitor/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+  homemonitor:
+    build: { context: ., dockerfile: apps/homemonitor/Dockerfile }
+    restart: unless-stopped
+    depends_on: { homemonitor-backend: { condition: service_healthy } }
+    expose: ["80"]
+
   hometasks-backend:
     build: { context: ., dockerfile: apps/hometasks-backend/Dockerfile }
     restart: unless-stopped
@@ -269,6 +312,7 @@ services:
       - homenotes_data:/sources/homenotes:ro
       - homesync_data:/sources/homesync:ro
       - hometasks_data:/sources/hometasks:ro
+      - homemonitor_data:/sources/homemonitor:ro
       - homevault_data:/sources/homevault:ro
       - ./backups:/backups
 
@@ -279,6 +323,7 @@ volumes:
   homenotes_data:
   homesync_data:
   hometasks_data:
+  homemonitor_data:
   homevault_data:
   caddy_data:
   caddy_config:

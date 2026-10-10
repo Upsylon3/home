@@ -22,7 +22,7 @@ import sharp from "sharp";
 const AMBER = "#e0892b"; // --amber (dark theme) in design/tokens.css
 const BG = "#17120e"; // --bg (dark theme)
 
-const APPS = ["home", "homecloud", "homemedia", "homenotes", "hometasks", "homevault"];
+const APPS = ["home", "homecloud", "homemedia", "homemonitor", "homenotes", "hometasks", "homevault"];
 
 for (const app of APPS) {
   // The icon files use stroke="currentColor" so they follow the theme;

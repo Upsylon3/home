@@ -39,6 +39,8 @@ const homecoreRoutes = require("./homecore");
 // shared-secret-authenticated mount rather than another route under
 // /api/core.
 const internalEventsRoutes = require("./internalEvents");
+const internalAppsRoutes = require("./internalApps");
+const internalNotificationsRoutes = require("./internalNotifications");
 
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET === "change_this_to_a_long_random_string") {
   console.warn(
@@ -88,6 +90,8 @@ app.use("/api/core", homecoreRoutes);
 // Deliberately not under /api — see internalEvents.js's header comment for
 // why this is machine-to-machine (shared-secret) rather than user-facing.
 app.use("/internal/events", internalEventsRoutes);
+app.use("/internal/apps", internalAppsRoutes);
+app.use("/internal/notifications", internalNotificationsRoutes);
 
 // Catches routes that don't exist, so a typo'd or outdated frontend request
 // gets a clean 404 instead of falling through to the error handler below.

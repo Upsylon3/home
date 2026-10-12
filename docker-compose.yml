@@ -19,31 +19,15 @@ services:
   gateway:
     build: ./gateway
     restart: unless-stopped
-    # The gateway must wait for EVERY container it forwards to, not just
-    # homecore. nginx looks up each upstream's hostname once, at startup,
-    # and refuses to start ("host not found in upstream") if any of them
-    # isn't running yet. With only homecore listed here, the gateway raced
-    # ahead of the other services and crash-looped until they appeared.
-    # Backends have healthchecks, so wait until they're healthy. The
-    # frontends have none, so "started" is the strongest thing to wait for.
-    # (A gateway that survives a missing app would be better — see
-    # docs/ROADMAP.md item 10.)
-    depends_on:
-      homecore: { condition: service_healthy }
-      homecloud-backend: { condition: service_healthy }
-      homemedia-backend: { condition: service_healthy }
-      homenotes-backend: { condition: service_healthy }
-      homesync-backend: { condition: service_healthy }
-      hometasks-backend: { condition: service_healthy }
-      homemonitor-backend: { condition: service_healthy }
-      homevault-backend: { condition: service_healthy }
-      home: { condition: service_started }
-      homecloud: { condition: service_started }
-      homemedia: { condition: service_started }
-      homenotes: { condition: service_started }
-      hometasks: { condition: service_started }
-      homemonitor: { condition: service_started }
-      homevault: { condition: service_started }
+    # The gateway deliberately depends on NOTHING. It looks each app's address
+    # up when a request arrives (see gateway/nginx.conf), so it starts fine
+    # with every app stopped, shows a friendly "this app is offline" answer
+    # for any app that isn't there, and finds an app as soon as it starts.
+    # That is what makes `docker compose up gateway home homecore homecloud
+    # homecloud-backend` (just the pieces you want) work, and what keeps one
+    # crashed app from taking everything else down.
+    # (A `depends_on` list here used to be the workaround for nginx refusing
+    # to start while any upstream was missing; docs/ROADMAP.md item 10.)
     ports: ["8080:80"] # the ONLY container that publishes a host port
 
   homecore:

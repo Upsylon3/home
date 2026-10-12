@@ -180,6 +180,37 @@ Routing, as implemented:
 | `/api/share/` | HomeCloud's backend too — deliberately unprefixed and outside `requireAuth` (a share link has to work for someone with no account at all); see `apps/homecloud-backend/src/publicShare.js` |
 | `/api/` | HomeCore (catch-all — identity, admin, activity, the application registry; must stay registered after every more specific rule above) |
 
+**An app being down never takes the gateway down (1.13.0).** nginx used to
+look up each app's container name once, at startup, and refuse to start if
+any was missing. Now every location puts its upstream in a variable, so names
+are looked up per request through Docker's DNS (`resolver 127.0.0.11`):
+- The gateway starts with any app, or every app, stopped. The compose
+  `depends_on` workaround is gone, and "run only HomeCloud" works
+  (`docker compose up gateway home homecore homecloud homecloud-backend`).
+- An app that starts later, or restarts with a new address, is found within
+  about 10 seconds, with no gateway restart.
+- A request for an app the gateway can't reach (nginx's own 502 or 504) gets
+  a **503** with `Retry-After`: a small styled page naming the app for a
+  frontend, `{"error": "HomeTasks is offline right now..."}` for an API. Only
+  the gateway's own failures are rewritten: an app's own error answers (such as
+  HomeCore's `503` "degraded" health check, which HomeMonitor reads) pass
+  through untouched.
+- Because a variable in `proxy_pass` can't strip a path prefix the old way,
+  each prefixed frontend (`/tasks/`, `/cloud/`, ...) uses an explicit
+  `rewrite ^/tasks/(.*)$ /$1 break;`. API locations keep the full path, as
+  before.
+- **Home's own container** (`apps/home/nginx.conf`) got the same treatment.
+  It proxies two paths as a fallback, and those used to be looked up at
+  startup, so the dashboard crash-looped whenever HomeCloud's backend or
+  HomeCore was missing, and the gateway then reported "Home is offline". Every
+  other app's container still needs its own backend to start, deliberately: an
+  app is a frontend and a backend as a pair, and compose makes the frontend
+  wait for its backend. They also still name `homecore` directly, since nothing
+  works without HomeCore anyway (Tier 0).
+- `gateway/test/gateway-smoke.sh` runs the real config in a real nginx against
+  fake apps that start, crash and disappear, and does the same for Home's own
+  container (53 checks; also run in CI).
+
 Every Tier 1 service uses `expose` (internal-only) instead of `ports` in
 `docker-compose.yml` — only the gateway publishes a host port. **TLS is
 not terminated anywhere in this chain** — see `SECURITY.md` for why

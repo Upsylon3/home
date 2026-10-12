@@ -80,18 +80,21 @@ first (see below).
    missing prebuilt fails the Docker build). Dependabot is told to leave
    Node majors alone for exactly this reason.
 
-10. **Let the gateway start when an app is missing.** Today every
-   `proxy_pass` in `gateway/nginx.conf` names its container directly, and
-   nginx resolves those names once at startup, so if any app container
-   isn't running the gateway itself won't start, which takes the whole
-   ecosystem down. That contradicts principle 4 in `ARCHITECTURE.md`
-   (if HomeMedia is offline, Home still loads and shows it as
-   unavailable) and makes "run only HomeCloud" impossible. `docker-compose.yml`
-   now makes the gateway wait for every service, which fixes the crash
-   loop but not the design. The proper fix is for nginx to look names up
-   per request (`resolver 127.0.0.11` and a variable in `proxy_pass`),
-   which changes how paths are rewritten and needs testing with a real
-   stack, plus a friendly "this app is unavailable" page for a 502.
+10. **Done: the gateway starts when an app is missing.** It used to name
+   every container directly in `proxy_pass`, which nginx resolves once at
+   startup, so one missing app stopped the whole gateway and "run only
+   HomeCloud" was impossible. Every location now uses a variable, so names
+   are looked up per request through Docker's DNS (`resolver 127.0.0.11`);
+   prefixed frontends use an explicit `rewrite` to strip their prefix; and an
+   unreachable app gets a friendly 503 (a styled page for frontends, JSON for
+   APIs) while an app's own error answers pass through untouched. The
+   compose `depends_on` workaround is gone. Tested in a real nginx by
+   `gateway/test/gateway-smoke.sh` (53 checks, also run in CI). Home's own
+   container got the same fix, since it used to crash-loop whenever
+   HomeCloud's backend was missing. Kept here,
+   rather than deleted, so the numbering that other files point at stays
+   valid. Not verified: a real Docker run of the new setup (CI's Docker job
+   now stops and restarts an app to check it, but has not run yet).
 
 11. **Migrate HomeSync Android to AGP 9 (when ready).** The app is
    deliberately held on Android Gradle Plugin 8.13 because AGP 9 bundles

@@ -123,10 +123,28 @@ Requires Node.js 22+ and npm in `PATH`; runs `npm install` automatically
 on first launch if `node_modules` is missing. macOS/Linux: use the
 manual commands above instead — this launcher is Windows-only.
 
+## Testing the gateway
+
+`gateway/nginx.conf` is the one file no other test covers, and a mistake in it
+is invisible until the whole stack is up. `gateway/test/gateway-smoke.sh` runs
+the real file in a real nginx (needs `nginx`, `python3` and `curl`; no Docker)
+against fake apps and a fake DNS server that can make an app appear, crash or
+vanish while the gateway runs. It checks that the gateway starts with no apps,
+that every route reaches the right app with the right path, that offline apps
+get a friendly 503 while an app's own errors pass through, and that apps
+starting later are found without a restart. It also checks Home's own
+container (`apps/home/nginx.conf`), which must start with HomeCloud and
+HomeCore missing.
+
+```bash
+bash gateway/test/gateway-smoke.sh      # 53 checks; prints "SKIP" if nginx isn't installed
+```
+
 ## Running with Docker instead
 
 See [DEPLOYMENT.md](DEPLOYMENT.md) — `docker compose up --build -d` runs
-the entire stack, including the gateway, with one command. Useful when
+the entire stack, including the gateway, with one command (or only the pieces
+you name: the gateway no longer waits for, or needs, every app). Useful when
 you need the full, production-like topology (e.g. testing something that
 depends on the gateway's routing) rather than one service in isolation.
 

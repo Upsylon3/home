@@ -5,6 +5,65 @@ All notable changes to this project are documented here. Format follows
 [SemVer](https://semver.org/): one version number for the whole
 ecosystem (see root `package.json`), bumped on any meaningful release.
 
+## [1.13.0] — The gateway survives a missing app
+
+### Fixed
+- **One stopped app no longer takes the whole ecosystem down** (`docs/ROADMAP.md`
+  item 10). nginx looked up every app's container name once, at startup, and
+  refused to start ("host not found in upstream") if any was missing, which
+  contradicted the principle that Home still loads when an app is offline and
+  made "run only HomeCloud" impossible. Every `proxy_pass` in
+  `gateway/nginx.conf` now puts its address in a variable, so names are looked
+  up per request through Docker's DNS (`resolver 127.0.0.11 valid=10s`):
+  - the gateway starts with any or every app stopped;
+  - an app that starts later, or restarts with a new address, is found within
+    about 10 seconds, with no gateway restart;
+  - prefixed frontends (`/tasks/` and the rest) now strip their prefix with an
+    explicit `rewrite`, because the old trailing-slash `proxy_pass` doesn't work
+    with a variable; API paths are passed through unchanged, as before;
+  - an app the gateway can't reach answers `503` with `Retry-After`: a small
+    styled page naming the app for frontends, JSON for APIs. Only nginx's own
+    502/504 are rewritten. An app's own errors, such as HomeCore's `503`
+    "degraded" health check that HomeMonitor reads, pass through untouched;
+  - a 5 second connect timeout, so an unresponsive app shows the offline page
+    within seconds instead of after nginx's default 60.
+- **Home's own container** (`apps/home/nginx.conf`) had the same flaw in its
+  fallback proxy rules: it crash-looped whenever HomeCloud's backend or
+  HomeCore was missing, and the gateway then reported Home itself as offline.
+  Fixed the same way.
+- `docker-compose.yml`: the gateway's `depends_on` list (the workaround for the
+  crash loop) is gone. The gateway depends on nothing, so
+  `docker compose up gateway home homecore homecloud homecloud-backend`
+  (just the pieces you want) works.
+
+### Added
+- `gateway/test/gateway-smoke.sh`: runs the real `nginx.conf` in a real nginx
+  against fake apps and a fake DNS server that can make an app appear, crash
+  or vanish while the gateway runs (53 checks; needs only nginx, python3 and
+  curl, no Docker). Covers: starting with no apps; every route reaching the
+  right app with the right path, query string, Host and forwarding headers; POST
+  bodies; HomeMedia's streaming paths; app errors passing through; offline
+  pages and JSON; apps found after starting; a crashed app; a removed app; and
+  Home's own container. Tested by deliberately breaking the config (no prefix
+  strip, error interception, one static upstream, Home's old static proxy) and
+  confirming the script catches each, including the original "host not found"
+  failure. Also run as a new CI job (`gateway`).
+- CI's Docker job now also stops HomeTasks (frontend and backend), checks that
+  Home and the other apps still work and that the stopped app says it is
+  offline, starts it again and checks it is found WITHOUT a gateway restart.
+  Its smoke test also covers `/tasks/`, `/monitor/` and their health endpoints.
+
+### Not changed, on purpose
+- Every other app's own container still needs its own backend at startup (an
+  app is a pair), and still names `homecore` directly (Tier 0).
+
+### Verified, and not
+- Verified: the 53 checks, as root and as an unprivileged user (as CI runs),
+  on nginx 1.24; all 12 test suites still pass; the compose and CI YAML parse.
+- Not verified: a real Docker run (Docker's DNS at 127.0.0.11, the 1.31 image,
+  the new CI steps have never executed), and the `gateway` CI job on GitHub's
+  runners. The test's fake DNS stands in for Docker's.
+
 ## [1.12.0] — HomeMonitor: server, services and backups (admins only)
 
 ### Added

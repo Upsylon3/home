@@ -8,11 +8,13 @@
 # npm ci, npm test" by hand. Now each PR shows a green tick or a red cross
 # and you only have to read the ones that matter.
 #
-# Three independent jobs, so one failure never hides another:
+# Four independent jobs, so one failure never hides another:
 #   test    - all automated tests + a production build of every frontend
 #   audit   - `npm audit`, kept separate so a NEW advisory doesn't turn the
 #             tests red (a new advisory isn't the PR's fault, but you still
 #             want to see it)
+#   gateway - runs gateway/nginx.conf in a REAL nginx against fake apps that
+#             come and go (gateway/test/gateway-smoke.sh), no Docker needed
 #   docker  - builds every image and boots the whole stack, then pokes it
 #             through the gateway. This is the check docs/ROADMAP.md item 6
 #             says has never been done, and it needs no Docker on your PC.
@@ -61,13 +63,28 @@ jobs:
       # what catches a Dependabot PR that edited one but not the other.
       - run: npm ci
 
-      # Runs every workspace's own test suite (207 tests at time of writing).
+      # Runs every workspace's own test suite (362 tests at time of writing).
       - run: npm test
 
       # The tests don't compile the React code, so a broken import in a
       # .jsx file would pass them. Building each frontend catches that.
       # --if-present skips workspaces (the backends) with no build script.
       - run: npm run build --workspaces --if-present
+
+  # The gateway is the one container that publishes a port, and a mistake in
+  # its config is invisible to every other test. This runs the real file in a
+  # real nginx with fake apps that start and stop (see the script's header), so
+  # "one app is down" is checked on every push without needing Docker.
+  gateway:
+    name: Gateway config (real nginx)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install nginx
+        run: sudo apt-get update && sudo apt-get install -y nginx-light
+      - name: Test the gateway
+        run: bash gateway/test/gateway-smoke.sh
 
   audit:
     name: Dependency audit
@@ -103,7 +120,7 @@ jobs:
           sed -i "s|^JWT_SECRET=.*|JWT_SECRET=$(openssl rand -hex 32)|" homecore/.env
           sed -i "s|^HOMECORE_INTERNAL_SECRET=.*|HOMECORE_INTERNAL_SECRET=$(openssl rand -hex 32)|" homecore/.env
 
-      # Builds all 13 images. This is the first real test of the base-image
+      # Builds all 17 images. This is the first real test of the base-image
       # bumps (node:22-slim, nginx:1.30-alpine, alpine:3.22).
       - name: Build every image
         run: docker compose build
@@ -121,7 +138,7 @@ jobs:
           BASE=http://localhost:8080
 
           echo "--- every frontend is served"
-          for path in / /cloud/ /media/ /notes/ /vault/; do
+          for path in / /cloud/ /media/ /notes/ /vault/ /tasks/ /monitor/; do
             curl -fsS -o /dev/null "$BASE$path"
             echo "ok  $path"
           done
@@ -130,7 +147,8 @@ jobs:
           for path in /api/health \
                       /api/homecloud/health /api/homemedia/health \
                       /api/homenotes/health /api/homesync/health \
-                      /api/homevault/health; do
+                      /api/homevault/health \
+                      /api/hometasks/health /api/homemonitor/health; do
             curl -fsS -o /dev/null "$BASE$path"
             echo "ok  $path"
           done
@@ -155,6 +173,44 @@ jobs:
           # (gateway -> homecloud-backend -> homecore) is wired up.
           curl -fsS -o /dev/null -H "Authorization: Bearer $token" "$BASE/api/homecloud/files"
           echo "ok  cross-service auth"
+
+      # docs/ROADMAP.md item 10: one stopped app must not take the gateway, or
+      # any other app, down. HomeTasks is stopped on purpose (frontend and
+      # backend), the rest is checked, then it is started again and must be
+      # found WITHOUT restarting the gateway.
+      - name: One stopped app does not take the gateway down
+        run: |
+          set -eu
+          BASE=http://localhost:8080
+          status() { curl -s -o /dev/null -w '%{http_code}' "$1"; }
+
+          docker compose stop hometasks hometasks-backend
+
+          [ "$(status $BASE/)" = "200" ] || { echo "Home should still load"; exit 1; }
+          echo "ok  Home still loads"
+          [ "$(status $BASE/tasks/)" = "503" ] || { echo "/tasks/ should answer 503"; exit 1; }
+          curl -s "$BASE/tasks/" | grep -q "HomeTasks is offline" || { echo "no offline page"; exit 1; }
+          echo "ok  the stopped app's page says it is offline"
+          [ "$(status $BASE/api/hometasks/health)" = "503" ] || { echo "API should answer 503"; exit 1; }
+          curl -s "$BASE/api/hometasks/health" | grep -q "HomeTasks is offline" || { echo "no offline JSON"; exit 1; }
+          echo "ok  the stopped app's API says it is offline"
+          curl -fsS -o /dev/null "$BASE/api/homecloud/health"
+          curl -fsS -o /dev/null "$BASE/cloud/"
+          echo "ok  other apps are unaffected"
+
+          docker compose start hometasks-backend hometasks
+          # The app has to boot, and the gateway re-checks names every 10 s.
+          for i in $(seq 1 45); do
+            [ "$(status $BASE/api/hometasks/health)" = "200" ] && [ "$(status $BASE/tasks/)" = "200" ] && break
+            sleep 2
+          done
+          [ "$(status $BASE/api/hometasks/health)" = "200" ] || { echo "HomeTasks API never came back"; exit 1; }
+          [ "$(status $BASE/tasks/)" = "200" ] || { echo "HomeTasks page never came back"; exit 1; }
+          echo "ok  found again once it started"
+
+          restarts=$(docker inspect -f '{{.RestartCount}}' "$(docker compose ps -q gateway)")
+          [ "$restarts" = "0" ] || { echo "the gateway restarted $restarts times"; exit 1; }
+          echo "ok  the gateway never restarted"
 
       # Only runs if something above failed. Shows each container's output
       # so you can see WHY, instead of just "step failed".

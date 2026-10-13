@@ -113,13 +113,27 @@ $launch.Add_Click({
         # command line below. The old approach built one long string and
         # split it back apart on spaces, which breaks the moment $root
         # itself contains one.
+        # PowerShell gotcha, and the reason every 'KEY=' + value element
+        # below is wrapped in its own parentheses: in PowerShell the comma
+        # (which builds an array) binds TIGHTER than +. So
+        #     @( 'PORT=4700', 'DATA_DIR=' + $path, 'X=1' )
+        # is NOT three strings. It is read as
+        #     @( 'PORT=4700', 'DATA_DIR=' ) + @( $path, 'X=1' )
+        # i.e. 'DATA_DIR=' and the path become two separate entries. Each
+        # entry becomes its own  set "..."  line in the .bat file, so cmd.exe
+        # ran  set "DATA_DIR="  (clearing the variable) and then
+        #     set "C:\...\data"
+        # which prints "Environment variable C:\...\data not defined".
+        # The same thing silently emptied JWT_SECRET and
+        # HOMECORE_INTERNAL_SECRET. With the parentheses, 'DATA_DIR=' + $path
+        # is evaluated first and stays ONE string.
         $cmds = @()
         $cmds += @{ Title='HomeCore - :4000'; Dir='homecore'; Env=@(
             'PORT=4000',
-            'DATA_DIR=' + (Join-Path $root 'homecore\data'),
+            ('DATA_DIR=' + (Join-Path $root 'homecore\data')),
             'CORS_ORIGIN=http://localhost:5174',
-            'JWT_SECRET=' + $devSecret,
-            'HOMECORE_INTERNAL_SECRET=' + $devSecret,
+            ('JWT_SECRET=' + $devSecret),
+            ('HOMECORE_INTERNAL_SECRET=' + $devSecret),
             'HOMECLOUD_FRONTEND_URL=http://localhost:5173/',
             'HOMEMEDIA_FRONTEND_URL=http://localhost:5175/',
             'HOMENOTES_FRONTEND_URL=http://localhost:5176/',
@@ -129,10 +143,10 @@ $launch.Add_Click({
 
         $cmds += @{ Title='HomeCloud backend - :4500'; Dir='apps\homecloud-backend'; Env=@(
             'PORT=4500',
-            'DATA_DIR=' + (Join-Path $root 'apps\homecloud-backend\data'),
+            ('DATA_DIR=' + (Join-Path $root 'apps\homecloud-backend\data')),
             'CORS_ORIGIN=http://localhost:5174',
             'HOMECORE_INTERNAL_URL=http://localhost:4000',
-            'HOMECORE_INTERNAL_SECRET=' + $devSecret
+            ('HOMECORE_INTERNAL_SECRET=' + $devSecret)
         ); Run='npm run dev' }
 
         $cmds += @{ Title='Home dashboard - :5174'; Dir='apps\home'; Env=@(); Run='npm run dev' }
@@ -143,30 +157,30 @@ $launch.Add_Click({
         if ($checks['homemedia'].Checked) {
             $cmds += @{ Title='HomeMedia backend - :4200'; Dir='apps\homemedia-backend'; Env=@(
                 'PORT=4200',
-                'DATA_DIR=' + (Join-Path $root 'apps\homemedia-backend\data'),
+                ('DATA_DIR=' + (Join-Path $root 'apps\homemedia-backend\data')),
                 'HOMECORE_INTERNAL_URL=http://localhost:4000',
                 'HOMECLOUD_BACKEND_INTERNAL_URL=http://localhost:4500',
-                'HOMECORE_INTERNAL_SECRET=' + $devSecret
+                ('HOMECORE_INTERNAL_SECRET=' + $devSecret)
             ); Run='npm run dev' }
             $cmds += @{ Title='HomeMedia frontend - :5175'; Dir='apps\homemedia'; Env=@(); Run='npm run dev' }
         }
         if ($checks['homenotes'].Checked) {
             $cmds += @{ Title='HomeNotes backend - :4400'; Dir='apps\homenotes-backend'; Env=@(
                 'PORT=4400',
-                'DATA_DIR=' + (Join-Path $root 'apps\homenotes-backend\data'),
+                ('DATA_DIR=' + (Join-Path $root 'apps\homenotes-backend\data')),
                 'HOMECORE_INTERNAL_URL=http://localhost:4000',
                 'HOMECLOUD_BACKEND_INTERNAL_URL=http://localhost:4500',
-                'HOMECORE_INTERNAL_SECRET=' + $devSecret
+                ('HOMECORE_INTERNAL_SECRET=' + $devSecret)
             ); Run='npm run dev' }
             $cmds += @{ Title='HomeNotes frontend - :5176'; Dir='apps\homenotes'; Env=@(); Run='npm run dev' }
         }
         if ($checks['homesync'].Checked) {
             $cmds += @{ Title='HomeSync backend - :4300'; Dir='apps\homesync-backend'; Env=@(
                 'PORT=4300',
-                'DATA_DIR=' + (Join-Path $root 'apps\homesync-backend\data'),
+                ('DATA_DIR=' + (Join-Path $root 'apps\homesync-backend\data')),
                 'HOMECORE_INTERNAL_URL=http://localhost:4000',
                 'HOMECLOUD_BACKEND_INTERNAL_URL=http://localhost:4500',
-                'HOMECORE_INTERNAL_SECRET=' + $devSecret
+                ('HOMECORE_INTERNAL_SECRET=' + $devSecret)
             ); Run='npm run dev' }
         }
         if ($checks['homemonitor'].Checked) {
@@ -175,10 +189,10 @@ $launch.Add_Click({
             # sending notifications about apps you simply didn't start.
             $cmds += @{ Title='HomeMonitor backend - :4800'; Dir='apps\homemonitor-backend'; Env=@(
                 'PORT=4800',
-                'DATA_DIR=' + (Join-Path $root 'apps\homemonitor-backend\data'),
+                ('DATA_DIR=' + (Join-Path $root 'apps\homemonitor-backend\data')),
                 'HOMECORE_INTERNAL_URL=http://localhost:4000',
-                'HOMECORE_INTERNAL_SECRET=' + $devSecret,
-                'DISK_PATHS=data=' + $root,
+                ('HOMECORE_INTERNAL_SECRET=' + $devSecret),
+                ('DISK_PATHS=data=' + $root),
                 'ALERTS_ENABLED=false',
                 'SERVICE_URLS=homecloud=http://localhost:4500,homemedia=http://localhost:4200,homesync=http://localhost:4300,homenotes=http://localhost:4400,hometasks=http://localhost:4700,homevault=http://localhost:4600,homemonitor=http://localhost:4800'
             ); Run='npm run dev' }
@@ -189,7 +203,7 @@ $launch.Add_Click({
             # are small rows in HomeTasks' own database (no files).
             $cmds += @{ Title='HomeTasks backend - :4700'; Dir='apps\hometasks-backend'; Env=@(
                 'PORT=4700',
-                'DATA_DIR=' + (Join-Path $root 'apps\hometasks-backend\data'),
+                ('DATA_DIR=' + (Join-Path $root 'apps\hometasks-backend\data')),
                 'HOMECORE_INTERNAL_URL=http://localhost:4000'
             ); Run='npm run dev' }
             $cmds += @{ Title='HomeTasks frontend - :5178'; Dir='apps\hometasks'; Env=@(); Run='npm run dev' }
@@ -199,7 +213,7 @@ $launch.Add_Click({
             # backend with zero dependency on apps/homecloud-backend.
             $cmds += @{ Title='HomeVault backend - :4600'; Dir='apps\homevault-backend'; Env=@(
                 'PORT=4600',
-                'DATA_DIR=' + (Join-Path $root 'apps\homevault-backend\data'),
+                ('DATA_DIR=' + (Join-Path $root 'apps\homevault-backend\data')),
                 'HOMECORE_INTERNAL_URL=http://localhost:4000'
             ); Run='npm run dev' }
             $cmds += @{ Title='HomeVault frontend - :5177'; Dir='apps\homevault'; Env=@(); Run='npm run dev' }

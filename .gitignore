@@ -16,12 +16,15 @@ apps/homesync-backend/.env
 apps/homevault-backend/.env
 
 # Per-service SQLite data directories — local runtime state, not source.
+# A wildcard instead of one line per app: this list was written by hand and
+# silently fell behind when HomeTasks and HomeMonitor were added, which let
+# their .db / .db-wal / .db-shm files get committed by accident. `apps/*/data/`
+# covers every current and future app without anyone having to remember.
 homecore/data/
-apps/homecloud-backend/data/
-apps/homemedia-backend/data/
-apps/homenotes-backend/data/
-apps/homesync-backend/data/
-apps/homevault-backend/data/
+apps/*/data/
+
+# Temp .bat files that scripts/dev-home-ui.ps1 regenerates on every launch.
+.dev-launch/
 
 # Nightly backup archives land here on the host (see services/backup).
 # Keep the folder in git (so a fresh checkout has somewhere for the

@@ -138,7 +138,16 @@ $launch.Add_Click({
             'HOMEMEDIA_FRONTEND_URL=http://localhost:5175/',
             'HOMENOTES_FRONTEND_URL=http://localhost:5176/',
             'HOMESYNC_INFO_URL=http://localhost:4300/',
-            'HOMEVAULT_FRONTEND_URL=http://localhost:5177/'
+            'HOMEVAULT_FRONTEND_URL=http://localhost:5177/',
+            # HomeCore stores each app's address in its registry, and the Home
+            # dashboard's tiles link to it. Without these two lines HomeCore falls
+            # back to its production defaults ('/tasks' and '/monitor'), which only
+            # exist behind the gateway. On the dev server (:5174) those paths
+            # don't exist, so Vite answers with the Home page itself: the tile
+            # appears to 'send you back to Home'. Every other app already has its
+            # line here; HomeTasks and HomeMonitor were added later and missed.
+            'HOMETASKS_FRONTEND_URL=http://localhost:5178/',
+            'HOMEMONITOR_FRONTEND_URL=http://localhost:5179/'
         ); Run='npm run dev' }
 
         $cmds += @{ Title='HomeCloud backend - :4500'; Dir='apps\homecloud-backend'; Env=@(

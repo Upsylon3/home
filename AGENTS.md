@@ -72,6 +72,7 @@ The Node runtime baseline is now **Node 26 LTS** across the 15 Node-based Docker
 - Preserve ownership checks, session boundaries, data isolation, HomeVault's client-side encryption model and the security decisions in `docs/SECURITY.md`.
 - Prefer additive, reversible database migrations. Test migrations against disposable databases. Never run migrations against a production or personal data directory.
 - Do not add dependencies speculatively. Check maintenance, Node compatibility, bundle/runtime impact and existing project utilities first.
+- npm 11 blocks dependency lifecycle scripts unless explicitly approved. Review each native/install script before adding an exact-version entry to the root `package.json` `allowScripts` map. Never approve every dependency or use `--dangerously-allow-all-scripts` to make an install pass; keep a Windows `npm ci` smoke test for native packages.
 - Keep existing APIs and data compatible unless the task specifically requires a versioned migration. When changing an API, update its callers, tests and `docs/API.md`.
 - New services require isolated tests against a real upstream service where the architecture calls for one; do not replace meaningful integration coverage with mocks.
 - Frontend work must honor `HOME_ARTISTIC_DIRECTION.md` and `docs/DESIGN_SYSTEM.md`, remain accessible, responsive and usable on mobile, and reuse existing components/tokens rather than inventing a parallel visual system.

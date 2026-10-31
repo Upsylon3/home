@@ -16,7 +16,11 @@ npm install
 
 This is an npm workspace — one install at the repo root covers every
 Node-based service and frontend (`homecore`, everything under `apps/`
-except `homesync-android`, and `packages/homecore-client`).
+except `homesync-android`, and `packages/homecore-client`). The root
+`package.json` also contains a version-pinned npm 11 `allowScripts` approval
+for `better-sqlite3@12.11.1`, the native SQLite binding used by the backends.
+Only that reviewed install script is allowed; do not approve all dependency
+lifecycle scripts to silence npm warnings.
 
 ## Running services locally, without Docker
 

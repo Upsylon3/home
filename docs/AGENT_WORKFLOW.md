@@ -99,6 +99,8 @@ For UI changes, verify responsive layouts, keyboard/focus behavior, accessible l
 
 Do not silently introduce network calls, telemetry, third-party services, analytics or external data processors. Do not silently change data retention, sharing defaults, security boundaries or user consent.
 
+For npm 11 lifecycle scripts, inspect the exact package/version and its install command before approving it in the root `package.json` `allowScripts` map. Prefer version-pinned approvals and the smallest allowlist possible; never use `npm approve-scripts --all` or `--dangerously-allow-all-scripts` as a blanket workaround. Re-run `npm ci` and a platform-appropriate native smoke test after changing this policy.
+
 ## 5. Verify proportionately, then run the full gate
 
 During development, run the narrowest relevant test suite after each meaningful change. Before opening a PR, run the full checks the environment supports.

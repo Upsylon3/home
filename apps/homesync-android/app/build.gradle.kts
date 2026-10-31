@@ -120,7 +120,7 @@ dependencies {
 
     // DataStore — session token and backup settings (Wi-Fi only, charging
     // only, which categories are enabled)
-    implementation("androidx.datastore:datastore-preferences:1.1.1")
+    implementation("androidx.datastore:datastore-preferences:1.3.0")
 
     // Retrofit/OkHttp — talking to HomeCloud's auth API and HomeSync's own API
     implementation("com.squareup.retrofit2:retrofit:2.12.0")

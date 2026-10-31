@@ -4,7 +4,6 @@
 
 If you are an AI coding agent, start with [AGENTS.md](AGENTS.md) and follow [docs/AGENT_WORKFLOW.md](docs/AGENT_WORKFLOW.md). The project is maintained autonomously by coding agents: do not interrupt the owner for routine decisions; verify your work, open a focused PR and merge it when all checks pass and repository rules allow it. These instructions do not authorize production access or changes to repository security settings.
 
-
 If a change would contradict [HOME_MASTER_SPECIFICATION.md](HOME_MASTER_SPECIFICATION.md)
 or [HOME_ARTISTIC_DIRECTION.md](HOME_ARTISTIC_DIRECTION.md), that's a
 deliberate decision to make and record (in the PR description and, if

@@ -16,8 +16,8 @@
 #   gateway - runs gateway/nginx.conf in a REAL nginx against fake apps that
 #             come and go (gateway/test/gateway-smoke.sh), no Docker needed
 #   docker  - builds every image and boots the whole stack, then pokes it
-#             through the gateway. This is the check docs/ROADMAP.md item 6
-#             says has never been done, and it needs no Docker on your PC.
+#             through the gateway. It verifies the complete topology and app
+#             recovery described in docs/ROADMAP.md item 6.
 #
 # The Android build lives in its own file (android.yml) because it is slow
 # and only matters when apps/homesync-android changes.
@@ -151,7 +151,7 @@ jobs:
           sed -i "s|^HOMECORE_INTERNAL_SECRET=.*|HOMECORE_INTERNAL_SECRET=$(openssl rand -hex 32)|" homecore/.env
 
       # Builds all 17 images. This is the first real test of the base-image
-      # bumps (node:26-slim, nginx:1.30-alpine, alpine:3.22).
+      # bumps (node:26-slim, nginx:1.31-alpine, alpine:3.24).
       - name: Build every image
         run: docker compose build
 

@@ -129,7 +129,7 @@ updates:
       # onto different Node versions while CI and docs/DEVELOPMENT.md still
       # use the previous baseline. Move all 15 Dockerfiles, every workflow
       # node-version and the docs in ONE deliberate change (roadmap item 9).
-      # Minor/patch updates of the pinned major still arrive normally.
+      # Minor/patch updates within the pinned Node major still arrive normally.
       - dependency-name: "node"
         update-types: ["version-update:semver-major"]
 

@@ -7,10 +7,13 @@ agents must follow [AGENTS.md](../AGENTS.md) and
 PRs before selecting work, keep external-validation items open until
 verified, and do not treat the brainstorm as committed scope.
 
-**Next maintenance priority:** evaluate and, if native dependency
-compatibility is confirmed, migrate the Node.js runtime from 22 to 26 LTS
-(backlog item 9). Node 26 entered LTS on 28 October 2026 and is supported
-through April 2029; see the [official Node.js release table](https://nodejs.org/en/about/previous-releases).
+**Runtime maintenance status:** the coordinated Node 22 → Node 26 LTS
+migration is complete (backlog item 9). The next agents should re-check the
+remaining feasible backlog against the current source and open PRs, finish
+the bounded Android adaptive-icon work where assets and build tooling allow,
+and then continue the decided HomeBridge build order. Hardware/device and
+independent security-review items remain explicitly open until the required
+real-world validation is available.
 
 **Build order, decided:** HomeVault → HomeTasks → HomeBridge →
 HomeMonitor → HomeAI. HomeVault first because it's security-critical and

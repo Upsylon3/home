@@ -114,7 +114,7 @@ first (see below).
 
 **Settled, not open questions anymore** (kept here so the reasoning
 isn't lost): TLS approach (private overlay, not public certs —
-`SECURITY.md`), HomeVault's origin (shared, with CSP — `SECURITY.md`),
+`SECURITY.md`), HomeVault's origin (shared, with CSP — `SECURITY.md`; the CSP shipped in 1.14.0),
 HomeBridge's background-trigger auth (scoped service credential —
 `ARCHITECTURE.md` §4), permission enforcement (deferred until HomeVault
 needs it — `SECURITY.md`), account deletion (disable-only, permanently —

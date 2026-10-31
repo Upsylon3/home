@@ -100,6 +100,7 @@ bad()  { FAIL=$((FAIL + 1)); echo "  FAIL  $1"; echo "        status=$STATUS bod
 expect_status() { [ "$STATUS" = "$2" ] && ok "$1" || bad "$1 (wanted status $2)"; }
 expect_body()   { case "$BODY" in *"$2"*) ok "$1" ;; *) bad "$1 (body should contain: $2)" ;; esac; }
 expect_header() { grep -qi "$2" "$HEADERS" && ok "$1" || bad "$1 (header should match: $2)"; }
+expect_no_header() { grep -qi "$2" "$HEADERS" && bad "$1 (header should NOT match: $2)" || ok "$1"; }
 
 start_nginx() { nginx -c "$WORK/nginx.conf" 2>"$WORK/start.log" || { echo "nginx failed to start:"; cat "$WORK/start.log"; return 1; }; }
 
@@ -249,6 +250,89 @@ expect_body   "  ...with the path unchanged (prefix kept)" '"path": "/api/homecl
 req GET /api/auth/me
 expect_body   "HomeCore is found once it starts, path unchanged" '"path": "/api/auth/me"'
 TARGET=$GW
+
+echo "== 11. The Content-Security-Policy (docs/SECURITY.md, \"Shared-origin XSS\")"
+# The policy only matters if it is really sent, on every kind of answer, with
+# the right strictness. These checks read the header a browser would receive.
+app_up homevault; app_up homenotes; app_up homevault-backend
+sleep 2.5
+
+# Pull the policy text out of the last response's headers (curl leaves a CR at
+# the end of each header line; tr removes it).
+policy() { grep -i '^content-security-policy:' "$HEADERS" | tr -d '\r'; }
+
+req GET /tasks/
+expect_header "a frontend page carries a policy" "^content-security-policy: default-src 'self'"
+expect_header "  ...scripts only from this origin" "script-src 'self' 'sha256-"
+expect_header "  ...fetch/XHR only to this origin (blocks sending the token away)" "connect-src 'self'"
+expect_header "  ...no <object>/<embed> plugins" "object-src 'none'"
+expect_header "  ...cannot be framed by another site" "frame-ancestors 'none'"
+expect_no_header "  ...no unsafe-inline anywhere" "unsafe-inline"
+expect_no_header "  ...no eval, and no wasm compiling for an ordinary app" "unsafe-eval"
+# (HomeTasks' backend was crashed on purpose in section 7, so use HomeMedia's, which is up.)
+req GET /api/homemedia/health
+expect_header "an API answer carries the policy too" "^content-security-policy: default-src 'self'"
+req GET /api/homemedia/missing
+expect_status "an app's own 404 is still passed through" 404
+expect_header "  ...and still carries the policy (header is sent with 'always')" "^content-security-policy:"
+
+echo "   -- only HomeVault may compile WebAssembly (Argon2id)"
+req GET /vault/
+expect_header "/vault/ may compile WebAssembly" "script-src 'self' 'sha256-[^;]*'wasm-unsafe-eval'"
+expect_no_header "  ...but still gets no eval() and no inline code" "[^-]unsafe-eval\|unsafe-inline"
+req GET /vault/unlock
+expect_header "a HomeVault deep link may compile WebAssembly too" "'wasm-unsafe-eval'"
+for path in /tasks/ /notes/ / /vaultish; do
+  req GET "$path"
+  expect_no_header "$path may NOT compile WebAssembly" "wasm-unsafe-eval"
+done
+req GET /api/homevault/health
+expect_no_header "HomeVault's API answer needs no WebAssembly either" "wasm-unsafe-eval"
+
+echo "   -- the offline answers carry their own, smaller policies"
+# (nginx drops the server-level header in a location that sets its own
+# add_header, so a missing line here would mean the offline page went unprotected.)
+req GET /cloud/
+expect_status "an app that is down answers 503" 503
+expect_header "its offline page has a policy" "^content-security-policy: default-src 'none'; style-src 'unsafe-inline'"
+expect_no_header "  ...that allows no scripts at all" "script-src"
+# (still crashed from section 7, so the gateway answers for it)
+req GET /api/hometasks/health
+expect_status "a backend that is down answers 503" 503
+expect_header "the JSON offline answer allows nothing" "^content-security-policy: default-src 'none'; frame-ancestors 'none'"
+
+echo "   -- the hash really is the hash of what every app ships"
+# If someone edits the theme script at the top of an index.html, its hash
+# changes and the browser would refuse to run it: a blank page in every app.
+# This recomputes the hash from the real files, so that mistake fails HERE,
+# with the new value printed, not in a user's browser.
+req GET /tasks/
+SERVED_POLICY="$(policy)"
+python3 - "$HERE/../../apps" <<'HASHES' > "$WORK/hashes"
+import base64, glob, hashlib, os, re, sys
+for page in sorted(glob.glob(os.path.join(sys.argv[1], "*", "index.html"))):
+    app = page.split(os.sep)[-2]
+    html = open(page, encoding="utf-8").read()
+    # Inline scripts = <script> tags WITHOUT a src attribute.
+    inline = re.findall(r"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", html, re.S)
+    if inline:
+        digest = "sha256-" + base64.b64encode(hashlib.sha256(inline[0].encode("utf-8")).digest()).decode()
+    else:
+        digest = "none"
+    style = len(re.findall(r"<style|\sstyle=", html))
+    print(app, len(inline), digest, style)
+HASHES
+n_apps=0
+while read -r app n_inline digest n_style; do
+  n_apps=$((n_apps + 1))
+  [ "$n_inline" = "1" ] && ok "$app has exactly one inline script" || bad "$app has $n_inline inline scripts (the policy allows exactly one)"
+  case "$SERVED_POLICY" in
+    *"'$digest'"*) ok "  ...and the policy allows its hash" ;;
+    *) bad "  ...but its hash is NOT in the policy; the right value is '$digest'" ;;
+  esac
+  [ "$n_style" = "0" ] && ok "  ...and no inline <style> or style= (style-src would block it)" || bad "$app has inline styles that style-src 'self' would block"
+done < "$WORK/hashes"
+[ "$n_apps" -ge 7 ] && ok "found all $n_apps app pages to check" || bad "expected at least 7 app pages, found $n_apps"
 
 echo
 echo "RESULT: $PASS passed, $FAIL failed"

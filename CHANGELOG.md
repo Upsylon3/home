@@ -5,6 +5,82 @@ All notable changes to this project are documented here. Format follows
 [SemVer](https://semver.org/): one version number for the whole
 ecosystem (see root `package.json`), bumped on any meaningful release.
 
+## [1.14.0] — One Content-Security-Policy for the whole origin
+
+### Added
+- **A Content-Security-Policy, sent by the gateway on every answer**
+  (`docs/SECURITY.md`, "Shared-origin XSS"). Every app shares one origin and one
+  session token in `localStorage`, so a script injected into any one page could
+  read the token that opens all of them. The mitigation the shared-origin
+  decision rested on, a strict CSP project-wide, had never been built:
+  `helmet`'s own CSP is switched off in all eight backends, on the grounds that
+  it is a gateway decision. Now `gateway/nginx.conf` sends one policy:
+  - scripts only from the app's own origin, plus exactly one inline script,
+    allowed by its sha256: the theme setter at the top of every `index.html`
+    (the same text in all seven);
+  - styles, fonts, images, media, workers, manifests and `fetch`/XHR only from
+    the same origin (images and media also from `blob:`, which HomeMedia's
+    `AuthImage` needs for pictures fetched with the login header);
+  - no `<object>`, no frames, no `<base>` changes, forms submit only to this
+    origin, and nobody can put Home in an `<iframe>` (`frame-ancestors 'none'`).
+
+  The effect: an injected `<script>`, an `onerror=` attribute, `eval()`, or a
+  `fetch` carrying the token to another server is refused by the browser even
+  when sanitizing missed it. Every directive is explained in the comment above
+  the header in `nginx.conf`.
+- **HomeVault alone may compile WebAssembly** (`'wasm-unsafe-eval'`, picked by a
+  `map` on the `/vault/` address), because Argon2id runs as WebAssembly
+  (`hash-wasm`). That is not `unsafe-eval`, and no other app gets it.
+- The two "app is offline" answers carry their own smaller policies, since nginx
+  drops the server-level header in any location that sets its own `add_header`:
+  the HTML page allows its one inline `<style>` and nothing else, and the JSON
+  answer allows nothing.
+- `gateway/test/gateway-smoke.sh`: 53 to 98 checks (new section 11). It covers
+  the policy on frontends, API answers, an app's own 404 and both offline
+  answers; WebAssembly allowed on `/vault/` and a HomeVault deep link, and not
+  on `/tasks/`, `/notes/`, `/` or `/vaultish`; and the hash, which it recomputes
+  from every app's real `index.html`, so editing the theme script without
+  updating the policy fails here (printing the new value) and not as a blank
+  page in a browser. Tested by breaking the config five ways (a wrong hash,
+  WebAssembly allowed everywhere, `always` dropped, the offline page's own
+  policy removed, `connect-src` opened up) and confirming each is caught.
+
+### Changed
+- `docs/SECURITY.md`, `docs/ARCHITECTURE.md` (section 5) and `docs/ROADMAP.md`
+  now say the CSP exists and where it lives.
+- Anything that loads from another website no longer works, by design. The
+  built apps load nothing from elsewhere (checked in every build's output), so
+  nothing of theirs changes, but a picture from another site inside a HomeNotes
+  note will not show.
+- Editing the theme script in an `index.html` now means updating the hash in
+  `nginx.conf` too. The smoke test tells you the new value.
+
+### Not changed, on purpose
+- The backends keep `helmet({ contentSecurityPolicy: false })`: one policy in
+  one place, so two headers can never disagree.
+- No `'unsafe-inline'` for scripts or styles on app pages. The offline page is
+  the one exception, for a style block and nothing else.
+- No `Content-Security-Policy-Report-Only` stage. The apps were checked in a
+  browser first (below), and there is nowhere to send reports on a home server.
+
+### Verified, and not
+- Verified: the 98 checks, as root, on nginx 1.24; all 12 test suites pass
+  (362 tests); and a real browser run. Headless Chromium 141 went through the
+  real `nginx.conf` in front of real HomeCore and HomeVault backends and all
+  seven built apps (36 checks): every app loads with zero policy violations and
+  its theme script runs; HomeVault creates a vault, with Argon2id running as
+  WebAssembly, with zero violations; and on an attacked HomeTasks page the
+  browser refused an injected `<script>`, an `<img onerror>`, a `fetch` and an
+  `<img>` request carrying the token to another host, `eval()`,
+  `new Function()`, WebAssembly, an `<iframe>` and a `<base href>`, while
+  Home inside another site's `<iframe>` stayed empty.
+- Not verified: screens that need the other backends, which were not running
+  (HomeMedia's lightbox with a real photo and video, a HomeNotes note with real
+  content, HomeCloud's service worker working offline); a real Docker run; and
+  the Caddy front door, which passes the header through unchanged but was not
+  started. The browser script is not part of CI (CI has no browser); the smoke
+  test is.
+
 ## [1.13.0] — The gateway survives a missing app
 
 ### Fixed

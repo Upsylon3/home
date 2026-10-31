@@ -209,7 +209,27 @@ are looked up per request through Docker's DNS (`resolver 127.0.0.11`):
   works without HomeCore anyway (Tier 0).
 - `gateway/test/gateway-smoke.sh` runs the real config in a real nginx against
   fake apps that start, crash and disappear, and does the same for Home's own
-  container (53 checks; also run in CI).
+  container (98 checks; also run in CI).
+
+**One Content-Security-Policy, sent here (1.14.0).** Every app shares this one
+origin and one session token, so a script injected into any page could read the
+token that opens all of them. The gateway therefore sends one policy on every
+answer (`SECURITY.md`, "Shared-origin XSS"):
+- Scripts only from the app's own origin, plus exactly one inline script, allowed
+  by its sha256: the theme setter at the top of every `index.html`. Styles,
+  fonts, images, media, workers and `fetch` are same-origin too (images and
+  media also from `blob:`, which HomeMedia's `AuthImage` needs).
+- No `<object>`, no frames, no `<base>` changes, forms submit only here, and
+  nobody can put Home in an `<iframe>`.
+- Only `/vault/` also gets `'wasm-unsafe-eval'`, chosen by a `map` in
+  `nginx.conf`, because HomeVault's Argon2id runs as WebAssembly.
+- It lives in the gateway, not in each app, because it is a decision about the
+  whole origin; every backend's own `helmet` CSP is switched off for that reason.
+- Editing the theme script changes its hash, and every app would then show a
+  blank page. The smoke test recomputes the hash from the real files and fails
+  first, printing the new value.
+- The two "offline" answers carry their own smaller policies, because nginx drops
+  the server-level header in a location that sets its own `add_header`.
 
 Every Tier 1 service uses `expose` (internal-only) instead of `ports` in
 `docker-compose.yml` — only the gateway publishes a host port. **TLS is

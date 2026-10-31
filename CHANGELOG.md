@@ -5,13 +5,6 @@ All notable changes to this project are documented here. Format follows
 [SemVer](https://semver.org/): one version number for the whole
 ecosystem (see root `package.json`), bumped on any meaningful release.
 
-# Changelog
-
-All notable changes to this project are documented here. Format follows
-[Keep a Changelog](https://keepachangelog.com/), versioning follows
-[SemVer](https://semver.org/): one version number for the whole
-ecosystem (see root `package.json`), bumped on any meaningful release.
-
 ## [Unreleased]
 
 ### Changed

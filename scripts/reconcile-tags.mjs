@@ -93,7 +93,9 @@ if (pkg.version !== VERSION) {
 if (git(["status", "--porcelain"])) fail("the checkout is not clean");
 const head = git(["rev-parse", "HEAD"]);
 const remoteMain = git(["ls-remote", "origin", "refs/heads/main"]).split(/\s+/)[0];
-if (!remoteMain || remoteMain !== head) fail("checkout is not the exact current origin/main commit");
+if (!remoteMain || !isAncestor(head, remoteMain)) {
+  fail("the CI-verified commit is no longer reachable from origin/main");
+}
 requireVersionConsistency();
 
 // Preflight every known ref before mutating any of them. An unexpected ref

@@ -19,10 +19,13 @@ const LEGACY = {
 };
 
 function git(args, options = {}) {
-  return execFileSync("git", args, {
+  const output = execFileSync("git", args, {
     encoding: "utf8",
     stdio: options.quiet ? ["ignore", "ignore", "ignore"] : ["ignore", "pipe", "pipe"],
-  }).trim();
+  });
+  // execFileSync returns null when stdout is ignored; quiet status-only Git
+  // commands still succeed or throw, and do not produce a string to trim.
+  return (output ?? "").trim();
 }
 function gitExists(args) {
   try { git(args, { quiet: true }); return true; } catch { return false; }
@@ -70,6 +73,15 @@ function isAncestor(older, newer) {
     throw error;
   }
 }
+function runSelfTest() {
+  const head = git(["rev-parse", "HEAD"]);
+  if (!isAncestor(head, head)) fail("self-test: a commit must be an ancestor of itself");
+  // v0.8.1 is a known, preserved orphan; this exercises merge-base's
+  // expected exit status 1 without changing any ref.
+  if (isAncestor(ORPHAN.target, head)) fail("self-test: the archived v0.8.1 target unexpectedly became an ancestor of HEAD");
+  console.log("Git ancestry checks passed (true and false cases).");
+}
+
 function requireVersionConsistency() {
   const pkg = JSON.parse(readFileSync("package.json", "utf8"));
   const lock = JSON.parse(readFileSync("package-lock.json", "utf8"));
@@ -81,6 +93,10 @@ function requireVersionConsistency() {
 }
 
 const pkg = JSON.parse(readFileSync("package.json", "utf8"));
+if (process.argv[2] === "--self-test") {
+  runSelfTest();
+  process.exit(0);
+}
 if (process.argv[2] === "--verify-only") {
   requireVersionConsistency();
   console.log("Release baseline, package lock and changelog metadata are consistent.");

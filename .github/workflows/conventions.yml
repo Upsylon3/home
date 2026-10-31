@@ -37,6 +37,15 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: node scripts/check-commit-message.mjs --range "$BASE_SHA..$HEAD_SHA"
 
+      - name: Validate the current release metadata
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          node scripts/validate-release.mjs "v$VERSION" . > /dev/null
+          if node scripts/validate-release.mjs v999.999.999 . > /dev/null 2>&1; then
+            echo "The release validator accepted an intentionally mismatched version." >&2
+            exit 1
+          fi
+
       - name: Validate commits pushed to main
         if: github.event_name == 'push'
         env:

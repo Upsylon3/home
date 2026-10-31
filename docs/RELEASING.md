@@ -16,7 +16,7 @@ release. The version authority and increment rules are in
    into a new version heading matching the root version:
    `## [X.Y.Z] — Short release summary`.
 5. Commit the release preparation with a Conventional Commit subject,
-   for example `chore(release): prepare v1.15.0`.
+   for example `chore(release): prepare v1.7.0`.
 6. Run the checks locally, or confirm the equivalent CI checks on the
    resulting `main` commit:
 
@@ -29,7 +29,7 @@ release. The version authority and increment rules are in
 
 The release workflow repeats the install, test, frontend-build and
 gateway-smoke checks against the tagged source. Before publishing, it
-also requires the latest full `CI` run for that exact commit on `main
+also requires the latest full `CI` run for that exact commit on `main`
 to have succeeded; this includes the Docker build/stack smoke test.
 
 ## 2. Create the annotated tag
@@ -40,11 +40,11 @@ Start from a clean checkout of the exact validated `main` commit:
 git switch main
 git pull --ff-only origin main
 git status --short
-git tag -a v1.15.0 -m "Release v1.15.0"
-git push origin v1.15.0
+git tag -a v1.7.0 -m "Release v1.7.0"
+git push origin v1.7.0
 ```
 
-Replace `1.15.0` with the version being released. Do not continue if
+Replace `1.7.0` with the version being released. Do not continue if
 `git status --short` shows uncommitted changes. Do not force-push,
 delete or move a published release tag.
 
@@ -60,11 +60,21 @@ GitHub Release using that changelog section as its release notes.
 
 If the workflow failed before creating the release, use Actions →
 Release → Run workflow on `main`, and provide the existing annotated
-tag (for example `v1.15.0`). This reruns validation and checks without
+tag (for example `v1.7.0`). This reruns validation and checks without
 moving the tag. If a release already exists, review it rather than
 creating a duplicate.
 
-## 4. After release
+## 4. Legacy tag reconciliation
+
+The first normalized baseline (`v1.6.2`) is handled by the
+`Historical tag reconciliation` workflow after the full `CI` workflow
+succeeds on `main`. It removes only the known unreachable `v0.8.1`
+tag to the annotated `archive/orphaned-v0.8.1` ref (preserving the
+commit), converts `v1.1.5` to an annotated tag without changing its target, creates the
+annotated `v1.6.2` tag and publishes that GitHub Release.
+It does not fabricate intermediate historical tags or rewrite commits.
+
+## 5. After release
 
 - Confirm the tag and GitHub Release appear on the repository's Releases
   page.
@@ -73,10 +83,11 @@ creating a duplicate.
 - Start subsequent unreleased work under `[Unreleased]` in
   `CHANGELOG.md`.
 
-## Historical releases
+## Historical release policy
 
-The existing history and tags are preserved as they were created.
-Do not invent backdated tags or GitHub Releases when the exact release
-commit cannot be established from the source history. Any historical
-backfill must be mapped to its original release commit and checked
-against the root version and changelog before publication.
+The existing commit graph and all valid historical tag targets are
+preserved. The one-time reconciliation archives the single unmerged
+release ref rather than discarding its commit, and only corrects the
+annotation of `v1.1.5`. Do not invent backdated release tags or GitHub
+Releases when the exact release commit cannot be established from the
+source history.

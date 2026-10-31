@@ -1,0 +1,70 @@
+name: Historical tag reconciliation
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: historical-tag-reconciliation
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    name: Normalize legacy tags and publish v1.6.2
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Confirm the successful CI commit remains reachable from main
+        env:
+          TARGET_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          git fetch origin +refs/heads/main:refs/remotes/origin/main
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          git merge-base --is-ancestor "$TARGET_SHA" refs/remotes/origin/main
+          RUNS="$(gh run list --workflow conventions.yml --branch main --commit "$TARGET_SHA" --json status,conclusion --limit 20)"
+          node -e 'const runs=JSON.parse(process.argv[1]); const latest=runs[0]; if (!latest || latest.status !== "completed" || latest.conclusion !== "success") { console.error("The latest Repository conventions check for this main commit must pass before changing tags."); process.exit(1); }' "$RUNS"
+
+      - name: Configure the release tagger
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Reconcile only the audited legacy refs
+        run: node scripts/reconcile-tags.mjs
+
+      - name: Publish the normalized GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VERSION="$(node -p "require('./package.json').version")"
+          if [ "$VERSION" != "1.6.2" ]; then
+            echo "The one-time baseline has advanced; no historical release to publish."
+            exit 0
+          fi
+          node scripts/validate-release.mjs v1.6.2 . > "$RUNNER_TEMP/release-notes.md"
+          if gh release view v1.6.2 >/dev/null 2>&1; then
+            echo "GitHub Release v1.6.2 already exists; leaving it unchanged."
+          else
+            gh release create v1.6.2 \
+              --verify-tag \
+              --title "HOME v1.6.2" \
+              --notes-file "$RUNNER_TEMP/release-notes.md"
+          fi

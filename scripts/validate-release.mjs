@@ -8,7 +8,7 @@ if (!tag) {
   process.exit(2);
 }
 
-const match = /^v(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$/.exec(tag);
+const match = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.exec(tag);
 if (!match) {
   console.error(`Invalid stable release tag "${tag}". Expected vMAJOR.MINOR.PATCH.`);
   process.exit(1);

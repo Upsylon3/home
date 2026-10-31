@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 concurrency:
   group: release-${{ github.event.inputs.tag || github.ref_name }}
@@ -37,6 +38,8 @@ jobs:
           cache: npm
 
       - name: Validate annotated tag, main ancestry and release metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           test "$(git cat-file -t "refs/tags/$RELEASE_TAG")" = "tag" || {
@@ -48,8 +51,10 @@ jobs:
             echo "The release tag must point to a commit reachable from main." >&2
             exit 1
           }
-          git show origin/main:scripts/validate-release.mjs > "$RUNNER_TEMP/validate-release.mjs"
-          node "$RUNNER_TEMP/validate-release.mjs" "$RELEASE_TAG" . > "$RUNNER_TEMP/release-notes.md"
+          node scripts/validate-release.mjs "$RELEASE_TAG" . > "$RUNNER_TEMP/release-notes.md"
+          RELEASE_SHA="$(git rev-parse "$RELEASE_TAG^{commit}")"
+          CI_RUNS="$(gh run list --workflow ci.yml --branch main --commit "$RELEASE_SHA" --json status,conclusion --limit 20)"
+          node -e 'const runs=JSON.parse(process.argv[1]); if (!runs.some(run => run.status === "completed" && run.conclusion === "success")) { console.error("A successful full CI run (including Docker) for this exact main commit is required before release."); process.exit(1); }' "$CI_RUNS"
 
       - name: Install exact locked dependencies
         run: npm ci

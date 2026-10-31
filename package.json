@@ -24,6 +24,10 @@
     "apps/homevault-backend"
   ],
 
+  "allowScripts": {
+    "better-sqlite3@12.11.1": true
+  },
+
   "//version-policy": "One version number for the whole ecosystem, bumped on every meaningful release across any service — simplest thing that works for a project this size. Individual package.json files under apps/ and packages/ have their own version fields for npm/Docker tooling's sake, but this root version is the one that matters for release notes (see CHANGELOG.md).",
 
   "scripts": {

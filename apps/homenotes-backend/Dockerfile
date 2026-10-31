@@ -6,7 +6,7 @@
 # build that could only see apps/homenotes-backend/ would find neither.
 
 # ---- Stage 1: install dependencies (needs compilers, so it's the heavy stage)
-FROM node:22-slim AS deps
+FROM node:26-slim AS deps
 
 # better-sqlite3 is a native module; these build tools are a
 # safety net in case a prebuilt binary isn't available for your platform.
@@ -27,7 +27,7 @@ COPY . .
 RUN npm ci --omit=dev --workspace=apps/homenotes-backend
 
 # ---- Stage 2: the image that actually runs (no compilers, much smaller)
-FROM node:22-slim
+FROM node:26-slim
 
 WORKDIR /app/apps/homenotes-backend
 

@@ -72,7 +72,7 @@ For a roadmap item, verify it is still open in the current code and has no activ
 
 ### Current roadmap interpretation
 
-- The Node 22 → Node 26 LTS migration is the recommended first maintenance task. Node 26 entered LTS on 28 October 2026; do not bump versions until `better-sqlite3`, npm workspace installs, Docker images, workflows and local development have been checked together.
+- The Node 22 → Node 26 LTS migration is completed. Node 26 is now the runtime baseline across all 15 Node-based Dockerfiles and the CI/release/reconciliation workflows. The eight backend workspaces use `better-sqlite3` 12.11.1; its Node 26 ABI prebuilds are checked by a dedicated Windows `npm ci` CI job. Treat future Node major changes as coordinated migrations, not isolated Dependabot bumps.
 - Completing the Android adaptive-icon work is a bounded design-system follow-up; follow the source artwork and design-system rules rather than inventing a new icon style.
 - Dependabot updates are recurring maintenance, not a one-time "first PRs" task. Review majors individually and verify native modules, build tooling, Docker images and platform compatibility.
 - The HomeCore route-nesting inconsistency is non-urgent. Do not rename routes as a cosmetic cleanup: preserve existing clients and compatibility, document a migration/deprecation plan, and prove both old and new routes behave intentionally.
@@ -98,6 +98,8 @@ For database changes, use the existing migration pattern. Make migrations additi
 For UI changes, verify responsive layouts, keyboard/focus behavior, accessible labels/contrast, loading/empty/error states and touch targets. Use existing components/tokens and keep the HOME visual identity consistent across applications.
 
 Do not silently introduce network calls, telemetry, third-party services, analytics or external data processors. Do not silently change data retention, sharing defaults, security boundaries or user consent.
+
+For npm 11 lifecycle scripts, inspect the exact package/version and its install command before approving it in the root `package.json` `allowScripts` map. Prefer version-pinned approvals and the smallest allowlist possible; never use `npm approve-scripts --all` or `--dangerously-allow-all-scripts` as a blanket workaround. Re-run `npm ci` and a platform-appropriate native smoke test after changing this policy.
 
 ## 5. Verify proportionately, then run the full gate
 

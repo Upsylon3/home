@@ -11,6 +11,9 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 - Correct the SemVer timeline: consolidate the Atari visual-refresh phases into one release and normalize subsequent product milestones.
 - Reconcile the legacy Git refs without rewriting the public commit graph.
 - Establish a documented versioning and release process, with automated commit-convention checks.
+- Move all 15 Node-based Dockerfiles and Node-dependent workflows to Node 26 LTS; align local development with the same runtime.
+- Upgrade `better-sqlite3` from 11.10.0 to 12.11.1 across all eight backend workspaces. Keep its prebuild-install behavior and verify the committed-lockfile install on Windows with the Node 26 prebuilt binary.
+- Pin npm 11's install-script approval to `better-sqlite3@12.11.1` only, so the native prebuild runs without allowing arbitrary dependency lifecycle scripts.
 
 ## [1.6.2] — One Content-Security-Policy for the whole origin
 

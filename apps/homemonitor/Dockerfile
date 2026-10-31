@@ -4,7 +4,7 @@
 # could not see.
 
 # ---- Stage 1: compile the React app into plain HTML/CSS/JS
-FROM node:22-slim AS build
+FROM node:26-slim AS build
 WORKDIR /app
 
 # The whole repo (minus .dockerignore): npm needs every workspace's

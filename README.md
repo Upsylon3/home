@@ -117,10 +117,13 @@ what each layer covers.
 
 ## Documentation
 
+- [AGENTS.md](AGENTS.md) — mandatory instructions for every coding agent.
+- [docs/AGENT_WORKFLOW.md](docs/AGENT_WORKFLOW.md) — autonomous task selection, implementation, verification and merge procedure.
 - [HOME_MASTER_SPECIFICATION.md](HOME_MASTER_SPECIFICATION.md) —
-  the original product/architecture/API/security/roadmap brief. Takes
-  priority over everything below where they disagree; implementation
-  can flex, this can't without a deliberate decision to change it.
+  the governing product and architecture intent. It began as a
+  pre-development brief; it is not an inventory of implemented features.
+  Changes that depart from its lasting principles must be deliberate and
+  documented.
 - [HOME_ARTISTIC_DIRECTION.md](HOME_ARTISTIC_DIRECTION.md) — the
   original visual/UX brief `docs/DESIGN_SYSTEM.md` is condensed from.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — how the apps fit

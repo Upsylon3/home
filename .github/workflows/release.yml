@@ -1,0 +1,80 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing annotated vX.Y.Z tag to validate and publish
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Validate and publish release
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Validate annotated tag, main ancestry and release metadata
+        run: |
+          set -euo pipefail
+          test "$(git cat-file -t "refs/tags/$RELEASE_TAG")" = "tag" || {
+            echo "Release tags must be annotated Git tags." >&2
+            exit 1
+          }
+          git fetch origin main
+          git merge-base --is-ancestor "$RELEASE_TAG^{commit}" origin/main || {
+            echo "The release tag must point to a commit reachable from main." >&2
+            exit 1
+          }
+          git show origin/main:scripts/validate-release.mjs > "$RUNNER_TEMP/validate-release.mjs"
+          node "$RUNNER_TEMP/validate-release.mjs" "$RELEASE_TAG" . > "$RUNNER_TEMP/release-notes.md"
+
+      - name: Install exact locked dependencies
+        run: npm ci
+
+      - name: Run all workspace tests
+        run: npm test
+
+      - name: Build every frontend
+        run: npm run build --workspaces --if-present
+
+      - name: Install nginx for the gateway smoke test
+        run: sudo apt-get update && sudo apt-get install -y nginx-light
+
+      - name: Test the gateway configuration
+        run: bash gateway/test/gateway-smoke.sh
+
+      - name: Create the GitHub Release from CHANGELOG.md
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "GitHub Release $RELEASE_TAG already exists; leaving it unchanged."
+            exit 0
+          fi
+          gh release create "$RELEASE_TAG" \
+            --verify-tag \
+            --title "HOME $RELEASE_TAG" \
+            --notes-file "$RUNNER_TEMP/release-notes.md"

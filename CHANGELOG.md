@@ -5,6 +5,11 @@ All notable changes to this project are documented here. Format follows
 [SemVer](https://semver.org/): one version number for the whole
 ecosystem (see root `package.json`), bumped on any meaningful release.
 
+## [Unreleased]
+
+### Changed
+- Establish a documented versioning and release process, with automated commit-convention checks.
+
 ## [1.14.0] — One Content-Security-Policy for the whole origin
 
 ### Added

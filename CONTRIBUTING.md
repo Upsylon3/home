@@ -49,9 +49,71 @@ dependencies, running services locally, and running the test suite.
 
 ## Commit messages and branches
 
-Prefix commits with what kind of change it is: `feat:`, `fix:`, `docs:`,
-`chore:`, `refactor:`, `test:`. Branch names follow the same idea:
-`feat/short-description`, `fix/short-description`.
+Use **Conventional Commits** for commit subjects and pull-request titles:
+
+```text
+<type>(<scope>): <imperative summary>
+```
+
+The scope is optional. Use one of these types:
+
+- `feat`: new user-facing capability (normally a MINOR release).
+- `fix`: bug or security fix (normally a PATCH release).
+- `docs`: documentation only.
+- `refactor`: internal restructuring without behavior change.
+- `test`: tests only.
+- `ci`: CI or workflow changes.
+- `build`: build, packaging or toolchain changes.
+- `perf`: performance improvement.
+- `chore`: maintenance, including dependency updates.
+- `revert`: revert an earlier change.
+
+Examples:
+
+```text
+feat(homecloud): add expiring shared links
+fix(homecore): reject revoked sessions
+docs: clarify the release procedure
+chore(deps): update the root workspace lockfile
+test(homesync): cover duplicate uploads
+ci: validate release tags
+feat(homevault)!: rotate the vault envelope
+```
+
+Keep the type and scope lowercase, start the summary with a lowercase
+letter or number, use imperative wording, and omit the final period.
+Aim for a short subject (about 72 characters); longer automated
+dependency-update subjects are permitted. Explain the reason and relevant
+trade-offs in the commit body. Use a `BREAKING CHANGE: ...` footer or
+the `!` marker for incompatible changes.
+
+Branch names use the matching lowercase prefix:
+`feat/`, `fix/`, `docs/`, `chore/`, `refactor/`, `test/`,
+`ci/`, `build/` or `perf/`, followed by a kebab-case description.
+Dependabot's `dependabot/*` branches are exempt.
+
+The repository checks pull-request titles, branch names and non-merge
+commit subjects in GitHub Actions. A local commit-msg hook is included;
+enable it once per clone with:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Open pull requests against `main`; do not push routine work directly to
+it. Use **squash merging**, with the pull-request title as the squash
+commit title, so the resulting main-branch commit follows the same
+convention. In GitHub repository settings, disable merge-commit and
+rebase merging if you want this to be guaranteed for every contributor.
+
+Protect `main` in Settings → Branches: require a pull request and require
+the `Repository conventions / Commit, PR and branch conventions` check
+plus all four `CI` checks (tests/builds, dependency audit, gateway and
+Docker). The Android check is conditional and should be required only
+when GitHub's rules can correctly account for skipped runs.
+
+See [VERSIONING.md](VERSIONING.md) and [docs/RELEASING.md](docs/RELEASING.md)
+for release rules and the exact tagging procedure.
 
 ## Security issues
 

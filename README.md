@@ -136,6 +136,8 @@ what each layer covers.
   for anyone designing a new screen
 - [docs/ROADMAP.md](docs/ROADMAP.md) — what's next
 - [CONTRIBUTING.md](CONTRIBUTING.md) — how to propose a change
+- [VERSIONING.md](VERSIONING.md) — the single ecosystem version, SemVer rules and version authority.
+- [docs/RELEASING.md](docs/RELEASING.md) — the release checklist, annotated tags and GitHub Releases.
 - [CHANGELOG.md](CHANGELOG.md) — what changed, by version
 
 ## License

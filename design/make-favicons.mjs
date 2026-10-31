@@ -6,12 +6,16 @@
 // The generated files are committed (design/favicons/<app>/), so a normal
 // checkout does not need this script or `sharp` to build anything.
 //
-// WHAT IT MAKES, per app:
+// WHAT IT MAKES, per web app:
 //   favicon.svg          the icon in amber, transparent background (crisp at
 //                        any size; modern browsers prefer it)
 //   favicon.png          64x64 fallback for browsers without SVG favicons
 //   apple-touch-icon.png 180x180, shown when saved to an iPhone home screen
 //   icon-192.png / icon-512.png   Android / installed-web-app icons
+//
+// It also generates HomeSync's native Android adaptive-icon foreground from
+// design/icons/homesync.svg. The adaptive background stays a separate Android
+// drawable so launcher masks can shape the icon correctly.
 // The PNGs sit on the warm-black page color with rounded corners, because a
 // thin amber outline floating on a transparent square disappears on many
 // home screens.
@@ -79,13 +83,13 @@ const androidPaths = homeSyncPaths.map((attributes, index) => {
     throw new Error(`HomeSync SVG path ${index} no longer inherits the shared currentColor stroke`);
   }
 
-  return `    <path
-        android:pathData="${attributes.d}"
-        android:strokeColor="${AMBER}"
-        android:strokeWidth="${style["stroke-width"]}"
-        android:strokeLineCap="${style["stroke-linecap"] || "round"}"
-        android:strokeLineJoin="${style["stroke-linejoin"] || "round"}"
-        android:fillColor="#00000000" />`;
+  return `        <path
+            android:pathData="${attributes.d}"
+            android:strokeColor="${AMBER}"
+            android:strokeWidth="${style["stroke-width"]}"
+            android:strokeLineCap="${style["stroke-linecap"] || "round"}"
+            android:strokeLineJoin="${style["stroke-linejoin"] || "round"}"
+            android:fillColor="#00000000" />`;
 }).join("\n");
 
 const androidForeground = `<?xml version="1.0" encoding="utf-8"?>

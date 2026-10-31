@@ -2,13 +2,20 @@
 
 ## Product, architecture, UX, API, security, development and roadmap brief
 
-**Document purpose:** This is a pre-development master brief for an AI
-coding agent or software team. It defines the intended ecosystem around
-**HomeCloud**, the shared **HomeCore** platform, and the unified
-**Home** dashboard/application.
+**Document purpose:** The enduring product, architecture, UX, API and
+security intent for the ecosystem around **HomeCloud**, the shared
+**HomeCore** platform, and the unified **Home** dashboard/application.
+It originated as a pre-development brief and remains the governing
+product contract, to be read alongside the current-state documentation
+and implementation.
 
-**Status:** Architecture / product specification --- no implementation
-should be assumed from this document alone.
+**Status:** Governing product-intent specification, originally written
+before implementation. HOME has since been substantially implemented.
+This document defines the lasting intended product and architecture
+constraints; it is **not** an inventory of features that currently exist.
+Use the source code, tests, migrations and current-state documents under
+`docs/` to establish what is implemented. Any deliberate departure from
+this specification must be documented rather than introduced silently.
 
 **Naming decision:** The ecosystem's unified dashboard is called
 **Home**, not HomeHub.

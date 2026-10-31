@@ -1,7 +1,16 @@
 # Roadmap
 
-Two parts: concrete near-term work, and a longer-term cross-module ideas
-brainstorm — explicitly speculative, none of it committed.
+Two parts: a concrete near-term backlog, and a longer-term cross-module
+ideas brainstorm — explicitly speculative, none of it committed. Coding
+agents must follow [AGENTS.md](../AGENTS.md) and
+[docs/AGENT_WORKFLOW.md](AGENT_WORKFLOW.md): check current code and open
+PRs before selecting work, keep external-validation items open until
+verified, and do not treat the brainstorm as committed scope.
+
+**Next maintenance priority:** evaluate and, if native dependency
+compatibility is confirmed, migrate the Node.js runtime from 22 to 26 LTS
+(backlog item 9). Node 26 entered LTS on 28 October 2026 and is supported
+through April 2029; see the [official Node.js release table](https://nodejs.org/en/about/previous-releases).
 
 **Build order, decided:** HomeVault → HomeTasks → HomeBridge →
 HomeMonitor → HomeAI. HomeVault first because it's security-critical and
@@ -37,7 +46,7 @@ first (see below).
    vault-reset action for HomeCore (today only the account holder can
    delete their own vault).
 4. **Icon system finishing touches**: the Android adaptive-icon split
-   (favicon exports for every web app are done, since 1.8.0) — see
+   (favicon exports for every web app were completed as part of the consolidated 1.2.0 visual redesign) — see
    `DESIGN_SYSTEM.md`. Typeface and accent color are now final, not
    open questions.
 5. **Fix the `/api/auth`, `/api/admin`, `/api/activity` route-nesting
@@ -62,23 +71,28 @@ first (see below).
    upgrade can't land on the one container that publishes a host port, and
    Dependabot now tracks it like the rest. Kept here so the numbering
    other files point at stays valid.
-8. **Triage Dependabot's first PRs** (`.github/dependabot.yml`, added in
-   1.1.4). Majors are deliberately left out of the weekly group so each
-   one gets read on its own. With `ci.yml` in place, each PR shows a
-   green or red result, so start with the green ones. `better-sqlite3` is the one to be careful
-   with: a bump to 13 was tried and reverted in 1.1.4 (see its
-   changelog entry for why).
+8. **Triage Dependabot updates continuously** (`.github/dependabot.yml`).
+   Majors are deliberately left out of the weekly group so each one is
+   reviewed on its own. Use CI as a gate, not as a substitute for reading
+   the changelog and compatibility notes. Be especially careful with
+   native modules such as `better-sqlite3`: a major bump was tried and
+   reverted during the 1.1.4 work (see the changelog).
 
-9. **Move to a newer Node, once, on purpose.** Node 22 is in maintenance
-   support until 2027-04-30, so nothing is urgent. Node 24 is the current
-   Active LTS (supported to 2028-04-30) and Node 26 is due to enter LTS
-   on 2026-10-28 (supported to 2029-04-30). When picking a target, change
-   all 11 Dockerfiles, `node-version` in both places in
-   `.github/workflows/ci.yml`, and the prerequisites in `DEVELOPMENT.md`
-   together, and check first that `better-sqlite3`'s prebuilt binaries
-   cover that Node version (the `slim` images have no compiler, so a
-   missing prebuilt fails the Docker build). Dependabot is told to leave
-   Node majors alone for exactly this reason.
+9. **Migrate from Node 22 to Node 26 LTS, after a compatibility audit.**
+   Node 26 entered LTS on 2026-10-28 and is supported through 2029-04-30;
+   Node 22 remains supported through 2027-04-30. This is now the preferred
+   target, not a future possibility. Before editing versions, verify that
+   the resolved `better-sqlite3` release has compatible prebuilt binaries
+   for the target Node ABI and every supported CI/Docker platform (the
+   `slim` images have no compiler, so a missing prebuild breaks image
+   builds). Then update all 11 Dockerfiles, every Node version declaration
+   in all affected GitHub workflows (including CI and release validation),
+   and the prerequisites in `docs/DEVELOPMENT.md` together. Keep local,
+   CI and container runtimes aligned. Run `npm ci`, the complete workspace
+   tests/builds, gateway smoke test and full Docker stack CI. If a required
+   native prebuild is unavailable, do not partially upgrade; record the
+   evidence and revisit when support lands. See the [official Node.js
+   release table](https://nodejs.org/en/about/previous-releases).
 
 10. **Done: the gateway starts when an app is missing.** It used to name
    every container directly in `proxy_pass`, which nginx resolves once at
@@ -93,8 +107,9 @@ first (see below).
    container got the same fix, since it used to crash-loop whenever
    HomeCloud's backend was missing. Kept here,
    rather than deleted, so the numbering that other files point at stays
-   valid. Not verified: a real Docker run of the new setup (CI's Docker job
-   now stops and restarts an app to check it, but has not run yet).
+   valid. Verified by the full Docker Compose CI job, which stops and
+   restarts an app and confirms recovery without restarting the gateway.
+   This still does not replace a real browser or physical-device test.
 
 11. **Migrate HomeSync Android to AGP 9 (when ready).** The app is
    deliberately held on Android Gradle Plugin 8.13 because AGP 9 bundles
@@ -114,7 +129,7 @@ first (see below).
 
 **Settled, not open questions anymore** (kept here so the reasoning
 isn't lost): TLS approach (private overlay, not public certs —
-`SECURITY.md`), HomeVault's origin (shared, with CSP — `SECURITY.md`; the CSP shipped in 1.14.0),
+`SECURITY.md`), HomeVault's origin (shared, with CSP — `SECURITY.md`; the CSP shipped in 1.6.2),
 HomeBridge's background-trigger auth (scoped service credential —
 `ARCHITECTURE.md` §4), permission enforcement (deferred until HomeVault
 needs it — `SECURITY.md`), account deletion (disable-only, permanently —

@@ -59,10 +59,10 @@ try {
     if (!args[1] || !args[1].includes("..")) usage();
     const output = execFileSync(
       "git",
-      ["log", "--no-merges", "--format=%H%x1f%s%x00", args[1]],
+      ["log", "--no-merges", "--format=%H%x1f%s", args[1]],
       { encoding: "utf8" }
     );
-    const entries = output.split("\0").filter(Boolean);
+    const entries = output.split(/\r?\n/).filter(Boolean);
     for (const entry of entries) {
       const [sha, subject] = entry.split("\x1f", 2);
       if (!validateMessage(subject ?? "", sha?.slice(0, 8) ?? "commit")) ok = false;

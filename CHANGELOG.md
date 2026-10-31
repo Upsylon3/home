@@ -1,16 +1,11 @@
-# Changelog
-
-All notable changes to this project are documented here. Format follows
-[Keep a Changelog](https://keepachangelog.com/), versioning follows
-[SemVer](https://semver.org/): one version number for the whole
-ecosystem (see root `package.json`), bumped on any meaningful release.
-
 ## [Unreleased]
 
 ### Changed
+- Correct the SemVer timeline: consolidate the Atari visual-refresh phases into one release and normalize subsequent product milestones.
+- Reconcile the legacy Git refs without rewriting the public commit graph.
 - Establish a documented versioning and release process, with automated commit-convention checks.
 
-## [1.14.0] — One Content-Security-Policy for the whole origin
+## [1.6.2] — One Content-Security-Policy for the whole origin
 
 ### Added
 - **A Content-Security-Policy, sent by the gateway on every answer**
@@ -86,7 +81,7 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
   started. The browser script is not part of CI (CI has no browser); the smoke
   test is.
 
-## [1.13.0] — The gateway survives a missing app
+## [1.6.1] — The gateway survives a missing app
 
 ### Fixed
 - **One stopped app no longer takes the whole ecosystem down** (`docs/ROADMAP.md`
@@ -145,7 +140,7 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
   the new CI steps have never executed), and the `gateway` CI job on GitHub's
   runners. The test's fake DNS stands in for Docker's.
 
-## [1.12.0] — HomeMonitor: server, services and backups (admins only)
+## [1.6.0] — HomeMonitor: server, services and backups (admins only)
 
 ### Added
 - **`apps/homemonitor-backend`** (port 4800, `/api/homemonitor`) and
@@ -189,7 +184,7 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
   (`homecore/src/internalAuth.js`), which compares the secret in constant time.
   Behavior is unchanged: a missing or wrong secret is still `401`.
 - `docs/ROADMAP.md`: the favicon line no longer says exports are missing
-  (done in 1.8.0). `README.md` and `docs/DEVELOPMENT.md` test counts corrected
+  (done in 1.2.0). `README.md` and `docs/DEVELOPMENT.md` test counts corrected
   to what each suite actually reports (homemedia-backend 28, homenotes 16 were
   stale), 362 across 12 suites. `docs/DESIGN_SYSTEM.md` has a HomeMonitor
   row. `docs/SECURITY.md` has a section on the internal routes and HomeMonitor.
@@ -218,7 +213,7 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
   reader, and how Home's dashboard bell displays these notifications (Home
   was not run).
 
-## [1.11.0] — HomeTasks: repeating tasks
+## [1.5.0] — HomeTasks: repeating tasks
 
 ### Added
 - **Repeating tasks**: a task can repeat daily, every weekday (Mon to Fri),
@@ -243,7 +238,7 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 - **Database migration**: `db.js` now adds the three new columns
   (`repeat_rule`, `repeat_anchor`, `spawned_task_id`) to an existing `tasks`
   table on startup. Existing tasks simply become normal ones. Covered by a test
-  that builds a real 1.10.0-format database first.
+  that builds a real 1.4.0-format database first.
 - Tests: hometasks-backend 33 to 54 (recurrence rules, API behavior,
   migration), hometasks web app 5 to 7.
 
@@ -258,10 +253,10 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 - Verified: all suites pass, the build is clean, and the full repeat flow was
   driven in headless Chromium against real services (undated task made to
   repeat, tick, next copy and notice, un-tick removes the copy, the 409 refusal).
-- Not verified: Docker (unchanged from 1.10.0, still never booted), the
+- Not verified: Docker (unchanged from 1.4.0, still never booted), the
   Windows launcher, a real phone or screen reader.
 
-## [1.10.0] — HomeTasks: tasks and projects, backend and web app
+## [1.4.0] — HomeTasks: tasks and projects, backend and web app
 
 ### Added
 - **`apps/hometasks-backend`** (port 4700, route prefix `/api/hometasks`):
@@ -295,7 +290,7 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 
 ### Changed
 - `docs/DESIGN_SYSTEM.md` reconciled with the code: favicon exports recorded
-  as done (1.8.0), `design/session.js` listed, the HomeMedia 1.9.0 screens
+  as done (1.2.0), `design/session.js` listed, the HomeMedia 1.3.0 screens
   covered, a checklist for adding a new app, and the woodgrain rule
   reworded from "one surface, Home's header" to "at most one per screen":
   Home's dashboard and HomeTasks' Today page.
@@ -318,7 +313,7 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
   `docker compose up --build -d` once. The Windows launcher change was not
   run (no PowerShell here). Not checked: a screen reader, a real phone.
 
-## [1.9.0] — HomeMedia rework: upload, music, GIFs, a viewer that loads; one login; an optional public address
+## [1.3.0] — HomeMedia: uploads, music, GIFs and streaming
 
 ### Added
 - **Uploading from HomeMedia.** An Upload button (and drag-and-drop
@@ -402,38 +397,227 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
   thumbnails can't decode them), and browsers differ in which video and
   audio formats they will play.
 
-## [1.8.0] — Atari refresh: Android palette, contrast fixes, real favicons
+## [1.2.0] — Atari-inspired visual redesign across HOME
 
-Closes out the remaining items from the refresh.
+The warm 1970s-inspired redesign was one cohesive product-wide design
+release, implemented in successive engineering phases. The former
+1.2.0–1.2.0 labels described those phases, not seven independent
+product releases. They are consolidated here; the original commits and
+their authorship remain unchanged.
 
-### Added
-- **HomeSync Android** wears the same palette (`Color.kt`, the XML color
-  resources, the launcher icon). Constants only: **not compiled here (no
-  Android SDK)**, so it needs one build on a real machine.
-- **Favicons and home-screen icons for every app**, generated from the icon
-  set by `design/make-favicons.mjs` into `design/favicons/` and copied by
-  `design/sync-assets.sh`. Four apps previously had no tab icon at all and
-  HomeCloud had old placeholders. Links use `%BASE_URL%` so each app
-  resolves its own icon behind the gateway (`/media/favicon.svg`, not the
-  root's).
-- `.error-banner.is-ok` / `.is-warn` variants in HomeCloud.
+### Foundation: shared tokens, palette and self-hosted fonts
 
-### Fixed
-- **Contrast.** Light-theme amber and teal measured 4.3 to 4.4:1 on the
-  raised surface. Now `#834909` and `#235f5f`: at least 4.8:1 on all three
-  light surfaces.
-- **Android light-theme buttons** used near-black text on deep amber, only
-  3.2:1 (2.8:1 after a straight palette swap). Now cream, 6.2:1.
-- HomeCloud's teal and amber banners had their colors typed inline in the
-  JSX, so they could not follow the theme. They now use the new classes.
-  (The white behind the 2FA QR code stays literal on purpose, with a
-  comment: QR scanners need plain white.)
+#### Added
+- **`design/tokens.css`** is now the single source of truth for colors,
+  corner radii, fonts, the four stripe colors and a woodgrain surface,
+  plus the `.stripe-band` and `.woodgrain` helpers. `design/sync-assets.sh`
+  copies it to `apps/<name>/src/styles/tokens.css` in every frontend, the
+  same pattern the icons already use. Edit the `design/` copy only.
+- **Display font** (Fredoka, bundled) for page and card titles. Labels,
+  brand marks and numbers stay in IBM Plex Mono.
+- New tokens: `--on-accent`, `--red-soft`, `--radius-sm/md/lg`,
+  `--font-display`, `--stripe-1..4`, `--wood-base`, `--wood-grain`.
 
-## [1.7.1] — Docs: the Atari direction is written down
+#### Changed
+- **New palette**, same token names so no component needed rewriting:
+  warm brown-black dark theme ("console"), ivory light theme ("manual"),
+  more orange accent, rust red, 70s teal. Contrast was checked against
+  WCAG AA; a few light-theme accents on the *raised* surface land just
+  under 4.5:1 and are worth a look in the polish pass.
+- Corners are chunkier (`--radius-sm` 6px, `--radius-md` 10px) and status
+  pills are now fully round.
+- 53 hardcoded `rgba(...)` tints and 16 hardcoded hex colors across the
+  five stylesheets now read the tokens (via `color-mix()`), so a future
+  palette change no longer leaves stale glows behind.
+- Browser and PWA chrome colors (`theme-color`, manifests) and the
+  HomeSync info page follow the new page color.
+
+#### Removed
+- Every Google Fonts `<link>` tag. Fonts are bundled from `@fontsource`
+  packages, so pages render correctly with no internet and never contact
+  a third party.
+
+### Shared components and accessible controls
+
+Buttons, card surfaces, checkboxes and the storage gauge now come from one
+shared file, `design/components.css`, instead of five near-identical
+copies, and they carry the retro look: buttons are raised "console keys"
+that press down, cards have a chunky outline and a faint bevel, and the
+storage gauge is a striped, segmented LED bar.
+
+#### Added
+- **`design/components.css`**, synced into every frontend next to
+  `tokens.css` by `design/sync-assets.sh` and imported *after* each app's
+  `index.css` so the shared rule wins a tie.
+- New tokens `--border-width` (2px) and `--press` (3px, how far a button
+  sticks up; set it to `0px` to flatten every button at once).
+- Custom checkboxes (the browser default clashed with the palette),
+  including the "some selected" dash state.
+- `prefers-reduced-motion` support for every new transition.
+
+#### Changed
+- **Storage gauge** is now four signature stripes cut into LED segments.
+  Past 90% it turns red *and* says "almost full" in words, so the warning
+  never depends on color alone. The bar also shows the percentage and is
+  exposed to screen readers as a `meter` with its current value.
+- Button, card and gauge rules were removed from the five `index.css`
+  files (HomeCloud keeps one line making its buttons full-width).
+
+### Home dashboard hero and app-card controls
+
+The dashboard now opens like the front panel of a 1970s console: a
+woodgrain frame around a dark label plate, the greeting in the display
+font, a one-line system status, and the four signature stripes along the
+bottom edge. Each app card also gets a small rocker switch.
+
+#### Added
+- **Hero header** on the Home dashboard (`.hero`, `.hero-plate`,
+  `.hero-stripes`). Woodgrain appears on this one surface only, by design.
+- **System status line** under the greeting, built from the health report
+  the page already loads: "All systems normal", "Needs attention:
+  storage", or "Checking systems…". It is always words *and* a lamp, never
+  color alone, and is announced to screen readers (`role="status"`).
+- **Rocker switch** on every app card: the knob slides right and lights
+  amber when the app is enabled. Decorative (`aria-hidden`); the card's
+  footer still says "Launch" or "Disabled" in words. Disabled apps are
+  dimmed.
+- A neutral "pending" lamp style for states that are not known yet.
+
+#### Fixed
+- Buttons that are really links (the "Launch" button) were underlined and
+  could not play the press animation, because links are inline boxes and
+  `transform` does not apply to those. Shared `.btn` is now
+  `inline-block` with no underline.
+
+### Sign-in screens and icon refinement
+
+Every visit starts at a sign-in screen, so these got the stripes first.
+The icon set also got heavier strokes so it matches the chunky look and
+stays readable at small sizes.
+
+#### Added
+- **Stripe band on every sign-in card** (Home, HomeCloud, HomeMedia,
+  HomeNotes, HomeVault). It is added in `design/components.css` with a
+  `::before` box, so no page markup changed. It is scoped to
+  `.auth-screen .auth-card` on purpose: HomeCloud's Settings page reuses
+  `.auth-card` for plain section cards, and those must not get stripes.
+- A card can tone the band down with `--auth-band-height` and
+  `--auth-band-bg`. **HomeVault** does, using a thin 4px brass line instead
+  of the arcade stripes, because the safe should look restrained.
+
+#### Changed
+- **Icon strokes are heavier**: frame 2 to 3, glyph 1.8 to 2.4 (both the
+  `design/icons/*.svg` files and the inline `AppIcon.jsx`). Compared at
+  48, 28 and 16px: details stay open (HomeMedia's lens, HomeTasks'
+  checkbox), and small sidebar icons are noticeably clearer. Going
+  heavier (3.4 / 3) made the HomeMedia lens fill in, so it stopped there.
+  The wordmark was left alone.
+- Sign-in card corners use `--radius-md` and the card gets the same raised
+  edge as buttons.
+
+### Retro-intensity setting and accessibility
+
+A dial for how strongly the 1970s styling shows, so the retro look is
+something you choose rather than something you get. It is independent of
+light/dark: any combination works.
+
+#### Added
+- **Retro intensity** in every app's Settings page (Home, HomeCloud,
+  HomeMedia, HomeNotes, HomeVault), shared across all of them through one
+  `localStorage` key (`home-retro`), the same way the theme is.
+  - **Off**: warm colors and fonts only. No stripes, woodgrain, raised
+    buttons, rocker switches or LED segments in the storage gauge.
+  - **Subtle** (default): the complete base styling described in this unified visual-refresh release.
+  - **Full**: deeper buttons (`--press` 4px), taller stripe bands (20px),
+    a stronger status lamp glow, and a CRT scanline + vignette layer on the
+    dashboard hero.
+- `design/retro.js` (storage + apply) and `design/RetroControl.jsx` (the
+  three-choice control), synced into every app by `design/sync-assets.sh`.
+- `.segmented` control styles in `design/components.css`.
+- `--band-height` token (stripe band thickness).
+- A pre-paint script line in every `index.html`, so the page never flashes
+  the wrong level on load.
+
+#### Accessibility
+- The control is a proper radio group: `role="radiogroup"`, `aria-checked`,
+  a roving `tabindex`, and arrow keys that move and wrap, like native radio
+  buttons.
+- The scanline layer is static (not motion) and kept faint; it never
+  intercepts clicks (`pointer-events: none`).
+
+### Removing glow and refining status feedback
+
+The 1970s Atari look is physical (wood, plastic, painted stripes), not
+neon. Glow is a later, synthwave idea, and `HOME_ARTISTIC_DIRECTION.md`
+already says no glowing borders. The earlier retro-intensity styling contradicted that, so this
+removes every glow, including ones that predate the refresh.
+
+#### Removed
+- The blurred glow around status lamps in Home, HomeMedia, HomeNotes and
+  HomeVault. Lamps are now solid dots with a hard-edged underside shadow,
+  like a molded plastic dome.
+- The glow on the rocker switch's lit knob (introduced during the dashboard-hero phase).
+- The extra-strong lamp glow that the retro-intensity setting added.
+- HomeCloud's pulsing activity-LED glow. It still flashes on uploads,
+  downloads and deletes, now as a flat cream-to-teal color flash in two
+  hard steps, and it holds still for people who ask for reduced motion.
+
+#### Changed
+- **Full** is described as "CRT scanlines" (it is: thin dark lines and
+  darkened edges, no light spilling out of anything).
+
+### Per-application visual treatments
+
+Each app keeps its "room" from the design direction, now with the retro
+touches that suit it. No glow anywhere; everything is hard-edged.
+
+#### HomeCloud (the cartridge shelf)
+- **Folders are cartridges**: a striped label strip along the top, a lift
+  on hover. `FolderGrid.jsx` was rewritten to use CSS classes instead of
+  inline `style={{...}}` objects, which could not react to the theme,
+  hover or the retro intensity setting.
+- File table: a label-plate header, and a hard amber bar on the left of the
+  row under the pointer or any row whose checkbox is ticked (a tinted row
+  background for ticked rows too).
+- Dropzone: heavier dashes that turn solid while a file is dragged over.
+
+#### HomeMedia (the gallery)
+- Heavier tile borders; albums look like a small stack of prints (hard
+  offset shadow); the lightbox photo gets a cream print frame
+  (`--print-frame`, new token, same in both themes because the lightbox
+  backdrop is always dark).
+- **Full** retro intensity adds CRT scanlines and darkened edges over the
+  lightbox (a see-through layer that never intercepts clicks).
+
+#### HomeNotes (the study)
+- The editor is ruled paper: each rule sits under a line of text and the
+  paper scrolls with the writing. Note cards get the same amber left edge.
+
+#### HomeVault (the safe)
+- Restrained on purpose: only a quiet brass edge on the vault row under
+  the pointer.
+
+#### All apps
+- The current page in the sidebar gets a solid amber bar down its left
+  edge (`design/components.css`).
+- Retro intensity **Off** removes every one of these additions (flat
+  folder chips, no stacked-print shadow, no print frame, blank page).
+
+#### Fixed
+- HomeNotes' Write / Preview toggle rendered as two bare browser buttons:
+  its markup used the `.segmented` class but the stylesheet never defined
+  it. `.segmented` is now defined once in `design/components.css` and
+  covers both that markup and HomeMedia's filter; HomeMedia's private copy
+  of the same rules was removed.
+- The storage gauge label wrapped awkwardly in HomeCloud's narrow sidebar
+  ("24%" dropped onto its own line). The numbers now stay together as one
+  unit and wrap as a whole.
+
+### Documenting the Atari design direction
 
 Documentation only; no code changed.
 
-### Changed
+#### Changed
 - `docs/DESIGN_SYSTEM.md` now describes the Atari direction: the rules
   (one hero detail per screen, physical not neon, no glow, never copy the
   trademarks), a palette table **generated from `design/tokens.css`** so it
@@ -450,221 +634,33 @@ Documentation only; no code changed.
 - A "Not done yet" list: HomeSync's Android theme, a contrast polish pass,
   one stray typed-in color in HomeCloud's Settings page, favicon exports.
 
-## [1.7.0] — Atari refresh, phase 5: the per-app passes
+### Android palette, contrast and application icons
 
-Each app keeps its "room" from the design direction, now with the retro
-touches that suit it. No glow anywhere; everything is hard-edged.
+Closes out the remaining items from the refresh.
 
-### HomeCloud (the cartridge shelf)
-- **Folders are cartridges**: a striped label strip along the top, a lift
-  on hover. `FolderGrid.jsx` was rewritten to use CSS classes instead of
-  inline `style={{...}}` objects, which could not react to the theme,
-  hover or the retro intensity setting.
-- File table: a label-plate header, and a hard amber bar on the left of the
-  row under the pointer or any row whose checkbox is ticked (a tinted row
-  background for ticked rows too).
-- Dropzone: heavier dashes that turn solid while a file is dragged over.
+#### Added
+- **HomeSync Android** wears the same palette (`Color.kt`, the XML color
+  resources, the launcher icon). Constants only: **not compiled here (no
+  Android SDK)**, so it needs one build on a real machine.
+- **Favicons and home-screen icons for every app**, generated from the icon
+  set by `design/make-favicons.mjs` into `design/favicons/` and copied by
+  `design/sync-assets.sh`. Four apps previously had no tab icon at all and
+  HomeCloud had old placeholders. Links use `%BASE_URL%` so each app
+  resolves its own icon behind the gateway (`/media/favicon.svg`, not the
+  root's).
+- `.error-banner.is-ok` / `.is-warn` variants in HomeCloud.
 
-### HomeMedia (the gallery)
-- Heavier tile borders; albums look like a small stack of prints (hard
-  offset shadow); the lightbox photo gets a cream print frame
-  (`--print-frame`, new token, same in both themes because the lightbox
-  backdrop is always dark).
-- **Full** retro intensity adds CRT scanlines and darkened edges over the
-  lightbox (a see-through layer that never intercepts clicks).
+#### Fixed
+- **Contrast.** Light-theme amber and teal measured 4.3 to 4.4:1 on the
+  raised surface. Now `#834909` and `#235f5f`: at least 4.8:1 on all three
+  light surfaces.
+- **Android light-theme buttons** used near-black text on deep amber, only
+  3.2:1 (2.8:1 after a straight palette swap). Now cream, 6.2:1.
+- HomeCloud's teal and amber banners had their colors typed inline in the
+  JSX, so they could not follow the theme. They now use the new classes.
+  (The white behind the 2FA QR code stays literal on purpose, with a
+  comment: QR scanners need plain white.)
 
-### HomeNotes (the study)
-- The editor is ruled paper: each rule sits under a line of text and the
-  paper scrolls with the writing. Note cards get the same amber left edge.
-
-### HomeVault (the safe)
-- Restrained on purpose: only a quiet brass edge on the vault row under
-  the pointer.
-
-### All apps
-- The current page in the sidebar gets a solid amber bar down its left
-  edge (`design/components.css`).
-- Retro intensity **Off** removes every one of these additions (flat
-  folder chips, no stacked-print shadow, no print frame, blank page).
-
-### Fixed
-- HomeNotes' Write / Preview toggle rendered as two bare browser buttons:
-  its markup used the `.segmented` class but the stylesheet never defined
-  it. `.segmented` is now defined once in `design/components.css` and
-  covers both that markup and HomeMedia's filter; HomeMedia's private copy
-  of the same rules was removed.
-- The storage gauge label wrapped awkwardly in HomeCloud's narrow sidebar
-  ("24%" dropped onto its own line). The numbers now stay together as one
-  unit and wrap as a whole.
-
-## [1.6.1] — Atari refresh: no glow, anywhere
-
-The 1970s Atari look is physical (wood, plastic, painted stripes), not
-neon. Glow is a later, synthwave idea, and `HOME_ARTISTIC_DIRECTION.md`
-already says no glowing borders. Version 1.6.0 contradicted that, so this
-removes every glow, including ones that predate the refresh.
-
-### Removed
-- The blurred glow around status lamps in Home, HomeMedia, HomeNotes and
-  HomeVault. Lamps are now solid dots with a hard-edged underside shadow,
-  like a molded plastic dome.
-- The glow on the rocker switch's lit knob (added in 1.4.0).
-- The extra-strong lamp glow that **Full** retro intensity added (1.6.0).
-- HomeCloud's pulsing activity-LED glow. It still flashes on uploads,
-  downloads and deletes, now as a flat cream-to-teal color flash in two
-  hard steps, and it holds still for people who ask for reduced motion.
-
-### Changed
-- **Full** is described as "CRT scanlines" (it is: thin dark lines and
-  darkened edges, no light spilling out of anything).
-
-## [1.6.0] — Atari refresh: retro intensity setting (Off / Subtle / Full)
-
-A dial for how strongly the 1970s styling shows, so the retro look is
-something you choose rather than something you get. It is independent of
-light/dark: any combination works.
-
-### Added
-- **Retro intensity** in every app's Settings page (Home, HomeCloud,
-  HomeMedia, HomeNotes, HomeVault), shared across all of them through one
-  `localStorage` key (`home-retro`), the same way the theme is.
-  - **Off**: warm colors and fonts only. No stripes, woodgrain, raised
-    buttons, rocker switches or LED segments in the storage gauge.
-  - **Subtle** (default): everything from versions 1.2.0 to 1.5.0.
-  - **Full**: deeper buttons (`--press` 4px), taller stripe bands (20px),
-    a stronger status lamp glow, and a CRT scanline + vignette layer on the
-    dashboard hero.
-- `design/retro.js` (storage + apply) and `design/RetroControl.jsx` (the
-  three-choice control), synced into every app by `design/sync-assets.sh`.
-- `.segmented` control styles in `design/components.css`.
-- `--band-height` token (stripe band thickness).
-- A pre-paint script line in every `index.html`, so the page never flashes
-  the wrong level on load.
-
-### Accessibility
-- The control is a proper radio group: `role="radiogroup"`, `aria-checked`,
-  a roving `tabindex`, and arrow keys that move and wrap, like native radio
-  buttons.
-- The scanline layer is static (not motion) and kept faint; it never
-  intercepts clicks (`pointer-events: none`).
-
-## [1.5.0] — Atari refresh, phase 6 (first half): sign-in screens and icons
-
-Every visit starts at a sign-in screen, so these got the stripes first.
-The icon set also got heavier strokes so it matches the chunky look and
-stays readable at small sizes.
-
-### Added
-- **Stripe band on every sign-in card** (Home, HomeCloud, HomeMedia,
-  HomeNotes, HomeVault). It is added in `design/components.css` with a
-  `::before` box, so no page markup changed. It is scoped to
-  `.auth-screen .auth-card` on purpose: HomeCloud's Settings page reuses
-  `.auth-card` for plain section cards, and those must not get stripes.
-- A card can tone the band down with `--auth-band-height` and
-  `--auth-band-bg`. **HomeVault** does, using a thin 4px brass line instead
-  of the arcade stripes, because the safe should look restrained.
-
-### Changed
-- **Icon strokes are heavier**: frame 2 to 3, glyph 1.8 to 2.4 (both the
-  `design/icons/*.svg` files and the inline `AppIcon.jsx`). Compared at
-  48, 28 and 16px: details stay open (HomeMedia's lens, HomeTasks'
-  checkbox), and small sidebar icons are noticeably clearer. Going
-  heavier (3.4 / 3) made the HomeMedia lens fill in, so it stopped there.
-  The wordmark was left alone.
-- Sign-in card corners use `--radius-md` and the card gets the same raised
-  edge as buttons.
-
-## [1.4.0] — Atari refresh, phase 4: the Home dashboard hero
-
-The dashboard now opens like the front panel of a 1970s console: a
-woodgrain frame around a dark label plate, the greeting in the display
-font, a one-line system status, and the four signature stripes along the
-bottom edge. Each app card also gets a small rocker switch.
-
-### Added
-- **Hero header** on the Home dashboard (`.hero`, `.hero-plate`,
-  `.hero-stripes`). Woodgrain appears on this one surface only, by design.
-- **System status line** under the greeting, built from the health report
-  the page already loads: "All systems normal", "Needs attention:
-  storage", or "Checking systems…". It is always words *and* a lamp, never
-  color alone, and is announced to screen readers (`role="status"`).
-- **Rocker switch** on every app card: the knob slides right and lights
-  amber when the app is enabled. Decorative (`aria-hidden`); the card's
-  footer still says "Launch" or "Disabled" in words. Disabled apps are
-  dimmed.
-- A neutral "pending" lamp style for states that are not known yet.
-
-### Fixed
-- Buttons that are really links (the "Launch" button) were underlined and
-  could not play the press animation, because links are inline boxes and
-  `transform` does not apply to those. Shared `.btn` is now
-  `inline-block` with no underline.
-
-## [1.3.0] — Atari refresh, phase 3: shared components
-
-Buttons, card surfaces, checkboxes and the storage gauge now come from one
-shared file, `design/components.css`, instead of five near-identical
-copies, and they carry the retro look: buttons are raised "console keys"
-that press down, cards have a chunky outline and a faint bevel, and the
-storage gauge is a striped, segmented LED bar.
-
-### Added
-- **`design/components.css`**, synced into every frontend next to
-  `tokens.css` by `design/sync-assets.sh` and imported *after* each app's
-  `index.css` so the shared rule wins a tie.
-- New tokens `--border-width` (2px) and `--press` (3px, how far a button
-  sticks up; set it to `0px` to flatten every button at once).
-- Custom checkboxes (the browser default clashed with the palette),
-  including the "some selected" dash state.
-- `prefers-reduced-motion` support for every new transition.
-
-### Changed
-- **Storage gauge** is now four signature stripes cut into LED segments.
-  Past 90% it turns red *and* says "almost full" in words, so the warning
-  never depends on color alone. The bar also shows the percentage and is
-  exposed to screen readers as a `meter` with its current value.
-- Button, card and gauge rules were removed from the five `index.css`
-  files (HomeCloud keeps one line making its buttons full-width).
-
-## [1.2.0] — Atari refresh, phases 1 and 2: shared design tokens and self-hosted fonts
-
-The first step of a visual refresh toward a warm 1970s Atari look (black
-vinyl, cream paper, orange and brass), built the way a modern retro
-product is: retro in color and material, modern in layout and
-readability. This release changes the foundation only: one shared source
-for the look, and fonts that no longer come from Google. The bigger
-visual pieces (woodgrain hero, stripe band on screens, component
-restyling) build on it in later releases.
-
-### Added
-- **`design/tokens.css`** is now the single source of truth for colors,
-  corner radii, fonts, the four stripe colors and a woodgrain surface,
-  plus the `.stripe-band` and `.woodgrain` helpers. `design/sync-assets.sh`
-  copies it to `apps/<name>/src/styles/tokens.css` in every frontend, the
-  same pattern the icons already use. Edit the `design/` copy only.
-- **Display font** (Fredoka, bundled) for page and card titles. Labels,
-  brand marks and numbers stay in IBM Plex Mono.
-- New tokens: `--on-accent`, `--red-soft`, `--radius-sm/md/lg`,
-  `--font-display`, `--stripe-1..4`, `--wood-base`, `--wood-grain`.
-
-### Changed
-- **New palette**, same token names so no component needed rewriting:
-  warm brown-black dark theme ("console"), ivory light theme ("manual"),
-  more orange accent, rust red, 70s teal. Contrast was checked against
-  WCAG AA; a few light-theme accents on the *raised* surface land just
-  under 4.5:1 and are worth a look in the polish pass.
-- Corners are chunkier (`--radius-sm` 6px, `--radius-md` 10px) and status
-  pills are now fully round.
-- 53 hardcoded `rgba(...)` tints and 16 hardcoded hex colors across the
-  five stylesheets now read the tokens (via `color-mix()`), so a future
-  palette change no longer leaves stale glows behind.
-- Browser and PWA chrome colors (`theme-color`, manifests) and the
-  HomeSync info page follow the new page color.
-
-### Removed
-- Every Google Fonts `<link>` tag. Fonts are bundled from `@fontsource`
-  packages, so pages render correctly with no internet and never contact
-  a third party.
 
 ## [1.1.5] — Continuous integration; Docker and Android build fixes; dependency updates
 
@@ -793,9 +789,9 @@ merged since [1.1.4].
 - **Dependency updates merged from Dependabot**, each one gated on the
   checks above. Android: Kotlin and the Compose compiler plugin 2.3.20 to
   2.4.20, KSP 2.3.10 to 2.3.12, Android Gradle Plugin 8.13.0 to 8.13.2,
-  Gradle wrapper 8.13 to 8.14.5, Material Components 1.12.0 to 1.14.0,
+  Gradle wrapper 8.13 to 8.14.5, Material Components 1.6.0 to 1.6.2,
   WorkManager 2.9.1 to 2.12.0, Retrofit 2.11.0 to 2.12.0, coroutines 1.8.1
-  to 1.11.0, AndroidX test junit 1.2.1 to 1.3.0, Espresso 3.6.1 to 3.7.0.
+  to 1.5.0, AndroidX test junit 1.2.1 to 1.3.0, Espresso 3.6.1 to 3.7.0.
   Docker: `alpine` 3.22 to 3.24 (backup), `nginx` 1.30 to 1.31 (the five
   frontends). npm: minor and patch bumps of `vite` (8.3.1), `dotenv`
   (18.0.4), `sharp` (0.35.5), `dompurify` (3.4.16), `marked` (18.0.14) and
@@ -902,7 +898,7 @@ across the whole repo. Both surfaced real, fixable problems.
   `androidx.compose.material3:material3` — the only Material artifact
   the project declared. Static review never caught this since imports
   still resolved; it only surfaces once AAPT actually tries to link
-  resources. Added `com.google.android.material:material:1.12.0`.
+  resources. Added `com.google.android.material:material:1.6.0`.
 - **The Windows dev launcher (`scripts/dev-home-ui.ps1`) failed with
   `Environment variable <path> not defined`** for every service. Root
   cause: each service was launched as one long `cmd /k` command line
@@ -959,7 +955,7 @@ across the whole repo. Both surfaced real, fixable problems.
   using the bundled binary, needing a C++ toolchain most Windows dev
   machines don't have. Reproduced 3/3 times against the exact
   unzip-then-`npm install` workflow before reverting. Left at
-  `^11.10.0` — a cosmetic deprecation warning beats a build that
+  `^11.4.0` — a cosmetic deprecation warning beats a build that
   doesn't complete.
 - Android/Gradle stack in `apps/homesync-android`: AGP `8.5.2` →
   `8.13.0` (the last 8.x release — deliberately not 9.x, which bundles
@@ -992,7 +988,7 @@ across the whole repo. Both surfaced real, fixable problems.
 Verified (JS/Node side only, per the limitation above): all 207 tests
 pass, all 5 frontends build clean, `npm audit` reports 0
 vulnerabilities, `npm outdated` is clean except the deliberately-kept
-`better-sqlite3` `11.10.0`.
+`better-sqlite3` `11.4.0`.
 
 ## [1.1.3] — HomeVault: a deeper, adversarial self-review pass
 
@@ -1115,7 +1111,7 @@ every service, not just the frontends.
   can't meet yet: confirmed directly (not by reading the registry's
   "latest" dist-tag, which is an unrelated, much newer 13.x line with
   its own newer floor) that the version this project's `^11.3.0` range
-  actually resolves to, 11.10.0, declares no `engines` constraint at
+  actually resolves to, 11.4.0, declares no `engines` constraint at
   all.
 
 ### Known limitation of this entry

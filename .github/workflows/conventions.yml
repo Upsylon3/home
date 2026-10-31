@@ -41,6 +41,7 @@ jobs:
         run: |
           VERSION="$(node -p "require('./package.json').version")"
           node scripts/validate-release.mjs "v$VERSION" . > /dev/null
+          node scripts/reconcile-tags.mjs --verify-only
           if node scripts/validate-release.mjs v999.999.999 . > /dev/null 2>&1; then
             echo "The release validator accepted an intentionally mismatched version." >&2
             exit 1

@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 concurrency:
   group: historical-tag-reconciliation
@@ -37,6 +38,8 @@ jobs:
           git fetch origin +refs/heads/main:refs/remotes/origin/main
           test "$(git rev-parse HEAD)" = "$TARGET_SHA"
           test "$(git rev-parse refs/remotes/origin/main)" = "$TARGET_SHA"
+          RUNS="$(gh run list --workflow conventions.yml --branch main --commit "$TARGET_SHA" --json status,conclusion --limit 20)"
+          node -e 'const runs=JSON.parse(process.argv[1]); const latest=runs[0]; if (!latest || latest.status !== "completed" || latest.conclusion !== "success") { console.error("The latest Repository conventions check for this main commit must pass before changing tags."); process.exit(1); }' "$RUNS"
 
       - name: Configure the release tagger
         run: |

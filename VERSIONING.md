@@ -91,8 +91,9 @@ The full history audit found 19 existing tags and no GitHub Releases:
 
 - `v0.8.1` points to `ac6ab27`, a standalone release commit that is
   **not reachable from current `main`** and diverged immediately after
-  `v0.8.0`. Its snapshot replaced most of the changelog. The
-  reconciliation workflow removes this invalid orphan tag.
+  `v0.8.0`. Its snapshot replaced most of the changelog. The old ref is
+  renamed to `archive/orphaned-v0.8.1` so the commit remains discoverable
+  without presenting it as a valid release.
 - `v1.1.5` points to the correct historical commit
   (`3bcbaaa`) but is lightweight. It is converted to an annotated tag
   on the **same commit**; the code history is not moved.
@@ -103,5 +104,6 @@ The full history audit found 19 existing tags and no GitHub Releases:
   snapshot after the full CI workflow succeeds, then publishes its
   GitHub Release from `CHANGELOG.md`.
 
-The one-time workflow is idempotent: it checks exact known ref targets,
-refuses unexpected changes and never moves an already-valid release tag.
+The one-time workflow is idempotent: it preflights every known ref before
+mutating anything, archives rather than discards the orphaned commit,
+refuses unexpected targets and never moves an already-valid release tag.

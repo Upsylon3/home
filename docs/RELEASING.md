@@ -69,8 +69,9 @@ creating a duplicate.
 The first normalized baseline (`v1.6.2`) is handled by the
 `Historical tag reconciliation` workflow after the full `CI` workflow
 succeeds on `main`. It removes only the known unreachable `v0.8.1`
-tag, converts `v1.1.5` to an annotated tag without changing its target,
-creates the annotated `v1.6.2` tag and publishes that GitHub Release.
+tag to `archive/orphaned-v0.8.1` (preserving the commit), converts
+`v1.1.5` to an annotated tag without changing its target, creates the
+annotated `v1.6.2` tag and publishes that GitHub Release.
 It does not fabricate intermediate historical tags or rewrite commits.
 
 ## 5. After release

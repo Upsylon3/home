@@ -46,15 +46,15 @@ jobs:
             echo "Release tags must be annotated Git tags." >&2
             exit 1
           }
-          git fetch origin main
+          git fetch origin +refs/heads/main:refs/remotes/origin/main
           git merge-base --is-ancestor "$RELEASE_TAG^{commit}" origin/main || {
             echo "The release tag must point to a commit reachable from main." >&2
             exit 1
           }
           node scripts/validate-release.mjs "$RELEASE_TAG" . > "$RUNNER_TEMP/release-notes.md"
           RELEASE_SHA="$(git rev-parse "$RELEASE_TAG^{commit}")"
-          CI_RUNS="$(gh run list --workflow ci.yml --branch main --commit "$RELEASE_SHA" --json status,conclusion --limit 20)"
-          node -e 'const runs=JSON.parse(process.argv[1]); if (!runs.some(run => run.status === "completed" && run.conclusion === "success")) { console.error("A successful full CI run (including Docker) for this exact main commit is required before release."); process.exit(1); }' "$CI_RUNS"
+          CI_RUNS="$(gh run list --workflow ci.yml --branch main --commit "$RELEASE_SHA" --json status,conclusion,createdAt --limit 20)"
+          node -e 'const runs=JSON.parse(process.argv[1]); const latest=runs[0]; if (!latest || latest.status !== "completed" || latest.conclusion !== "success") { console.error("The latest full CI run (including Docker) for this exact main commit must have succeeded before release."); process.exit(1); }' "$CI_RUNS"
 
       - name: Install exact locked dependencies
         run: npm ci

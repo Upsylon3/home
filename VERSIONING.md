@@ -27,8 +27,8 @@ Use `MAJOR.MINOR.PATCH`:
 | Change | Version increment | Meaning |
 |---|---|---|
 | MAJOR | `X+1.0.0` | An incompatible user-facing, data-format, deployment or public API change. |
-| MINOR | `1.Y+1.0` | A backwards-compatible capability or meaningful product expansion. |
-| PATCH | `1.14.Z+1` | A backwards-compatible bug fix, security fix or corrective maintenance release. |
+| MINOR | `X.(Y+1).0` | A backwards-compatible capability or meaningful product expansion. |
+| PATCH | `X.Y.(Z+1)` | A backwards-compatible bug fix, security fix or corrective maintenance release. |
 
 The table describes the decision, not a mechanical mapping from every
 commit. A `feat` normally calls for MINOR, a `fix` normally calls for
@@ -68,3 +68,14 @@ The existing history predates these checks. Preserve its commit IDs,
 author attribution and existing tag targets. Do not rewrite public
 history merely to make old subjects look uniform: doing so invalidates
 clones and tag relationships. Apply this policy to all new work.
+
+
+## Historical baseline (31 October 2026)
+
+The repository audit found 19 Git tags, ending at `v1.1.5`, while the
+root package and changelog are at `1.14.0`. No GitHub Releases exist.
+The existing `v1.1.5` ref is lightweight rather than annotated. These
+are historical gaps, not a reason to fabricate or move refs: preserve
+them as-is and apply the annotated-tag / GitHub Release process to new
+releases. A historical backfill requires a verified original release
+commit for each version.

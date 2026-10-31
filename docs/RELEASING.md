@@ -28,8 +28,9 @@ release. The version authority and increment rules are in
    ```
 
 The release workflow repeats the install, test, frontend-build and
-gateway-smoke checks against the tagged source. The normal `CI`
-workflow remains responsible for the full Docker build/stack smoke test.
+gateway-smoke checks against the tagged source. Before publishing, it
+also requires the latest full `CI` run for that exact commit on `main
+to have succeeded; this includes the Docker build/stack smoke test.
 
 ## 2. Create the annotated tag
 

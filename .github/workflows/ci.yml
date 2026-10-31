@@ -92,7 +92,7 @@ jobs:
         shell: pwsh
         run: |
           $log = Join-Path $env:RUNNER_TEMP "npm-ci.log"
-          npm ci --foreground-scripts 2>&1 | Tee-Object -FilePath $log
+          npm ci --foreground-scripts --loglevel=info 2>&1 | Tee-Object -FilePath $log
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if (-not (Select-String -Path $log -Pattern "prebuild-install info install Successfully installed prebuilt binary" -Quiet)) {
             throw "better-sqlite3 did not confirm installation of its Node 26 Windows prebuilt binary. Do not accept a source-build fallback."

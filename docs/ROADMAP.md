@@ -48,10 +48,14 @@ first (see below).
    against, say, a Raspberry Pi specifically), and an admin-facing
    vault-reset action for HomeCore (today only the account holder can
    delete their own vault).
-4. **Icon system finishing touches**: the Android adaptive-icon split
-   (favicon exports for every web app were completed as part of the consolidated 1.2.0 visual redesign) — see
-   `DESIGN_SYSTEM.md`. Typeface and accent color are now final, not
-   open questions.
+4. **Done: align the HomeSync Android adaptive icon with the shared icon set.**
+   The foreground layer is now generated from `design/icons/homesync.svg`
+   in the same command that produces the web icon exports. Its 48-unit mark
+   is centered in Android's 72dp safe zone on the existing warm-black
+   background, so launcher masking and the Home dashboard use the same
+   HomeSync identity. Re-run `node design/make-favicons.mjs` whenever the
+   canonical icon or brand color changes. Typeface and accent color remain
+   settled, not open questions.
 5. **Fix the `/api/auth`, `/api/admin`, `/api/activity` route-nesting
    inconsistency** flagged in `ARCHITECTURE.md` — `HOME_MASTER_SPECIFICATION.md`
    §10 calls for these under `/api/core/...`; they're top-level instead,

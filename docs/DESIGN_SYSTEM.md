@@ -132,6 +132,7 @@ copies it into every frontend. **Never edit the copies** (anything named
 | `design/session.js` | Not visual, but it lives here for the same reason: the one place the shared login token (`home_session_token`) is read and written, so signing in to any app signs you in to all of them (added in 1.9.0) |
 | `design/icons/`, `AppIcon.jsx`, `Wordmark.jsx` | The icon set |
 | `design/make-favicons.mjs`, `design/favicons/` | Browser-tab and home-screen icons, **generated from the icon set**. Run `node design/make-favicons.mjs && ./design/sync-assets.sh` only when an icon or the brand color changes; the generated files are committed |
+| `apps/homesync-android/app/src/main/res/drawable/ic_launcher_foreground.xml` | The native Android adaptive-icon foreground, generated from `design/icons/homesync.svg` by `node design/make-favicons.mjs`; the adaptive background remains a separate solid warm-black layer |
 
 Load order in each app's `main.jsx` is `tokens.css`, then `index.css`, then
 `components.css`: because the shared file loads last, it wins ties, which

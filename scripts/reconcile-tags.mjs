@@ -124,7 +124,7 @@ if (release?.direct && !release.peeled && release.direct !== head) {
 
 // Preserve the old orphaned commit under a clearly non-release archival ref,
 // then remove the misleading SemVer release name.
-if (orphan) {
+if (orphan || archive) {
   if (!archive?.peeled) {
     createAnnotatedTag(
       ARCHIVE.name,
@@ -133,13 +133,15 @@ if (orphan) {
       Boolean(archive)
     );
   }
-  git(["push", "origin", `:${"refs/tags/" + ORPHAN.name}`]);
-  if (gitExists(["show-ref", "--verify", "--quiet", `refs/tags/${ORPHAN.name}`])) {
-    git(["tag", "-d", ORPHAN.name]);
+  if (orphan) {
+    git(["push", "origin", `:${"refs/tags/" + ORPHAN.name}`]);
+    if (gitExists(["show-ref", "--verify", "--quiet", `refs/tags/${ORPHAN.name}`])) {
+      git(["tag", "-d", ORPHAN.name]);
+    }
+    console.log("Archived the unreachable v0.8.1 commit and removed its misleading release tag.");
   }
-  console.log("Archived the unreachable v0.8.1 commit and removed its misleading release tag.");
 } else {
-  console.log("The v0.8.1 release ref is already absent.");
+  fail("both v0.8.1 and its archival replacement are absent; refusing to lose the audited commit");
 }
 refs = parseRemoteTags();
 const archived = refs.get(ARCHIVE.name);

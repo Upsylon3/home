@@ -415,11 +415,11 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 
 The warm 1970s-inspired redesign was one cohesive product-wide design
 release, implemented in successive engineering phases. The former
-1.2.0–1.2.0 labels described those phases, not seven independent
+1.2.0–1.8.0 labels described those phases, not seven independent
 product releases. They are consolidated here; the original commits and
 their authorship remain unchanged.
 
-### Foundation: shared tokens, palette and self-hosted fonts
+### Phase 1 — Foundation: shared tokens, palette and self-hosted fonts
 
 #### Added
 - **`design/tokens.css`** is now the single source of truth for colors,
@@ -451,7 +451,7 @@ their authorship remain unchanged.
   packages, so pages render correctly with no internet and never contact
   a third party.
 
-### Shared components and accessible controls
+### Phase 2 — Shared components and accessible controls
 
 Buttons, card surfaces, checkboxes and the storage gauge now come from one
 shared file, `design/components.css`, instead of five near-identical
@@ -477,7 +477,7 @@ storage gauge is a striped, segmented LED bar.
 - Button, card and gauge rules were removed from the five `index.css`
   files (HomeCloud keeps one line making its buttons full-width).
 
-### Home dashboard hero and app-card controls
+### Phase 3 — Home dashboard hero and app-card controls
 
 The dashboard now opens like the front panel of a 1970s console: a
 woodgrain frame around a dark label plate, the greeting in the display
@@ -503,7 +503,7 @@ bottom edge. Each app card also gets a small rocker switch.
   `transform` does not apply to those. Shared `.btn` is now
   `inline-block` with no underline.
 
-### Sign-in screens and icon refinement
+### Phase 4 — Sign-in screens and icon refinement
 
 Every visit starts at a sign-in screen, so these got the stripes first.
 The icon set also got heavier strokes so it matches the chunky look and
@@ -529,7 +529,7 @@ stays readable at small sizes.
 - Sign-in card corners use `--radius-md` and the card gets the same raised
   edge as buttons.
 
-### Retro-intensity setting and accessibility
+### Phase 5 — Retro-intensity setting and accessibility
 
 A dial for how strongly the 1970s styling shows, so the retro look is
 something you choose rather than something you get. It is independent of
@@ -559,7 +559,7 @@ light/dark: any combination works.
 - The scanline layer is static (not motion) and kept faint; it never
   intercepts clicks (`pointer-events: none`).
 
-### Removing glow and refining status feedback
+### Phase 6 — Removing glow and refining status feedback
 
 The 1970s Atari look is physical (wood, plastic, painted stripes), not
 neon. Glow is a later, synthwave idea, and `HOME_ARTISTIC_DIRECTION.md`
@@ -580,7 +580,7 @@ removes every glow, including ones that predate the refresh.
 - **Full** is described as "CRT scanlines" (it is: thin dark lines and
   darkened edges, no light spilling out of anything).
 
-### Per-application visual treatments
+### Phase 7 — Per-application visual treatments
 
 Each app keeps its "room" from the design direction, now with the retro
 touches that suit it. No glow anywhere; everything is hard-edged.
@@ -627,7 +627,7 @@ touches that suit it. No glow anywhere; everything is hard-edged.
   ("24%" dropped onto its own line). The numbers now stay together as one
   unit and wrap as a whole.
 
-### Documenting the Atari design direction
+### Phase 8 — Documenting the Atari design direction
 
 Documentation only; no code changed.
 
@@ -648,7 +648,7 @@ Documentation only; no code changed.
 - A "Not done yet" list: HomeSync's Android theme, a contrast polish pass,
   one stray typed-in color in HomeCloud's Settings page, favicon exports.
 
-### Android palette, contrast and application icons
+### Phase 9 — Android palette, contrast and application icons
 
 Closes out the remaining items from the refresh.
 

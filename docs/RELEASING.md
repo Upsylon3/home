@@ -69,8 +69,8 @@ creating a duplicate.
 The first normalized baseline (`v1.6.2`) is handled by the
 `Historical tag reconciliation` workflow after the full `CI` workflow
 succeeds on `main`. It removes only the known unreachable `v0.8.1`
-tag to `archive/orphaned-v0.8.1` (preserving the commit), converts
-`v1.1.5` to an annotated tag without changing its target, creates the
+tag to the annotated `archive/orphaned-v0.8.1` ref (preserving the
+commit), converts `v1.1.5` to an annotated tag without changing its target, creates the
 annotated `v1.6.2` tag and publishes that GitHub Release.
 It does not fabricate intermediate historical tags or rewrite commits.
 
@@ -85,8 +85,9 @@ It does not fabricate intermediate historical tags or rewrite commits.
 
 ## Historical release policy
 
-The existing history and tags are preserved as they were created.
-Do not invent backdated tags or GitHub Releases when the exact release
-commit cannot be established from the source history. Any historical
-backfill must be mapped to its original release commit and checked
-against the root version and changelog before publication.
+The existing commit graph and all valid historical tag targets are
+preserved. The one-time reconciliation archives the single unmerged
+release ref rather than discarding its commit, and only corrects the
+annotation of `v1.1.5`. Do not invent backdated release tags or GitHub
+Releases when the exact release commit cannot be established from the
+source history.

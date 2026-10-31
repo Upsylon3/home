@@ -87,13 +87,13 @@ reuse a valid published tag; correct a release with a subsequent version.
 
 ### One-time legacy tag reconciliation
 
-The full history audit found 19 existing tags and no GitHub Releases:
+The full history audit found 19 existing release tags and no GitHub Releases:
 
 - `v0.8.1` points to `ac6ab27`, a standalone release commit that is
   **not reachable from current `main`** and diverged immediately after
   `v0.8.0`. Its snapshot replaced most of the changelog. The old ref is
-  renamed to `archive/orphaned-v0.8.1` so the commit remains discoverable
-  without presenting it as a valid release.
+  renamed to the annotated `archive/orphaned-v0.8.1` ref so the commit
+  remains discoverable without presenting it as a valid release.
 - `v1.1.5` points to the correct historical commit
   (`3bcbaaa`) but is lightweight. It is converted to an annotated tag
   on the **same commit**; the code history is not moved.

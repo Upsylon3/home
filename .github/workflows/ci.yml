@@ -8,7 +8,7 @@
 # npm ci, npm test" by hand. Now each PR shows a green tick or a red cross
 # and you only have to read the ones that matter.
 #
-# Four independent jobs, so one failure never hides another:
+# Five independent jobs, so one failure never hides another:
 #   test    - all automated tests + a production build of every frontend
 #   audit   - `npm audit`, kept separate so a NEW advisory doesn't turn the
 #             tests red (a new advisory isn't the PR's fault, but you still
@@ -52,9 +52,9 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          # Must match the Dockerfiles (node:22-slim) and
-          # docs/DEVELOPMENT.md. Node 20 is end-of-life.
-          node-version: 22
+          # Must match the Dockerfiles (node:26-slim) and docs/DEVELOPMENT.md.
+          # Node 26 is the ecosystem's current Active LTS runtime.
+          node-version: 26
           cache: npm
 
       # `npm ci`, not `npm install`: it installs exactly what
@@ -70,6 +70,36 @@ jobs:
       # .jsx file would pass them. Building each frontend catches that.
       # --if-present skips workspaces (the backends) with no build script.
       - run: npm run build --workspaces --if-present
+
+  windows:
+    name: Windows install and native SQLite smoke test
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: npm
+
+      # This is deliberately a real Windows npm ci against the committed
+      # lockfile. It protects the exact install path that failed with the
+      # earlier better-sqlite3 v13 experiment. Fail unless the Node 26
+      # Windows prebuild is used; falling back to Visual Studio compilation
+      # would hide the regression for ordinary Windows developers.
+      - name: Install the committed lockfile and capture lifecycle output
+        shell: pwsh
+        run: |
+          $log = Join-Path $env:RUNNER_TEMP "npm-ci.log"
+          npm ci --foreground-scripts 2>&1 | Tee-Object -FilePath $log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not (Select-String -Path $log -Pattern "prebuild-install info install Successfully installed prebuilt binary" -Quiet)) {
+            throw "better-sqlite3 did not confirm installation of its Node 26 Windows prebuilt binary. Do not accept a source-build fallback."
+          }
+
+      - name: Exercise the native SQLite binding
+        run: node -e "const Database = require('better-sqlite3'); const db = new Database(':memory:'); db.exec('CREATE TABLE smoke (value TEXT)'); db.prepare('INSERT INTO smoke VALUES (?)').run('node26-windows'); const row = db.prepare('SELECT value FROM smoke').get(); if (row.value !== 'node26-windows') throw new Error('SQLite round-trip failed'); db.close(); console.log('better-sqlite3 works on ' + process.version + ' / ' + process.platform + ' / ' + process.arch);"
 
   # The gateway is the one container that publishes a port, and a mistake in
   # its config is invisible to every other test. This runs the real file in a
@@ -94,7 +124,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 26
           cache: npm
       - run: npm ci
       # Fail only on HIGH or CRITICAL. Low/moderate advisories in
@@ -121,7 +151,7 @@ jobs:
           sed -i "s|^HOMECORE_INTERNAL_SECRET=.*|HOMECORE_INTERNAL_SECRET=$(openssl rand -hex 32)|" homecore/.env
 
       # Builds all 17 images. This is the first real test of the base-image
-      # bumps (node:22-slim, nginx:1.30-alpine, alpine:3.22).
+      # bumps (node:26-slim, nginx:1.30-alpine, alpine:3.22).
       - name: Build every image
         run: docker compose build
 

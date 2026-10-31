@@ -24,12 +24,13 @@ updates:
       routine-updates:
         update-types: ["minor", "patch"]
     ignore:
-      # Never offer a better-sqlite3 MAJOR bump. 13 was tried in 1.1.4 and
-      # reverted: a plain `npm install` against the committed lockfile
-      # tried to compile it from source, which needs a C++ toolchain most
-      # Windows dev machines don't have (see CHANGELOG.md [1.1.4]).
-      # Minor/patch bumps still arrive normally. Remove this rule when
-      # that install problem is understood.
+      # Keep future better-sqlite3 MAJOR bumps blocked. HOME deliberately
+      # moved from 11.10.0 to 12.11.1 for Node 26: 12.11.1 has a Node 26
+      # prebuild and retains the prebuild-install flow used by the existing
+      # lockfile. The earlier v13 experiment was reverted because npm ci
+      # against the committed lockfile attempted a source build on Windows.
+      # Revisit v13+ only as a separate migration with the Windows prebuild
+      # install check in CI; minor/patch updates within v12 remain enabled.
       - dependency-name: "better-sqlite3"
         update-types: ["version-update:semver-major"]
 
@@ -94,11 +95,11 @@ updates:
       - dependency-name: "androidx.core:core-ktx"
         versions: [">=1.19.0"]
 
-  # --- Dockerfiles: homecore + every app under apps/ (node:22-slim, and
-  # nginx:1.30-alpine for the 5 frontends) ---
+  # --- Dockerfiles: homecore + every app under apps/ (node:26-slim, and
+  # nginx:1.31-alpine for the 7 frontends) ---
   # Docker doesn't have workspace-wide dependency resolution the way npm
   # does, so this still opens one PR per directory per image bump — the
-  # directories list here just avoids repeating this whole block 11 times.
+  # directories list here just avoids repeating this whole block 15 times.
   - package-ecosystem: "docker"
     directories:
       - "/homecore"
@@ -124,10 +125,10 @@ updates:
       # newest tag is, which is not the same as "the version to run":
       # odd-numbered Node releases (25, 27) never become LTS and reach
       # end-of-life within months (25 already has, on 2026-06-01). It also
-      # opens one PR per Dockerfile, so the 11 services would drift onto
-      # different Node versions while CI and docs/DEVELOPMENT.md still say
-      # 22. Move all 11 Dockerfiles, ci.yml's node-version and the docs
-      # in ONE deliberate change instead (docs/ROADMAP.md item 9).
+      # opens one PR per Dockerfile, so the 15 Node-based images would drift
+      # onto different Node versions while CI and docs/DEVELOPMENT.md still
+      # use the previous baseline. Move all 15 Dockerfiles, every workflow
+      # node-version and the docs in ONE deliberate change (roadmap item 9).
       # Minor/patch updates of the pinned major still arrive normally.
       - dependency-name: "node"
         update-types: ["version-update:semver-major"]

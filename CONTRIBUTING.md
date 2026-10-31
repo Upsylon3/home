@@ -110,8 +110,7 @@ rebase merging if you want this to be guaranteed for every contributor.
 
 Protect `main` in Settings → Branches: require a pull request and require
 the `Repository conventions / Commit, PR and branch conventions` check
-plus all four `CI` checks (tests/builds, dependency audit, gateway and
-Docker). The Android check is conditional and should be required only
+plus all five `CI` jobs (tests/builds, Windows native SQLite installation, dependency audit, gateway and Docker). The Android check is conditional and should be required only
 when GitHub's rules can correctly account for skipped runs.
 
 See [VERSIONING.md](VERSIONING.md) and [docs/RELEASING.md](docs/RELEASING.md)

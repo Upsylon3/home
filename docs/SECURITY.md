@@ -94,6 +94,16 @@ couldn't run Docker, so it was left open. It is now closed by `ci.yml`'s
 Docker job, which builds every image on `node:22-slim` and boots the whole
 stack (see `docs/DEVELOPMENT.md`).
 
+**Current runtime baseline (after the 1.6.2 release):** the historical
+Node 22 baseline above has since been superseded. All 15 Node-based Docker
+images, CI workflows and local-development prerequisites now use Node 26
+Active LTS. The eight backends use `better-sqlite3` 12.11.1, which declares
+Node 26 support and publishes the matching native ABI prebuilds. The CI
+workflow verifies the committed-lockfile install and native SQLite round-trip
+on Windows as well as the full Linux/Docker stack. Node 26's official Debian
+slim image includes the `libatomic1` runtime dependency required by the
+Node 26 binary.
+
 **Resolved in [1.1.4], same theme as the Node bump:**
 `services/backup/Dockerfile` moved off Alpine 3.20 (end-of-life
 2026-04-30) to `alpine:3.22`, and the five frontend Dockerfiles moved

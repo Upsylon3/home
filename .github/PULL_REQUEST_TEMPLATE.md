@@ -22,6 +22,7 @@
 - [ ] Relevant focused tests run
 - [ ] `npm test`
 - [ ] `npm run build --workspaces --if-present` (or explain why not applicable)
+- [ ] Windows committed-lockfile install and native SQLite smoke test
 - [ ] `bash gateway/test/gateway-smoke.sh` (or explain why not applicable)
 - [ ] Docker/full-stack CI checked where applicable
 - [ ] Android workflow checked if Android code changed

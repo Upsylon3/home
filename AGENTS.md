@@ -63,7 +63,7 @@ Some roadmap items require evidence an LLM cannot manufacture:
 
 Agents may improve tests, prepare review material and remove code defects around these items, but must leave the external validation visibly open until it actually occurs. Do not let one unavailable physical-world check prevent unrelated repository work.
 
-The Node runtime backlog item is now actionable: Node 26 entered LTS on 28 October 2026. Treat the Node 22 → Node 26 migration in `docs/ROADMAP.md` as the recommended first compatibility-maintenance task, but verify native dependency support—especially `better-sqlite3`—before changing any runtime version.
+The Node runtime baseline is now **Node 26 LTS** across the 15 Node-based Dockerfiles and the CI, release and reconciliation workflows. All eight backend workspaces use `better-sqlite3` 12.11.1, whose package metadata supports Node 26. For any future major runtime change, update every Node image, all relevant workflows, local-development requirements and the Windows native-install check together; verify native modules and platform prebuilds before editing.
 
 ## 4. Engineering rules
 

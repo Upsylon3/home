@@ -58,7 +58,7 @@ first (see below).
 6. **Done: the whole stack builds and boots end to end.** `ci.yml`'s
    Docker job runs `docker compose build`, starts every container and
    checks the stack through the gateway, on GitHub's machines. It is green,
-   which also confirms the `node:22-slim`, `nginx` and `alpine` base-image
+   which also confirms the `node:26-slim`, `nginx` and `alpine` base-image
    bumps (see `SECURITY.md`). Getting it green took
    three real fixes, all in `CHANGELOG.md`: the Dockerfiles predated the
    move to npm workspaces, HomeCloud's backend inherited the wrong port,
@@ -78,21 +78,21 @@ first (see below).
    native modules such as `better-sqlite3`: a major bump was tried and
    reverted during the 1.1.4 work (see the changelog).
 
-9. **Migrate from Node 22 to Node 26 LTS, after a compatibility audit.**
-   Node 26 entered LTS on 2026-10-28 and is supported through 2029-04-30;
-   Node 22 remains supported through 2027-04-30. This is now the preferred
-   target, not a future possibility. Before editing versions, verify that
-   the resolved `better-sqlite3` release has compatible prebuilt binaries
-   for the target Node ABI and every supported CI/Docker platform (the
-   `slim` images have no compiler, so a missing prebuild breaks image
-   builds). Then update all 11 Dockerfiles, every Node version declaration
-   in all affected GitHub workflows (including CI and release validation),
-   and the prerequisites in `docs/DEVELOPMENT.md` together. Keep local,
-   CI and container runtimes aligned. Run `npm ci`, the complete workspace
-   tests/builds, gateway smoke test and full Docker stack CI. If a required
-   native prebuild is unavailable, do not partially upgrade; record the
-   evidence and revisit when support lands. See the [official Node.js
-   release table](https://nodejs.org/en/about/previous-releases).
+9. **Done: migrate the ecosystem runtime from Node 22 to Node 26 LTS.**
+   Node 26 entered Active LTS on 2026-10-28 and is supported through
+   2029-04-30. All 15 Node-based Dockerfiles now use `node:26-slim`; the CI,
+   release and reconciliation workflows and local-development prerequisites
+   use Node 26 as well. The eight backend workspaces moved from
+   `better-sqlite3` 11.10.0 to 12.11.1. Its package metadata allows Node 26,
+   and its published release includes ABI 147 prebuilds for Windows x64 and
+   Linux x64/arm64. The upgrade deliberately stays on the 12.x line: HOME's
+   earlier v13 experiment broke the committed-lockfile Windows install by
+   trying to compile from source. CI now has a Windows `npm ci` check that
+   requires the prebuilt-install success message and exercises a real SQLite
+   round-trip. The full Linux workspace/build, gateway and Docker stack jobs
+   remain the other required gates. Keep future Node majors blocked from
+   automatic image bumps; handle them as one coordinated migration. See the
+   [official Node.js release table](https://nodejs.org/en/about/previous-releases).
 
 10. **Done: the gateway starts when an app is missing.** It used to name
    every container directly in `proxy_pass`, which nginx resolves once at

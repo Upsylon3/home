@@ -239,7 +239,7 @@ Or one service at a time:
 ```bash
 cd homecore && npm test                    # 53 tests
 cd packages/homecore-client && npm test    # 28 tests — real HomeCore and HTTP failure/cache boundaries
-cd apps/homecloud-backend && npm test      # 41 tests
+cd apps/homecloud-backend && npm test      # 44 tests
 cd apps/homemedia-backend && npm test      # 28 tests
 cd apps/homenotes-backend && npm test      # 24 tests
 cd apps/homesync-backend && npm test       # 20 tests
@@ -282,22 +282,34 @@ test suites above don't catch a build-time error in a `.jsx` file.
 
 ## Continuous integration
 
-Two GitHub Actions workflows in `.github/workflows/` run the same checks
+The CI and Android workflows in `.github/workflows/` run these checks
 on GitHub's machines, on every push to `main` and every pull request
 (including the ones Dependabot opens). They mean the Docker and Android
 checks don't depend on the machine you develop on.
 
-- **`ci.yml`** has three jobs. *Tests and frontend builds* runs `npm ci`,
+- **`ci.yml`** has five jobs. *Tests and frontend builds* runs `npm ci`,
   `npm test` and a build of every frontend. *Dependency audit* runs `npm
   audit` and fails only on high or critical advisories. *Docker build and
   smoke test* builds every image, starts the whole stack, and checks it
   through the gateway: every frontend is served, every backend answers
   its health check, a protected route refuses a request with no token, and
   a freshly registered account's token works on HomeCloud's backend.
+  *Gateway config* tests routing and offline behavior in real nginx.
+  *Windows install and native SQLite smoke test* verifies the committed
+  lockfile and prebuilt SQLite binding, then runs the HomeCloud and HomeMedia
+  backend suites. These cover thumbnail file handles and teardown on Windows,
+  where cached open files cannot be unlinked as they can on Linux.
 - **`android.yml`** builds a debug APK and runs the Android unit tests. It
   only runs when `apps/homesync-android` changes, or when started by hand
   (Actions tab, "Android", "Run workflow"). Download the APK from the
   run's page under "Artifacts".
+
+HomeCloud's test helper clears Sharp's operation cache before removing its
+temporary uploads. Both the HomeCloud and HomeMedia helpers close upstream
+test services even if local directory cleanup throws; the original failure
+still fails the test. Three bounded child-process regressions cover actual
+GIF thumbnail cleanup and injected cleanup failures. This is test-process
+cleanup only; production cache settings and services are unchanged.
 
 ### How the Docker images are built
 

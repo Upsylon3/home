@@ -66,9 +66,13 @@ async function stopTestApp() {
   } catch {
     // already closed, fine
   }
-  fs.rmSync(started.dataDir, { recursive: true, force: true });
-  await homecloudBackendTestApp.stopTestApp(); // also stops the homecore instance it booted
-  started = null;
+  try {
+    fs.rmSync(started.dataDir, { recursive: true, force: true });
+  } finally {
+    started = null;
+    // Always stop both upstream services, even when local cleanup fails.
+    await homecloudBackendTestApp.stopTestApp();
+  }
 }
 
 module.exports = { startTestApp, stopTestApp };

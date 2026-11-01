@@ -105,6 +105,12 @@ jobs:
       - name: Exercise the native SQLite binding
         run: node -e "const Database = require('better-sqlite3'); const db = new Database(':memory:'); db.exec('CREATE TABLE smoke (value TEXT)'); db.prepare('INSERT INTO smoke VALUES (?)').run('node26-windows'); const row = db.prepare('SELECT value FROM smoke').get(); if (row.value !== 'node26-windows') throw new Error('SQLite round-trip failed'); db.close(); console.log('better-sqlite3 works on ' + process.version + ' / ' + process.platform + ' / ' + process.arch);"
 
+      # Exercise real thumbnail file handles and layered service teardown.
+      # Linux can unlink open files and would miss the Windows regression.
+      - name: Test Windows file storage and media lifecycle
+        timeout-minutes: 5
+        run: npm test --workspace=apps/homecloud-backend --workspace=apps/homemedia-backend
+
   # The gateway is the one container that publishes a port, and a mistake in
   # its config is invisible to every other test. This runs the real file in a
   # real nginx with fake apps that start and stop (see the script's header), so

@@ -179,16 +179,34 @@ behavior, privacy boundaries and explicit opt-out are recorded in
 is opt-in; no query or search index is persisted, and no session token is
 retained for background use (the shared five-second identity cache applies). Scheduled
 automation still requires the decided HomeCore-minted scoped credential and
-is not part of this release. Other source apps and write bridges remain
-uncommitted; HomeVault is never a server-side search source.
+is not part of this release. HomeVault is never a server-side search source.
+
+## First scheduled bridge: scoped, not implemented
+
+[Decision 002](decisions/002-scheduled-monitor-followup.md) scopes critical
+HomeMonitor alerts into a consenting administrator's own HomeTasks inbox.
+Four fresh critical observations spanning 15 minutes qualify an incident;
+durable receipts prevent duplicate tasks, and users manage tasks manually.
+The fixed permission boundary is curated Monitor alert reads plus create-once
+tasks, using separate Core-issued, audience-bound credentials. Enrollment is
+off by default; expiry, revocation, limits and storage protection are part of
+the acceptance criteria.
+
+Implement Core authority/shared verification first, then fresh incident IDs
+and transactional task receipts, then the worker/UI and complete integration
+gate. These endpoints, credentials and migrations **do not exist yet**.
+HomeSync inactivity was rejected for this first bridge because current
+timestamps do not prove healthy idle check-ins or completed backup cycles.
+Other source apps and write bridges remain uncommitted.
 
 ## Cross-module ideas brainstorm (speculative)
 
 Everything below rides on infrastructure that already exists — the
 shared event bus and the application registry — so most of these are "a
 new listener, zero new plumbing" rather than new infrastructure per
-idea. Apart from the narrow Notes/Tasks search release above, none of this
-is committed; it remains raw material for later HomeBridge releases
+idea. Apart from the implemented Notes/Tasks search and the scoped Monitor
+follow-up milestone above, none of this is committed; it remains raw material
+for later HomeBridge releases
 (Tier 2, see `ARCHITECTURE.md` §4).
 
 **The showcase-level ideas:**

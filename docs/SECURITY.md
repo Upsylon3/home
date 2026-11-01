@@ -391,6 +391,18 @@ The shared-vs-separate-origin decision, and the recovery-kit UX, are
 both settled and implemented (see the v0 status callout above) — no
 longer blocking prerequisites.
 
+## Planned scheduled delegation (not implemented)
+
+[Decision 002](decisions/002-scheduled-monitor-followup.md) defines the first
+scheduled bridge and its restricted authority: separate Monitor-read and
+Tasks-create-once capabilities, explicit owner consent, live revocation and
+role checks, expiry, bounded effects and encrypted operational credentials.
+It also records the remaining effect of a compromised running Bridge.
+This is not a current security control: no such credentials, action endpoints
+or worker ship today. Implementation must prove the decision's acceptance
+gates before scheduled work is enabled; retaining browser sessions is not a
+substitute. Existing HomeVault external-review limits remain unchanged.
+
 ## Reporting a vulnerability
 
 Don't open a public issue. See `CONTRIBUTING.md` for how to report

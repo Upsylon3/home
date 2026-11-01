@@ -9,6 +9,14 @@ Paths below are as reached through the gateway (`http://<host>:8080/...`)
 — see [ARCHITECTURE.md](ARCHITECTURE.md) §5 for how each prefix maps to
 a backend service.
 
+Application backends delegate identity to HomeCore. An invalid/disabled
+session returns `401` from those backends. An unavailable or malformed
+HomeCore response returns `502`, a verification timeout returns `504`, and
+verification capacity exhaustion returns `503`; clients should keep their
+session and allow retry for these failures. A successful verification may
+be cached for up to five seconds, so account revocation propagates to an
+application backend within that window. HomeCore itself checks immediately.
+
 ## HomeCore (`/api/auth`, `/api/admin`, `/api/activity`, `/api/core`)
 
 Identity, sessions, 2FA, the application registry, permissions, and the

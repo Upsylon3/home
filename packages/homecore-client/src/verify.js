@@ -1,49 +1,91 @@
-// The one thing every app in this file duplicated three times: asking
-// HomeCore's own "who is this token?" route, with a short cache so a
-// single page load that fires off a few dozen requests in parallel (a
-// gallery grid, say) doesn't turn into a few dozen near-simultaneous
-// network round-trips for the exact same answer.
-//
-// Shared by every app that has no identity of its own —
-// apps/homemedia-backend, apps/homesync-backend, and
-// apps/homenotes-backend all use this instead of each maintaining their
-// own copy. Each app's own homecloudClient.js still exists — it only
-// contains the app-specific HomeCloud calls (listFiles, uploadFile,
-// resolveFolderPath, and so on) that are genuinely different per app.
-
+// All seven Tier 1 backends delegate identity to HomeCore. Only an
+// explicit authentication refusal may expire a session: an upstream
+// outage must stay a retryable error, never a frontend-triggering 401.
 const HOMECORE_URL = (process.env.HOMECORE_INTERNAL_URL || "http://homecore:4000").replace(/\/$/, "");
 
-// Verifying every request against HomeCore's own /api/auth/me is what
-// makes every app that has no identity of its own respect exactly the
-// same account state HomeCore already tracks — disabled accounts,
-// logout-everywhere, password changes, all of it — without any of them
-// keeping their own copy of any of that (see ARCHITECTURE.md's "delegated
-// auth" principle). The cost is a network hop per request; this cache
-// exists purely to absorb a burst of near-simultaneous requests, not to
-// compromise on how fresh "signed out" is. 5 seconds of staleness is a
-// fair trade.
-const meCache = new Map(); // token -> { user, expiresAt }
-const ME_CACHE_TTL_MS = 5000;
-
-async function verifyUser(token) {
-  const cached = meCache.get(token);
-  if (cached && cached.expiresAt > Date.now()) return cached.user;
-
-  let res;
-  try {
-    res = await fetch(`${HOMECORE_URL}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
-  } catch (err) {
-    const wrapped = new Error("Couldn't reach HomeCore to verify this session.");
-    wrapped.status = 502;
-    throw wrapped;
-  }
-  if (!res.ok) {
-    meCache.delete(token);
-    return null;
-  }
-  const user = await res.json();
-  meCache.set(token, { user, expiresAt: Date.now() + ME_CACHE_TTL_MS });
-  return user;
+function verificationError(message, status = 502) {
+  return Object.assign(new Error(message), { status });
 }
 
-module.exports = { verifyUser, HOMECORE_URL };
+// A separate verifier owns each cache. Options let tests exercise time and
+// capacity boundaries using real HTTP without sleeping through cache TTLs.
+function createVerifier({
+  homecoreUrl = HOMECORE_URL,
+  timeoutMs = 5000,
+  cacheTtlMs = 5000,
+  maxCacheEntries = 1000,
+  maxPendingRequests = 100,
+  now = () => performance.now()
+} = {}) {
+  const cache = new Map();
+  const pending = new Map();
+
+  async function fetchUser(token, startedAt) {
+    const signal = AbortSignal.timeout(timeoutMs);
+    let res;
+    try {
+      res = await fetch(`${homecoreUrl.replace(/\/$/, "")}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+        signal,
+        redirect: "error"
+      });
+      if (res.status === 401 || res.status === 403) {
+        await res.body?.cancel();
+        return null;
+      }
+      if (res.status !== 200) {
+        await res.body?.cancel();
+        throw verificationError("HomeCore couldn't verify this session. Please try again.");
+      }
+      // The deadline covers the body too, including a server that sends
+      // headers promptly and then stalls before completing its JSON.
+      const user = await res.json();
+      if (!user || !Number.isSafeInteger(user.id) || user.id <= 0 ||
+          typeof user.username !== "string" || !user.username ||
+          !["admin", "user"].includes(user.role)) {
+        throw verificationError("HomeCore returned an invalid session response. Please try again.");
+      }
+
+      // Start the TTL before the request so a slow reply doesn't extend
+      // the existing five-second window for observing account revocation.
+      const expiresAt = startedAt + cacheTtlMs;
+      if (expiresAt > now()) {
+        if (cache.size >= maxCacheEntries) cache.delete(cache.keys().next().value);
+        cache.set(token, { user, expiresAt });
+      }
+      return user;
+    } catch (err) {
+      if (signal.aborted) {
+        throw verificationError("HomeCore took too long to verify this session. Please try again.", 504);
+      }
+      if (err.status === 502) throw err;
+      // Never expose upstream bodies, URLs, tokens or parser exceptions.
+      throw verificationError("Couldn't reach HomeCore or read its session response. Please try again.");
+    }
+  }
+
+  return async function verifyUser(token) {
+    const startedAt = now();
+    for (const [key, entry] of cache) {
+      if (entry.expiresAt <= startedAt) cache.delete(key);
+    }
+    const cached = cache.get(token);
+    if (cached) return cached.user;
+    if (pending.has(token)) return pending.get(token);
+    // Bound requests for distinct tokens as well as successful cache
+    // entries; a slow HomeCore must not grow either map without limit.
+    if (pending.size >= maxPendingRequests) {
+      throw verificationError("Session verification is busy. Please try again.", 503);
+    }
+    const request = fetchUser(token, startedAt);
+    pending.set(token, request);
+    try {
+      return await request;
+    } finally {
+      pending.delete(token);
+    }
+  };
+}
+
+const verifyUser = createVerifier();
+module.exports = { verifyUser, HOMECORE_URL, createVerifier };

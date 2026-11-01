@@ -212,6 +212,7 @@ Or one service at a time:
 
 ```bash
 cd homecore && npm test                    # 51 tests
+cd packages/homecore-client && npm test    # 28 tests — real HomeCore and HTTP failure/cache boundaries
 cd apps/homecloud-backend && npm test      # 41 tests
 cd apps/homemedia-backend && npm test      # 28 tests
 cd apps/homenotes-backend && npm test      # 24 tests
@@ -230,7 +231,7 @@ test-framework dependency. Each test file gets its own fresh, isolated
 temp SQLite database, and `node --test` runs each file in its own
 process, so tests can't leak state into each other.
 
-Three frontends have real tests, and each tests one small module rather
+Four frontends have real tests, and each tests small modules rather
 than the UI. `apps/hometasks` tests its date helpers (`src/dates.js`: local
 "today", "Overdue" / "Tomorrow" wording, date arithmetic) and the wording of repeat choices (`src/repeat.js`). `apps/homemonitor` tests its number formatting (`src/format.js`) and the chart maths (`src/chart.js`: gaps in the data, flat lines, clamping). The other two: `apps/homevault` tests its client-side encryption
 (`src/crypto.js`), and `apps/homenotes` tests its Markdown sanitizer
@@ -242,6 +243,13 @@ reaching them only through rendering UI. `home`, `homecloud` and
 end to end in a headless browser when it was built (sign in, add, edit,
 tick off, delete, search, projects), but that script is not part of the
 repo.
+
+`packages/homecore-client` also has its own suite, included by root
+`npm test`. It verifies real HomeCore accounts, disabling and logout against
+a disposable database, plus controlled HTTP failures, malformed replies,
+stalled headers/bodies, cache expiry/capacity and concurrent verification.
+These tests protect every application backend from falsely expiring a
+session when the identity service is temporarily unavailable.
 
 If you change a frontend, also run `npm run build` in that app — the
 test suites above don't catch a build-time error in a `.jsx` file.

@@ -4,6 +4,9 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
+const Database = require("better-sqlite3");
+const { Worker } = require("node:worker_threads");
+const { once } = require("node:events");
 
 const script = path.resolve(__dirname, "../backup.sh");
 const unix = { skip: process.platform === "win32" ? "Backup containers require POSIX sh; run these tests in Linux/WSL." : false };
@@ -20,6 +23,9 @@ function fixture(t) {
     fs.mkdirSync(dir);
     fs.writeFileSync(path.join(dir, "data.txt"), `data for ${name}`);
     fs.writeFileSync(path.join(dir, ".hidden"), "hidden data");
+    const db = new Database(path.join(dir, "app.db"));
+    db.exec("CREATE TABLE example (value TEXT); INSERT INTO example VALUES ('restorable')");
+    db.close();
     return dir;
   }
   function oldArchive(name) {
@@ -80,7 +86,7 @@ test("archive creation failure preserves old backups and continues other sources
   f.source("a-failed"); f.source("b-healthy");
   const failedOld = f.oldArchive("a-failed");
   const healthyOld = f.oldArchive("b-healthy");
-  f.override("tar", 'case "$*" in *a-failed*) exit 2 ;; esac');
+  f.override("python3", 'case "$*" in *a-failed*) exit 2 ;; esac');
   const result = f.run();
   assert.equal(result.status, 1);
   assert.ok(fs.existsSync(failedOld));
@@ -180,4 +186,160 @@ test("temporary archive creation failure preserves the previous backup", unix, (
   assert.equal(result.status, 1);
   assert.deepEqual(f.archives(), [path.basename(old)]);
   assert.doesNotMatch(result.log, /finished/);
+});
+
+function restore(f, name) {
+  const archive = f.archives().find((entry) => entry.startsWith(`${name}-backup-`));
+  assert.ok(archive);
+  const restored = path.join(f.backups, "restored");
+  fs.mkdirSync(restored);
+  const unpack = spawnSync("tar", ["xzf", path.join(f.backups, archive), "-C", restored], { encoding: "utf8" });
+  assert.equal(unpack.status, 0, unpack.stderr);
+  return restored;
+}
+
+test("a WAL snapshot restores committed data without sidecars or uncommitted rows", unix, (t) => {
+  const f = fixture(t);
+  const source = f.source("homecore");
+  const db = new Database(path.join(source, "app.db"));
+  t.after(() => db.close());
+  db.pragma("journal_mode = WAL");
+  db.exec("INSERT INTO example VALUES ('committed in WAL'); BEGIN; INSERT INTO example VALUES ('uncommitted')");
+  assert.ok(fs.statSync(path.join(source, "app.db-wal")).size > 0);
+  const result = f.run();
+  assert.equal(result.status, 0, result.log);
+  const restored = restore(f, "homecore");
+  assert.ok(!fs.existsSync(path.join(restored, "app.db-wal")));
+  assert.ok(!fs.existsSync(path.join(restored, "app.db-shm")));
+  const copy = new Database(path.join(restored, "app.db"));
+  t.after(() => copy.close());
+  assert.deepEqual(copy.pragma("integrity_check"), [{ integrity_check: "ok" }]);
+  assert.deepEqual(copy.prepare("SELECT value FROM example").all(), [
+    { value: "restorable" }, { value: "committed in WAL" }
+  ]);
+  copy.exec("INSERT INTO example VALUES ('writable after restore')");
+  db.exec("ROLLBACK");
+  assert.equal(db.prepare("SELECT count(*) AS n FROM example").get().n, 2);
+});
+
+test("restored snapshots remain transaction-consistent during continuous writes", unix, async (t) => {
+  const f = fixture(t);
+  const source = f.source("homecore");
+  const worker = new Worker(`
+    const { parentPort, workerData } = require('node:worker_threads');
+    const Database = require(workerData.module);
+    const db = new Database(workerData.file);
+    db.pragma('journal_mode = WAL');
+    db.exec('CREATE TABLE generations (value INTEGER, payload BLOB)');
+    db.transaction(() => {
+      const insert = db.prepare('INSERT INTO generations VALUES (0, zeroblob(1024))');
+      for (let i = 0; i < 2500; i++) insert.run();
+    })();
+    const update = db.prepare('UPDATE generations SET value = value + 1');
+    update.run();
+    parentPort.postMessage('ready');
+    setInterval(() => update.run(), 2);
+  `, { eval: true, workerData: { module: require.resolve("better-sqlite3"), file: path.join(source, "app.db") } });
+  let result;
+  try {
+    await once(worker, "message");
+    result = f.run({ BACKUP_TIMEOUT_SECONDS: "8" });
+  } finally {
+    await worker.terminate();
+  }
+  assert.equal(result.status, 0, result.log);
+  const copy = new Database(path.join(restore(f, "homecore"), "app.db"));
+  t.after(() => copy.close());
+  const row = copy.prepare("SELECT count(*) AS n, min(value) AS lo, max(value) AS hi FROM generations").get();
+  assert.equal(row.n, 2500);
+  assert.ok(row.lo >= 1);
+  assert.equal(row.lo, row.hi, "every row must come from the same committed transaction");
+  assert.deepEqual(copy.pragma("integrity_check"), [{ integrity_check: "ok" }]);
+});
+
+function cloudSource(f) {
+  const source = f.source("homecloud-backend");
+  const db = new Database(path.join(source, "homecloud.db"));
+  db.exec(`CREATE TABLE files (user_id INTEGER, stored_name TEXT, size INTEGER,
+    thumbnail_name TEXT, deleted_at TEXT);
+    INSERT INTO files VALUES (1, 'original.db', 7, 'thumb.jpg', '2026-01-01');`);
+  db.close();
+  const uploads = path.join(source, "uploads", "1");
+  fs.mkdirSync(uploads, { recursive: true });
+  // A user-uploaded .db is ordinary content, not an application database.
+  fs.writeFileSync(path.join(uploads, "original.db"), "payload");
+  fs.writeFileSync(path.join(uploads, "thumb.jpg"), "thumbnail");
+  return { source, uploads };
+}
+
+test("HomeCloud restores referenced uploads and thumbnails, including trash and uploaded .db files", unix, (t) => {
+  const f = fixture(t);
+  cloudSource(f);
+  const result = f.run();
+  assert.equal(result.status, 0, result.log);
+  const restored = restore(f, "homecloud-backend");
+  assert.equal(fs.readFileSync(path.join(restored, "uploads/1/original.db"), "utf8"), "payload");
+  assert.equal(fs.readFileSync(path.join(restored, "uploads/1/thumb.jpg"), "utf8"), "thumbnail");
+});
+
+for (const problem of ["missing upload", "wrong size", "missing thumbnail", "unsafe reference"]) {
+  test(`HomeCloud ${problem} fails restore verification and preserves prior backups`, unix, (t) => {
+    const f = fixture(t);
+    const { source, uploads } = cloudSource(f);
+    const old = f.oldArchive("homecloud-backend");
+    if (problem === "missing upload") fs.unlinkSync(path.join(uploads, "original.db"));
+    if (problem === "wrong size") fs.writeFileSync(path.join(uploads, "original.db"), "truncated");
+    if (problem === "missing thumbnail") fs.unlinkSync(path.join(uploads, "thumb.jpg"));
+    if (problem === "unsafe reference") {
+      const db = new Database(path.join(source, "homecloud.db"));
+      db.exec("UPDATE files SET stored_name = '../outside'");
+      db.close();
+    }
+    const result = f.run();
+    assert.equal(result.status, 1, result.log);
+    assert.deepEqual(f.archives(), [path.basename(old)]);
+    assert.deepEqual(f.partials(), []);
+    assert.equal(fs.readdirSync(f.backups).some((name) => name.startsWith(".snapshot-")), false);
+  });
+}
+
+for (const problem of ["corrupt database", "no database", "uninitialized database", "symlink"]) {
+  test(`${problem} is rejected without pruning an older archive`, unix, (t) => {
+    const f = fixture(t);
+    const source = f.source("homecore");
+    const old = f.oldArchive("homecore");
+    if (problem === "corrupt database") fs.writeFileSync(path.join(source, "app.db"), "not SQLite");
+    if (problem === "no database") fs.unlinkSync(path.join(source, "app.db"));
+    if (problem === "uninitialized database") fs.writeFileSync(path.join(source, "app.db"), "");
+    if (problem === "symlink") fs.symlinkSync("data.txt", path.join(source, "link"));
+    const result = f.run();
+    assert.equal(result.status, 1, result.log);
+    assert.deepEqual(f.archives(), [path.basename(old)]);
+    assert.deepEqual(f.partials(), []);
+  });
+}
+
+test("a locked database times out, cleans staging and leaves previous backups", unix, (t) => {
+  const f = fixture(t);
+  const source = f.source("homecore");
+  const old = f.oldArchive("homecore");
+  const db = new Database(path.join(source, "app.db"));
+  t.after(() => db.close());
+  db.exec("BEGIN EXCLUSIVE");
+  const result = f.run({ BACKUP_TIMEOUT_SECONDS: "1" });
+  db.exec("ROLLBACK");
+  assert.equal(result.status, 1, result.log);
+  assert.deepEqual(f.archives(), [path.basename(old)]);
+  assert.deepEqual(f.partials(), []);
+  assert.equal(fs.readdirSync(f.backups).some((name) => name.startsWith(".snapshot-")), false);
+});
+
+test("an invalid timeout is rejected before touching backups", unix, (t) => {
+  const f = fixture(t);
+  f.source("homecore");
+  const old = f.oldArchive("homecore");
+  const result = f.run({ BACKUP_TIMEOUT_SECONDS: "0" });
+  assert.equal(result.status, 1);
+  assert.match(result.log, /invalid timeout/);
+  assert.deepEqual(f.archives(), [path.basename(old)]);
 });

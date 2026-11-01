@@ -1,10 +1,9 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-// Two proxy targets in dev, matching production's nginx routing exactly
-// (see this app's own nginx.conf): /api/homecloud goes to
-// apps/homecloud-backend (Home's dashboard quota widget calls it
-// directly), everything else under /api goes to HomeCore. Port 5174, not
+// Service-specific proxies match production routing (see nginx.conf):
+// Cloud quota, optional Bridge controls and the administrator Vault reset
+// go directly to their owning service; other /api calls go to Core. Port 5174, not
 // 5173, so Home and HomeCloud's frontend can both run in dev at the same
 // time.
 export default defineConfig({
@@ -13,6 +12,7 @@ export default defineConfig({
   server: {
     port: 5174,
     proxy: {
+      "/api/homevault": { target: "http://localhost:4600", changeOrigin: true },
       "/api/homebridge": { target: "http://localhost:4900", changeOrigin: true },
       "/api/homecloud": {
         target: "http://localhost:4500",

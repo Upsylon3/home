@@ -239,6 +239,8 @@ jobs:
           curl -fsS -o /dev/null -H "Authorization: Bearer $token" "$BASE/api/homecloud/files"
           echo "ok  cross-service auth"
 
+          printf '{"adminToken":"%s"}' "$token" | node apps/homevault-backend/test-support/reset-smoke.cjs
+
           printf 'backup restore smoke\n' > /tmp/backup-smoke.txt
           curl -fsS -o /dev/null -H "Authorization: Bearer $token" \
             -F 'file=@/tmp/backup-smoke.txt' "$BASE/api/homecloud/files/upload"

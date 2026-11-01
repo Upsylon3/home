@@ -443,6 +443,33 @@ items remain recoverable until the owner explicitly deletes them permanently
 or destroys the whole vault. Permanent deletion removes the live database row,
 not historical backups or forensic remnants in SQLite/storage.
 
+### Administrator Vault reset
+
+Home Settings offers this action for Core administrators, directly against
+Vault. These routes verify the session live in Core on every request, bypassing
+the usual five-second identity cache, and return `Cache-Control: no-store`.
+They accept browser sessions only; Bridge capabilities do not authorize them.
+
+| Method | Path | What it does |
+|---|---|---|
+| GET | `/api/homevault/admin/users/:userId/vault` | `{exists: false}` or `{exists: true, vaultId}`; no envelopes or item contents |
+| DELETE | `/api/homevault/admin/users/:userId/vault` | Body `{vaultId, confirmation: "DELETE <userId>"}`; deletes that exact current vault including Trash, returns 204 |
+
+Account ids are positive safe integers; the body vault id must be a positive
+safe integer number. Bad ids/confirmation return 400, unauthenticated callers
+401, non-administrators 403, absent vaults 404, and a replaced vault 409. Core
+verification failures return retryable 502/503/504 and leave Vault untouched.
+The status route describes only local Vault existence, not whether an account
+exists in Core. Home's account selector uses `/api/core/admin/users`.
+
+Deletion and the `vault_admin_resets` record (actor/target/vault ids and time)
+commit atomically in Vault's database. This audit has no reading API or automatic
+retention; backups retain it. The owner can create a new vault afterward. A
+retry naming the previous vault cannot delete its replacement. There is no
+in-app undo, secret recovery, historical-copy erasure or unlocked-device
+revocation. No reset is performed by deployment or migration. See
+[decision 003](decisions/003-vault-admin-reset.md).
+
 ## HomeSync backend (`/api/homesync`)
 
 The API the Android app talks to. No web frontend of its own.

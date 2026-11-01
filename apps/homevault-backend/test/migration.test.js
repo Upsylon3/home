@@ -48,6 +48,11 @@ test("Trash migration preserves an existing vault and ciphertext across two star
         env: { ...process.env, DATA_DIR: dataDir }, stdio: "pipe"
       });
       db = new Database(databasePath);
+      assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'vault_admin_resets'").get());
+      if (i === 0) db.prepare("INSERT INTO vault_admin_resets (actor_user_id, target_user_id, vault_id) VALUES (1, 2, 99)").run();
+      assert.deepEqual(db.prepare("SELECT actor_user_id, target_user_id, vault_id FROM vault_admin_resets").get(), {
+        actor_user_id: 1, target_user_id: 2, vault_id: 99
+      });
       assert.deepEqual(db.prepare("SELECT * FROM vaults").get(), vault);
       assert.deepEqual(db.prepare("SELECT * FROM vault_items").get(), {
         ...item, deleted_at: i === 0 ? null : "2026-01-01 00:00:00"

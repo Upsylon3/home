@@ -23,6 +23,7 @@ app.get("/api/homevault/health", (req, res) => {
   res.json({ status: "ok", homecoreUrl: HOMECORE_URL });
 });
 
+app.use("/api/homevault/admin", require("./admin"));
 app.use("/api/homevault", requireAuth, vaultRoutes);
 app.use("/api/homevault", requireAuth, itemRoutes);
 

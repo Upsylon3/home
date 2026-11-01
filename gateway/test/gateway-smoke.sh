@@ -154,6 +154,12 @@ req GET "/api/hometasks/tasks?status=done&today=2026-10-09"
 expect_body   "API paths are passed through UNCHANGED (prefix kept)" '"path": "/api/hometasks/tasks?status=done&today=2026-10-09"'
 req GET /api/auth/me
 expect_body   "/api/auth/... reaches HomeCore, path unchanged" '"path": "/api/auth/me"'
+req GET /api/core/auth/me
+expect_body   "canonical auth reaches HomeCore without rewriting" '"path": "/api/core/auth/me"'
+req GET /api/core/admin/activity
+expect_body   "canonical admin reaches HomeCore without rewriting" '"path": "/api/core/admin/activity"'
+req GET /api/core/activity/homecloud
+expect_body   "explicit HomeCloud activity scope reaches HomeCore" '"path": "/api/core/activity/homecloud"'
 req POST /internal/delegations -H 'Content-Type: application/json' -d '{"integrationId":"monitor-followup-v1","consent":true}'
 expect_status "delegation issuance is not exposed by the public gateway" 404
 req POST /internal/delegations/example/renew -H 'Content-Type: application/json' -d '{"consent":true}'

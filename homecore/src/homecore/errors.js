@@ -1,12 +1,12 @@
 // HOME_MASTER_SPECIFICATION.md §33 defines a standard error shape:
 //   { error: { code, message, requestId } }
 //
-// This only applies to routes mounted under /api/core — HomeCloud's
-// existing endpoints (/api/auth, /api/files, /api/folders, /api/admin,
-// /api/activity, /api/share) still return their original { error: "..." }
-// shape. Rule 2 says don't change existing behavior without being asked,
-// and the frontend already depends on that shape; unifying it is a
-// follow-up migration, not part of v0.
+// Core's platform routes use this shape. Compatibility auth/admin routers
+// under /api/core deliberately retain their known legacy error strings;
+// path migration does not silently change their response contract.
+// Existing compatibility and application endpoints keep their original
+// { error: "..." } shape. Unifying those contracts requires a separate
+// versioned migration with caller updates, not a change of URL prefix.
 const crypto = require("crypto");
 
 function attachRequestId(req, res, next) {

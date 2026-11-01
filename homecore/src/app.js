@@ -83,6 +83,8 @@ app.use(
 app.use(express.json());
 
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
+// Compatibility mounts use the same routers as /api/core/auth and /admin.
+// Do not instantiate another limiter or redirect requests between prefixes.
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/activity", activityRoutes);

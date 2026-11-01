@@ -3,14 +3,14 @@
 > **A note on section references in code comments:** `HOME_MASTER_SPECIFICATION.md`
 > and `HOME_ARTISTIC_DIRECTION.md` — cited throughout the codebase as
 > "per §N" — are now both present at the repo root. Cross-checking a
-> sample of citations against them found the implementation faithful to
-> the spec's intent everywhere it matters, with one real, worth-knowing
-> gap: §10 suggests nesting every HomeCore-owned route under
-> `/api/core/...` (`/api/core/auth`, `/api/core/users`, ...), but
-> `/api/auth`, `/api/admin`, and `/api/activity` are top-level instead —
-> a holdover from before HomeCore existed as its own concept, never
-> moved to match once it did. Not a bug (nothing is broken or
-> insecure), just a naming inconsistency a future cleanup could resolve.
+> sample of citations found a historical §10 route-nesting deviation.
+> Core now exposes `/api/core/auth` and `/api/core/admin`, while retaining
+> the original top-level prefixes as compatible aliases. The personal
+> HomeCloud feed has the explicit `/api/core/activity/homecloud` path;
+> existing cross-app `/api/core/activity` and `/activity/me` keep their
+> different audiences and response shapes. Shared router instances preserve
+> sessions, authorization and rate-limit budgets across prefixes. See
+> `API.md` for the additive migration and compatibility policy.
 > This document itself reflects the actual code, verified directly
 > against both the spec and the implementation, not just one or the
 > other.
@@ -286,10 +286,11 @@ problem:
   *links* already cover the common "give one person one thing" case;
   real multi-user ACLs wait until a specific feature actually needs
   them.
-- **Permission enforcement is declarative, not enforced.** Applications
-  declare what permissions they'd use in their manifest, but no code
-  path currently checks a permission before granting access to another
-  app's resource. See `SECURITY.md`'s "sibling application overreach"
+- **Application-manifest permissions remain declarative for browser sessions.**
+  The catalog has no caller-app identity or general grant enforcement model.
+  Scoped background capabilities enforce their separate action/audience
+  boundary; they do not turn the manifest catalog into browser-session ACLs.
+  See `SECURITY.md`'s "sibling application overreach"
   and its decision to defer this until HomeVault needs it.
 - **No account-deletion flow exists, only disable — decided permanent,**
   not a gap waiting to be filled. Building real cross-service deletion

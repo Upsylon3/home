@@ -65,12 +65,16 @@ remain follow-ups; per-database consistency does not establish those guarantees.
    HomeSync identity. Re-run `node design/make-favicons.mjs` whenever the
    canonical icon or brand color changes. Typeface and accent color remain
    settled, not open questions.
-5. **Fix the `/api/auth`, `/api/admin`, `/api/activity` route-nesting
-   inconsistency** flagged in `ARCHITECTURE.md` — `HOME_MASTER_SPECIFICATION.md`
-   §10 calls for these under `/api/core/...`; they're top-level instead,
-   a holdover from before HomeCore existed. Not urgent (nothing's
-   broken), but a real deviation worth resolving deliberately rather
-   than leaving as an accident of history.
+5. **Done: add canonical Core routes with backward compatibility.** Auth
+   and admin now expose `/api/core/auth` and `/api/core/admin` through the
+   same routers as their existing aliases. `/api/core/activity/homecloud`
+   preserves the legacy personal Cloud feed without replacing cross-app
+   activity views. Known response contracts, sessions, ownership and shared
+   rate-limit budgets are covered by real HTTP tests. Existing clients keep
+   working; no redirect, removal deadline or error-format migration is imposed.
+   See `API.md` for Core-first rollout and rollback requirements for future
+   consumers. General manifest-permission enforcement remains deliberately
+   deferred, independently of these URL aliases and scoped capabilities.
 6. **Done: the whole stack builds and boots end to end.** `ci.yml`'s
    Docker job runs `docker compose build`, starts every container and
    checks the stack through the gateway, on GitHub's machines. It is green,
@@ -119,7 +123,7 @@ remain follow-ups; per-database consistency does not establish those guarantees.
    unreachable app gets a friendly 503 (a styled page for frontends, JSON for
    APIs) while an app's own error answers pass through untouched. The
    compose `depends_on` workaround is gone. Tested in a real nginx by
-   `gateway/test/gateway-smoke.sh` (55 checks, also run in CI). Home's own
+   `gateway/test/gateway-smoke.sh` (58 checks, also run in CI). Home's own
    container got the same fix, since it used to crash-loop whenever
    HomeCloud's backend was missing. Kept here,
    rather than deleted, so the numbering that other files point at stays

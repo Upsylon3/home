@@ -66,6 +66,10 @@ jobs:
       # Runs every workspace's own test suite (362 tests at time of writing).
       - run: npm test
 
+      # Exercise the real backup script, including archive restore and
+      # injected create/verify/publish/prune failures, in temporary paths.
+      - run: npm run test:backup
+
       # The tests don't compile the React code, so a broken import in a
       # .jsx file would pass them. Building each frontend catches that.
       # --if-present skips workspaces (the backends) with no build script.

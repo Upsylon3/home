@@ -28,6 +28,13 @@ first (see below).
 
 ## Near-term backlog
 
+**Reliability follow-up from the November 2026 audit:** replace raw live-volume
+SQLite archiving with database-aware snapshots and test restored database
+integrity and file references under concurrent writes. Failed backup cycles
+now preserve prior archives and archive publication is verified, but that
+does not establish transactional or cross-service consistency. Keep this
+data-integrity work ahead of new cross-app features.
+
 1. **An independent security/cryptography review of HomeVault v0.** The
    single most important item on this list — see `SECURITY.md`'s v0
    status callout for exactly what's been verified by automated test

@@ -53,17 +53,17 @@ async function startTestApp() {
     }
     if (path === "/api/homemedia/albums") {
       return json(res, 200, {
-        albums: [{ id: 7, name: "Family holidays", itemCount: 18, updatedAt: "2026-10-27 10:00:00" }]
+        albums: [{ id: 7, name: "Family trip holidays", itemCount: 18, updatedAt: "2026-10-27 10:00:00" }]
       });
     }
     if (path === "/api/homenotes/notes") {
       return json(res, 200, {
-        notes: [{ id: 11, title: "Trip planning", excerpt: "A few notes about the journey", updatedAt: "2026-10-26 10:00:00" }]
+        notes: [{ id: 11, title: "Family trip notes", excerpt: "A few notes about the journey", updatedAt: "2026-10-26 10:00:00" }]
       });
     }
     if (path === "/api/hometasks/tasks") {
       return json(res, 200, {
-        tasks: [{ id: 21, title: "Book train tickets", completedAt: null, priority: "high", dueDate: "2026-11-05", updatedAt: "2026-10-25 10:00:00" }]
+        tasks: [{ id: 21, title: "Plan family weekend", completedAt: null, priority: "high", dueDate: "2026-11-05", updatedAt: "2026-10-25 10:00:00" }]
       });
     }
     return json(res, 404, { error: "not found" });

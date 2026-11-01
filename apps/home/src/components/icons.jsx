@@ -13,6 +13,15 @@ const common = {
   strokeLinejoin: "round"
 };
 
+export function SearchGlyph(props) {
+  return (
+    <svg viewBox="0 0 20 20" width={props.size || 18} height={props.size || 18} {...common}>
+      <circle cx="8.5" cy="8.5" r="5.5" />
+      <path d="m12.5 12.5 4.5 4.5" />
+    </svg>
+  );
+}
+
 export function HomeGlyph(props) {
   return (
     <svg viewBox="0 0 20 20" width={props.size || 18} height={props.size || 18} {...common}>

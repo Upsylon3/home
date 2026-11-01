@@ -63,7 +63,7 @@ Some roadmap items require evidence an LLM cannot manufacture:
 
 Agents may improve tests, prepare review material and remove code defects around these items, but must leave the external validation visibly open until it actually occurs. Do not let one unavailable physical-world check prevent unrelated repository work.
 
-The Node runtime baseline is now **Node 26 LTS** across the 15 Node-based Dockerfiles and the CI, release and reconciliation workflows. All eight backend workspaces use `better-sqlite3` 12.11.1, whose package metadata supports Node 26. For any future major runtime change, update every Node image, all relevant workflows, local-development requirements and the Windows native-install check together; verify native modules and platform prebuilds before editing.
+The Node runtime baseline is now **Node 26 LTS** across all Node-based Dockerfiles and the CI, release and reconciliation workflows. All eight backend workspaces use `better-sqlite3` 12.11.1, whose package metadata supports Node 26. For any future major runtime change, update every Node image, all relevant workflows, local-development requirements and the Windows native-install check together; verify native modules and platform prebuilds before editing.
 
 ## 4. Engineering rules
 

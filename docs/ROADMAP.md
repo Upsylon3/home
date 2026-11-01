@@ -170,13 +170,26 @@ generic per-app dashboard stat (staying hardcoded per app for now).
   minimum hardware, and an admin-facing vault-reset action — see item 3
   above. The core vault itself is built (v0).
 
+## HomeBridge first release
+
+The first narrow bridge is implemented: optional read-only search across a
+person's own notes and tasks from Home's `/search` page. The design, failure
+behavior, privacy boundaries and explicit opt-out are recorded in
+[decision 001](decisions/001-homebridge-search.md). The `bridge` Compose profile
+is opt-in; no query or search index is persisted, and no session token is
+retained for background use (the shared five-second identity cache applies). Scheduled
+automation still requires the decided HomeCore-minted scoped credential and
+is not part of this release. Other source apps and write bridges remain
+uncommitted; HomeVault is never a server-side search source.
+
 ## Cross-module ideas brainstorm (speculative)
 
 Everything below rides on infrastructure that already exists — the
 shared event bus and the application registry — so most of these are "a
 new listener, zero new plumbing" rather than new infrastructure per
-idea. None of this is committed; it's raw material for when HomeBridge
-(Tier 2, see `ARCHITECTURE.md` §4) gets built.
+idea. Apart from the narrow Notes/Tasks search release above, none of this
+is committed; it remains raw material for later HomeBridge releases
+(Tier 2, see `ARCHITECTURE.md` §4).
 
 **The showcase-level ideas:**
 

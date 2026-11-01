@@ -72,11 +72,11 @@ For a roadmap item, verify it is still open in the current code and has no activ
 
 ### Current roadmap interpretation
 
-- The Node 22 → Node 26 LTS migration is completed. Node 26 is now the runtime baseline across all 15 Node-based Dockerfiles and the CI/release/reconciliation workflows. The eight backend workspaces use `better-sqlite3` 12.11.1; its Node 26 ABI prebuilds are checked by a dedicated Windows `npm ci` CI job. Treat future Node major changes as coordinated migrations, not isolated Dependabot bumps.
+- The Node 22 → Node 26 LTS migration is completed. Node 26 is now the runtime baseline across all Node-based Dockerfiles and the CI/release/reconciliation workflows. The eight backend workspaces use `better-sqlite3` 12.11.1; its Node 26 ABI prebuilds are checked by a dedicated Windows `npm ci` CI job. Treat future Node major changes as coordinated migrations, not isolated Dependabot bumps.
 - Completing the Android adaptive-icon work is a bounded design-system follow-up; follow the source artwork and design-system rules rather than inventing a new icon style.
 - Dependabot updates are recurring maintenance, not a one-time "first PRs" task. Review majors individually and verify native modules, build tooling, Docker images and platform compatibility.
 - The HomeCore route-nesting inconsistency is non-urgent. Do not rename routes as a cosmetic cleanup: preserve existing clients and compatibility, document a migration/deprecation plan, and prove both old and new routes behave intentionally.
-- HomeBridge is the next decided cross-app product initiative in the build order. Its Tier 2 boundary and scoped background-trigger credential are already decided in `docs/ARCHITECTURE.md`. Choose one narrow first bridge from a real user journey, document its trigger, permissions, data flow, failure/retry behavior and opt-out semantics, then implement it end to end. Do not build every idea in the speculative brainstorm at once.
+- HomeBridge v0 now provides optional live Notes/Tasks search from Home; see `docs/decisions/001-homebridge-search.md`. Its Tier 2 boundary remains mandatory. Choose subsequent bridges from real user journeys, document their permissions, data flow, failure/retry behavior and opt-out semantics, and keep each release narrow. Scheduled bridges still require the decided HomeCore-minted scoped credential; never retain browser tokens as a substitute. Do not build the speculative brainstorm wholesale.
 - HomeVault's independent security review, HomeSync's real-device validation and minimum-hardware Argon2id benchmarks remain external validation items. AI-generated reviews are useful preparation, not substitutes for independent review or real hardware.
 
 ## 4. Plan and implement narrowly

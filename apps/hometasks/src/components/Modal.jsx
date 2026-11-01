@@ -24,6 +24,9 @@ export default function Modal({ title, onClose, children }) {
       onClick={onClose}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
         className="auth-card"
         style={{ maxWidth: 420, width: "100%", margin: 0 }}
         onClick={(e) => e.stopPropagation()}

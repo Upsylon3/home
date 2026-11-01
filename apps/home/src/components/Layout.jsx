@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { api, setToken } from "../api.js";
-import { GridGlyph, GearGlyph } from "./icons.jsx";
+import { GridGlyph, GearGlyph, SearchGlyph } from "./icons.jsx";
 import AppIcon from "./AppIcon.jsx";
 import NotificationBell from "./NotificationBell.jsx";
 import ThemeToggle from "./ThemeToggle.jsx";
@@ -58,6 +58,11 @@ export default function Layout({ user, onLogout }) {
               </NavLink>
             </li>
             <li>
+              <NavLink to="/search" className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
+                <SearchGlyph size={15} /> Search
+              </NavLink>
+            </li>
+            <li>
               <NavLink to="/settings" className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
                 <GearGlyph size={15} /> Settings
               </NavLink>
@@ -106,6 +111,10 @@ export default function Layout({ user, onLogout }) {
         <NavLink to="/settings" className={({ isActive }) => `bottom-nav-item${isActive ? " active" : ""}`}>
           <GearGlyph size={18} />
           Settings
+        </NavLink>
+        <NavLink to="/search" className={({ isActive }) => `bottom-nav-item${isActive ? " active" : ""}`}>
+          <SearchGlyph size={18} />
+          Search
         </NavLink>
       </nav>
     </div>

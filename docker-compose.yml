@@ -12,6 +12,18 @@
 name: home
 
 services:
+  # Tier 2: optional, stateless, read-only cross-app search. No Tier 1
+  # service depends on this profile or its process.
+  homebridge:
+    profiles: [bridge]
+    build: { context: ., dockerfile: services/homebridge/Dockerfile }
+    restart: unless-stopped
+    environment:
+      HOMECORE_INTERNAL_URL: http://homecore:4000
+      HOMENOTES_INTERNAL_URL: http://homenotes-backend:4400
+      HOMETASKS_INTERNAL_URL: http://hometasks-backend:4700
+      PORT: "4900"
+    expose: ["4900"]
   # ---------------------------------------------------------------------
   # Tier 0 — infrastructure every app depends on.
   # ---------------------------------------------------------------------

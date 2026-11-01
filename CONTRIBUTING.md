@@ -18,7 +18,7 @@ exists to protect: **a Tier 1 app (HomeCloud, HomeMedia, HomeSync,
 HomeNotes, and any future one) owns its own database and process, never
 reaches into another app's database, and never branches on whether
 another app is installed.** Optional cross-app behavior belongs in
-HomeBridge (not yet built — see [docs/ROADMAP.md](docs/ROADMAP.md)), not
+HomeBridge (its optional search v0 is built — see [docs/ROADMAP.md](docs/ROADMAP.md)), not
 bolted onto an existing app.
 
 ## Setting up

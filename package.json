@@ -21,7 +21,8 @@
     "apps/hometasks",
     "apps/hometasks-backend",
     "apps/homevault",
-    "apps/homevault-backend"
+    "apps/homevault-backend",
+    "services/homebridge"
   ],
 
   "allowScripts": {

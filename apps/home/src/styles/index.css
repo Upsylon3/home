@@ -12,6 +12,16 @@ body,
   height: 100%;
 }
 
+.bridge-search { max-width: 850px; }
+.bridge-search button { min-height: 44px; }
+.bridge-sources { display: flex; flex-wrap: wrap; gap: 16px; border: 1px solid var(--border); margin: 0 0 16px; }
+.bridge-sources label { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.bridge-status { margin: 20px 0; }
+.bridge-results { list-style: none; padding: 0; margin: 0; }
+.bridge-results a { display: flex; flex-direction: column; gap: 8px; padding: 16px; min-height: 44px; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; text-decoration: none; }
+.bridge-results a:hover { background: var(--panel-raised); }
+.bridge-results span { color: var(--text-dim); font-size: 13px; white-space: pre-wrap; }
+
 body {
   margin: 0;
   background: var(--bg);

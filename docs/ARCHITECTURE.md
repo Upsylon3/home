@@ -99,12 +99,21 @@ Tier 1 — Independent apps
   Contains ZERO optional/enhancement cross-app behavior.
 
 Tier 2 — HomeBridge
-  One separate, optional service (not yet built). Contains every
+  One separate, optional service. Its v0 provides live Notes/Tasks search
+  through Home's /search page; no persistent index or database. Contains every
   optional cross-app behavior — see ROADMAP.md. Detects which apps are
   present via Tier 0's registry and activates only the bridges whose
   required apps are actually there. If it's stopped or never installed,
   every Tier 1 app keeps working exactly as if it never existed.
 ```
+
+HomeBridge v0 runs under the opt-in Compose `bridge` profile. It forwards only
+the live user's bearer token to selected, enabled sources' public APIs; it
+never opens a sibling database. Its fixed upstream origins come from operator
+configuration, not registry URLs. Partial failures remain visible alongside
+successful results. See [decision 001](decisions/001-homebridge-search.md) for
+scope, privacy, limits and opt-out. Home hosts the client; Tier 1 apps have no
+HomeBridge detection or cross-app calls.
 
 **Why the gateway is Tier 0, not Tier 2:** it's tempting to file it under
 "the thing that connects apps," but it doesn't act on app data — it just
@@ -176,6 +185,7 @@ Routing, as implemented:
 | `/api/homemedia/` | HomeMedia's backend (its `/upload` and `/stream/` paths have their own rules with request/response buffering turned off, so big uploads and videos stream instead of being held in full by the gateway) |
 | `/api/homesync/` | HomeSync's backend |
 | `/api/homenotes/` | HomeNotes' backend |
+| `/api/homebridge/` | Optional HomeBridge service (4900); offline JSON when the profile is absent |
 | `/api/homecloud/` | HomeCloud's backend (`apps/homecloud-backend`) |
 | `/api/share/` | HomeCloud's backend too — deliberately unprefixed and outside `requireAuth` (a share link has to work for someone with no account at all); see `apps/homecloud-backend/src/publicShare.js` |
 | `/api/` | HomeCore (catch-all — identity, admin, activity, the application registry; must stay registered after every more specific rule above) |
@@ -298,7 +308,8 @@ problem:
 | HomeVault | **v0 built** — core loop (create/unlock/recover a vault, add/view/edit/delete items) implemented and tested; **self-reviewed twice, not independently reviewed** — see `docs/SECURITY.md`'s "HomeVault v0" section before trusting it with anything real |
 | HomeTasks | **Built**: backend and web app (Today / Upcoming / All / Done, projects, due dates, priorities, search, repeating tasks), tested; the web app was driven end to end in a headless browser. Reminders and assignment are deliberately not built yet, see `docs/ROADMAP.md` |
 | HomeMonitor | **v0 built**: admin-only dashboard for CPU, memory, disk, each app's health, backup freshness and disk growth (with a rough "full in N days" forecast), plus alerts delivered as HomeCore notifications. Tier 1: it reads the app registry and posts notifications through two small new HomeCore endpoints, `GET /internal/apps` and `POST /internal/notifications` (shared-secret, machine to machine). No Docker socket, by design. Tested; the web app was driven in a headless browser against a real HomeCore, measuring the real machine |
-| HomeAI, HomeBridge | Not started |
+| HomeBridge | **v0 built**: optional, stateless Notes/Tasks search from Home, with live user authorization, source opt-out, partial failure and owned-resource links |
+| HomeAI | Not started |
 
 ## 8. Future ecosystem map
 

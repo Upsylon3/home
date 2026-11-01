@@ -64,6 +64,7 @@ export const api = {
   },
 
   tasks: {
+    get: (id) => request(`/hometasks/tasks/${id}`),
     // params: { status, projectId, due, today, search }
     list: (params) => request(`/hometasks/tasks${qs(params)}`),
     create: (body) => request("/hometasks/tasks", { method: "POST", body: json(body) }),

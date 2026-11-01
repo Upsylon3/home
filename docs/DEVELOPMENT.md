@@ -24,6 +24,16 @@ lifecycle scripts to silence npm warnings.
 
 ## Running services locally, without Docker
 
+Optional HomeBridge search: start HomeCore, HomeNotes (and its HomeCloud
+dependency), and HomeTasks as below. Run `npm run dev --workspace=services/homebridge`
+with `HOMECORE_INTERNAL_URL=http://localhost:4000`,
+`HOMENOTES_INTERNAL_URL=http://localhost:4400` and
+`HOMETASKS_INTERNAL_URL=http://localhost:4700`. It listens on 4900; Home's Vite
+server proxies `/api/homebridge` there. Open Home's `/search` page. No `.env`,
+database or additional secret is needed. The Windows picker does not start
+this optional process; use a separate terminal. Stopping it does not affect
+other apps.
+
 Each backend needs its own `.env` (copy the matching `.env.example`) and
 runs on its own fixed port. Each frontend's Vite dev server proxies API
 calls to the right backend automatically — see each app's own
@@ -249,6 +259,7 @@ cd apps/homemonitor-backend && npm test    # 60 tests
 cd apps/homemonitor && npm test            # 13 tests — format.js and chart.js only, see below
 cd apps/homevault-backend && npm test      # 34 tests — includes Trash ownership/lifecycle and legacy schema upgrade
 cd apps/homevault && npm test              # 20 tests — crypto.js only, see below
+cd services/homebridge && npm test         # 14 tests — real-service search and bounded upstream failures
 cd apps/homenotes && npm test              # 16 tests — markdown.js only, see below
 ```
 

@@ -98,7 +98,12 @@ async function searchHomeMedia({ query, limit, token }) {
       toResult("homemedia", "album", album, album.name, `${album.itemCount} items`, album.updatedAt, "/media/")
     );
   }
-  return { results, truncated: files.length >= limit || matchingAlbums.length >= limit };
+  results.sort((a, b) => {
+    const left = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+    const right = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+    return (Number.isFinite(right) ? right : 0) - (Number.isFinite(left) ? left : 0);
+  });
+  return { results: results.slice(0, limit), truncated: results.length > limit };
 }
 
 async function searchHomeNotes({ query, limit, token }) {

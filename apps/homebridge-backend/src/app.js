@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
-const { requireAuth, HOMECORE_URL } = require("@home/homecore-client");
+const { requireAuth } = require("@home/homecore-client");
 const { searchAll } = require("./search");
 
 const app = express();
@@ -12,7 +12,7 @@ app.use(cors({ origin: corsOrigins.length === 1 && corsOrigins[0] === "*" ? "*" 
 app.use(express.json({ limit: "100kb" }));
 
 app.get("/api/homebridge/health", (_req, res) => {
-  res.json({ status: "ok", homecoreUrl: HOMECORE_URL });
+  res.json({ status: "ok" });
 });
 
 app.get("/api/homebridge/search", requireAuth, async (req, res) => {

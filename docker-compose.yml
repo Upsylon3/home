@@ -244,6 +244,32 @@ services:
     expose: ["80"]
 
   # ---------------------------------------------------------------------
+  # Tier 2 — optional cross-application behavior.
+  # HomeBridge v1 is stateless and read-only. It authenticates the user
+  # with HomeCore and queries enabled app APIs using that same user token.
+  # Provider outages are isolated; HomeBridge itself depends only on Core.
+  # ---------------------------------------------------------------------
+
+  homebridge-backend:
+    build: { context: ., dockerfile: apps/homebridge-backend/Dockerfile }
+    restart: unless-stopped
+    environment:
+      PORT: "4900"
+      HOMECORE_INTERNAL_URL: http://homecore:4000
+      HOMECLOUD_BACKEND_INTERNAL_URL: http://homecloud-backend:4500
+      HOMEMEDIA_BACKEND_INTERNAL_URL: http://homemedia-backend:4200
+      HOMENOTES_BACKEND_INTERNAL_URL: http://homenotes-backend:4400
+      HOMETASKS_BACKEND_INTERNAL_URL: http://hometasks-backend:4700
+    expose: ["4900"]
+    depends_on: { homecore: { condition: service_healthy } }
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:4900/api/homebridge/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+  # ---------------------------------------------------------------------
   # Optional: a public HTTPS address (Caddy).
   #
   # Does nothing unless you start it with `--profile public`:

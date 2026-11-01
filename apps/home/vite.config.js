@@ -13,6 +13,10 @@ export default defineConfig({
   server: {
     port: 5174,
     proxy: {
+      "/api/homebridge": {
+        target: "http://localhost:4900",
+        changeOrigin: true
+      },
       "/api/homecloud": {
         target: "http://localhost:4500",
         changeOrigin: true

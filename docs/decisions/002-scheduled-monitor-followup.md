@@ -1,9 +1,9 @@
 # First scheduled bridge: critical alerts become personal follow-up tasks
 
-Status: **authority and source/destination milestones implemented**: Core grants,
-separate verification, Monitor incidents/feed and Tasks create-once receipts.
-Enrollment controls, encrypted worker state and scheduling remain unimplemented. HOME still
-ships only the live, read-only HomeBridge search from decision 001. This
+Status: **implemented, explicitly opt-in**: authority, source/destination APIs,
+encrypted Bridge state, bounded worker and Home Settings controls. Default
+Compose operation remains search-only from decision 001. Repository tests,
+browser checks and Docker gates verify the documented disposable journey. This
 decision authorizes no deployment, real credential issuance or automatic
 enrollment. The next implementation must satisfy the gates below.
 
@@ -39,7 +39,7 @@ HomeMonitor's existing alerts and notifications continue independently.
   are now corrected: state/freshness/outbox commit atomically and unknown/missing
   conditions preserve open incident identity. Use the committed evaluation time,
   never snapshot time alone, as freshness evidence.
-- [The current Monitor API](../../apps/homemonitor-backend/src/app.js) is
+- [The current Monitor API](../../apps/homemonitor-backend/src/app.js)
   keeps broad status/history administrator-only and adds a separate curated
   capability-only alert feed.
 - [HomeTasks creation](../../apps/hometasks-backend/src/tasks.js) has ownership
@@ -91,13 +91,20 @@ wildcards, ordinary login endpoints and every unrelated route reject these
 credentials. Existing browser-session routes remain unchanged.
 Capabilities travel only in Authorization headers, never in URLs.
 
-The shared client gains a separate, explicit delegation verifier for these
+The shared client has a separate, explicit delegation verifier for these
 two narrow action routes. Do not broaden `requireAuth` to turn a capability
 into a general `req.user` session. Each action introspects Core live, without
 a positive authorization cache. Core checks expiry, revocation, the current
 enabled/admin account, token version, integration and both required registry
 entries. An outage or malformed response fails closed; disabled apps pause
 the rule without being treated as resolved incidents.
+
+Lifecycle refinement: either opaque credential can surrender only its own
+parent grant through Core, including after expiry/account invalidation. This
+adds no read/write scope and cannot mint/renew or target another grant. It
+lets Disable retry revocation after restart without a retained browser JWT.
+Rotated/unknown opaque credentials get a blind idempotent response and cannot
+revoke replacements. Direct owner revocation remains available independently.
 
 No signing key or `HOMECORE_INTERNAL_SECRET` goes to HomeBridge. No browser
 token is retained. HomeBridge receives the minted pair server-to-server and
@@ -126,8 +133,8 @@ creation, not cryptographic attestation of the scheduler's reasoning.
    routes accepting the full consenting owner session; public routes expose
    metadata, revocation and introspection only. This keeps raw credentials out
    of browser responses. The gateway blocks private issuance, and Core also
-   rejects browser Origin/Fetch Metadata headers there. The future enrollment
-   server must complete encrypted persistence before reporting success.
+   rejects browser Origin/Fetch Metadata headers there. The enrollment server
+   completes encrypted persistence and source validation before reporting enabled.
 2. HomeMonitor adds a narrow alert-read action. Persist an instance UUID,
    per-incident UUID and successful alert-evaluation timestamp. Update alert
    state, incident identities and evaluation time in one local transaction.
@@ -151,6 +158,8 @@ creation, not cryptographic attestation of the scheduler's reasoning.
    its own durable rule/receipt state and the bounded worker. It alone knows
    how Monitor alerts map to task payloads. Neither Tier 1 app detects
    HomeBridge or calls a sibling API/database.
+   **Implemented:** exact APIs, status/reasons and deployment/restore procedures
+   are published in `docs/API.md` and `docs/DEPLOYMENT.md`. Default remains off.
 
 Publish exact routes and schemas in `docs/API.md` with the implementation,
 not as already available endpoints in this design change.
@@ -162,7 +171,7 @@ instance pauses the rule and requires owner confirmation; a restored/reset
 Monitor must not silently turn old conditions into a burst of new tasks.
 Before reopening a restored Monitor database, run the offline identity-reset
 command in `docs/DEPLOYMENT.md`. It rotates the instance ID and clears freshness;
-ordinary restarts do neither. A future worker must pause on that identity change.
+ordinary restarts do neither. The worker pauses on that identity change.
 An incident UUID survives severity changes and restarts, and changes only
 when a resolved condition genuinely opens again. Do not use title or wall
 clock alone as the incident identity. Preserve that UUID across unknown
@@ -242,12 +251,18 @@ permission in this release.
 
 Search must still start and work without automation storage or a wrapping
 key. Missing/unreadable keys leave scheduled work unconfigured or paused,
-never stored as plaintext. The future deployment change must opt in to the
-new state volume/key mount and back up only the encrypted database. Restoring
+never stored as plaintext. The separate deployment override opts in to the
+new state volume/key mount and back up only the database with encrypted
+operational fields (rule/receipt metadata remains plaintext). Restoring
 without the key requires owner re-enrollment and revocation of old grants.
 Bridge-only restore uses Tasks' durable receipts to avoid duplicates; restoring
 Tasks itself to an older snapshot cannot promise cross-service exactly-once
 history. Existing backup limitations remain visible.
+
+Bridge restoration additionally requires offline pause maintenance before
+traffic, then surrender and fresh owner consent. This prevents an old snapshot
+from restoring an enabled rule whose local Disable was awaiting revocation.
+Ordinary restarts retain enabled rules and reset only incomplete qualification.
 
 Restoring Core's grant database must invalidate restored service grants before
 services are reopened to traffic, so an old backup cannot resurrect a revoked
@@ -281,13 +296,20 @@ Implement in this order, with independently reviewable tests:
    changes, source resets, outages, expiry, response loss after task commit,
    pending revocation and rollback. No scenario may require storing a browser
    token or granting unrelated task/monitor access.
+   Implemented with fake-clock integration, encrypted backup/restore, lease and
+   disable/enrollment race tests. Four shared SQLite slots enforce the global
+   bound across processes; each cycle sends at most four pending deliveries.
 4. **Full gate:** responsive keyboard/browser flow, two-owner isolation,
    concurrent workers, Docker optional-service recovery, encrypted backup
    restore, missing-key behavior and all existing repository checks. Verify
    search-only operation with no automation configuration. Never use a real
    installation or claim physical-device/independent security validation.
+   Browser checks cover desktop keyboard consent/renew/disable, mobile layout
+   and direct Core revocation with Bridge offline. Disposable Docker uses a
+   scripted condition/clock after real Monitor authorization to avoid a
+   fifteen-minute CI wait; Core, Tasks, encrypted storage and deployment mounts
+   are real. Existing repository CI gates remain mandatory before merge.
 
 Completion means the implemented journey and authorization boundary pass
 these gates and merge under the repository workflow. This document alone
-does not complete the scheduler. Authority and own-resource action endpoints
-exist with additive local schemas; gates 3–4 remain open.
+is not deployment authorization or independent security/physical-device proof.

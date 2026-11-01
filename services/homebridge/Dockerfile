@@ -1,4 +1,6 @@
 FROM node:26-slim AS deps
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY . .
 RUN npm ci --omit=dev --workspace=services/homebridge

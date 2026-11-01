@@ -100,8 +100,9 @@ Tier 1 — Independent apps
   Contains ZERO optional/enhancement cross-app behavior.
 
 Tier 2 — HomeBridge
-  One separate, optional service. Its v0 provides live Notes/Tasks search
-  through Home's /search page; no persistent index or database. Contains every
+  One separate, optional service. Live Notes/Tasks search through Home's /search
+  remains stateless. Explicitly configured automation owns a separate database
+  for encrypted operational credentials/intents and rule/receipt metadata. Contains every
   optional cross-app behavior — see ROADMAP.md. Detects which apps are
   present via Tier 0's registry and activates only the bridges whose
   required apps are actually there. If it's stopped or never installed,
@@ -143,7 +144,7 @@ for a narrow allow-list of actions — one new concept in one place,
 instead of a second trust mechanism (shared-secret `/internal/...`
 endpoints) repeated in every app. Core now implements the authority and
 separate shared verifier; Monitor/Tasks implement narrow action consumers.
-The worker is still absent.
+HomeBridge now implements the opt-in worker and owner controls.
 
 The first scheduled scope is now recorded in
 [decision 002](decisions/002-scheduled-monitor-followup.md): persistent critical
@@ -155,8 +156,12 @@ session middleware remains separate. Monitor owns stable incident identity,
 evaluation freshness and notification retry intent; Tasks owns durable
 create-once receipts and transactional daily limits. Both expose only scoped
 own-resource APIs and contain no Bridge detection or alert-to-task mapping.
-Encrypted Bridge persistence, enrollment UI and scheduler remain planned;
-live search still uses only the current user session.
+Bridge's opt-in worker owns qualification, encrypted canonical delivery intent,
+source pinning and the alert-to-task mapping. Home Settings provides explicit
+consent, renewal/confirmation, disable and independent Core revocation. Core
+also permits a credential to irreversibly surrender only its own grant so
+pending revocation survives restart without a browser token. Live search still
+uses only the current user session and starts without automation storage/key.
 
 ## 5. The gateway
 
@@ -322,7 +327,7 @@ problem:
 | HomeVault | **v0 built** — core loop (create/unlock/recover a vault, add/view/edit/delete items) implemented and tested; **self-reviewed twice, not independently reviewed** — see `docs/SECURITY.md`'s "HomeVault v0" section before trusting it with anything real |
 | HomeTasks | **Built**: backend and web app (Today / Upcoming / All / Done, projects, due dates, priorities, search, repeating tasks), tested; the web app was driven end to end in a headless browser. Reminders and assignment are deliberately not built yet, see `docs/ROADMAP.md` |
 | HomeMonitor | **v0 built**: admin-only dashboard for CPU, memory, disk, each app's health, backup freshness and disk growth (with a rough "full in N days" forecast), plus alerts delivered as HomeCore notifications. Tier 1: it reads the app registry and posts notifications through two small new HomeCore endpoints, `GET /internal/apps` and `POST /internal/notifications` (shared-secret, machine to machine). No Docker socket, by design. Tested; the web app was driven in a headless browser against a real HomeCore, measuring the real machine |
-| HomeBridge | **v0 built**: optional, stateless Notes/Tasks search from Home, with live user authorization, source opt-out, partial failure and owned-resource links |
+| HomeBridge | **Built**: optional stateless Notes/Tasks search plus separately configured Monitor follow-up automation, encrypted operational state, owner consent/disable and direct Core revocation |
 | HomeAI | Not started |
 
 ## 8. Future ecosystem map

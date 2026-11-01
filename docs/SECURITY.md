@@ -391,7 +391,7 @@ The shared-vs-separate-origin decision, and the recovery-kit UX, are
 both settled and implemented (see the v0 status callout above) — no
 longer blocking prerequisites.
 
-## Scheduled delegation authority and actions (worker not implemented)
+## Scheduled delegation and opt-in worker
 
 [Decision 002](decisions/002-scheduled-monitor-followup.md) defines the first
 scheduled bridge and its restricted authority: separate Monitor-read and
@@ -418,7 +418,7 @@ Monitor's action returns only bounded incident/condition metadata and the
 committed evaluation time. Unknown/missing readings cannot resolve an open
 incident. Notification failure is independent of state freshness through an
 atomic durable outbox. Offline Monitor restore maintenance rotates the pinned
-instance and clears freshness before traffic resumes, preventing the future
+instance and clears freshness before traffic resumes, preventing the
 worker from silently accepting rolled-back incident history as the same source.
 
 Tasks' action accepts only bounded title/notes and an idempotency key. Subject
@@ -431,9 +431,32 @@ Restoring Tasks to an older snapshot can roll back receipts and cannot promise
 cross-service exactly-once history. Never prune receipts to reclaim storage
 without a new explicit duplicate-prevention design.
 
-No enrollment UI, encrypted Bridge state or worker ships today. Remaining
-acceptance gates must pass before scheduled work is enabled; retaining browser
-sessions is not a substitute. Existing HomeVault external-review limits remain unchanged.
+The optional worker uses AES-256-GCM with a fresh nonce for each credential
+and canonical pending payload. Associated data binds integration, subject,
+grant and audience (or pinned instance/incident for intent). Metadata is not
+whole-database encryption. A read-only 32-byte key file stays outside repository,
+state volume and backups. Missing/invalid keys leave search usable and automation
+unconfigured; authentication failures on existing ciphertext pause affected
+rules. Wrong keys cannot silently rewrite pending payloads. Loss of a pending
+payload requires key recovery/manual attention, never a fabricated retry.
+
+No browser session or Core signing/shared internal secret is retained in Bridge.
+Encrypted state protects backups, not a compromised running worker. Core's
+capability surrender endpoint permits only revocation of the presented
+credential's own parent, including after expiry or role loss. It returns no
+metadata and grants no data/action access. Disable pauses locally before I/O;
+failed surrender stays pending across restart. Already authorized requests
+can finish; no task rollback is promised. Core's direct owner grant control
+remains independent of Bridge.
+
+Four shared SQLite slots plus per-rule expiring leases bound dispatch and
+prevent overlapping cycles. Restarts discard incomplete qualification but
+retain canonical intent/receipts. A Bridge restore must run offline pause
+maintenance before traffic: restored grants require surrender and fresh owner
+consent. This prevents an old backup from undoing a local pending Disable.
+Browser keyboard/mobile, disposable-service and Docker tests establish only
+the documented repository behavior. Existing HomeVault external-review limits
+remain unchanged; no independent cryptographic review is claimed.
 
 ## Reporting a vulnerability
 

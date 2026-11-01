@@ -283,3 +283,19 @@ test("offline restore maintenance invalidates resurrected capabilities and prese
     assert.equal(fs.existsSync(absent), false);
   } finally { copy?.close(); fs.rmSync(dir, { recursive: true, force: true }); }
 });
+
+test("capability surrender revokes only its own grant and works after expiry/account invalidation", async () => {
+  const a = await administrator(), b = await administrator();
+  const one = await issue(a), two = await issue(b);
+  db.prepare("UPDATE hc_delegation_grants SET expires_at = 0 WHERE id = ?").run(one.grant.id);
+  db.prepare("UPDATE users SET token_version = token_version + 1 WHERE id = ?").run(a.user.id);
+  const client = makeClient(baseUrl); client.setToken(one.capabilities[0].token);
+  assert.equal((await client.post("/api/core/delegations/surrender", { userId: b.user.id })).status, 400);
+  assert.equal((await client.post("/api/core/delegations/surrender", {})).status, 204);
+  assert.equal((await client.post("/api/core/delegations/surrender", {})).status, 204);
+  assert.equal(db.prepare("SELECT revoked_at FROM hc_delegation_grants WHERE id = ?").get(one.grant.id).revoked_at !== null, true);
+  assert.equal((await verify(two.capabilities[0])).status, 200);
+  const audit = db.prepare("SELECT * FROM hc_activity_events WHERE target_id = ? AND event_type = 'homecore.delegation.surrendered'").all(one.grant.id);
+  assert.equal(audit.length, 1); assert.equal(audit[0].actor_user_id, null);
+  client.setToken(b.token); assert.equal((await client.post("/api/core/delegations/surrender", {})).status, 403);
+});

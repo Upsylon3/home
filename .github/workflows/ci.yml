@@ -258,6 +258,18 @@ jobs:
           done
           curl -fsS -o /dev/null "$BASE/api/homebridge/health"
 
+      - name: Opt-in encrypted worker and restore proof
+        run: |
+          set -eu
+          export HOMEBRIDGE_KEY_PATH="$RUNNER_TEMP/homebridge-key"
+          openssl rand -out "$HOMEBRIDGE_KEY_PATH" 32
+          docker compose -f docker-compose.yml -f docker-compose.automation.yml --profile bridge up -d --no-deps --wait homebridge
+          resp=$(curl -fsS -X POST http://localhost:8080/api/auth/login -H 'Content-Type: application/json' -d '{"username":"ci-admin","password":"ci-password-123"}')
+          token=$(echo "$resp" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).token))")
+          printf '{"ownerToken":"%s"}' "$token" | docker compose -f docker-compose.yml -f docker-compose.automation.yml exec -T homebridge node test-support/docker-worker-smoke.cjs
+          docker compose -f docker-compose.yml -f docker-compose.automation.yml run --rm -e BACKUP_DIR=/backups/ci-automation backup --once
+          docker compose -f docker-compose.yml -f docker-compose.automation.yml run --rm -T --entrypoint python3 backup -c 'from pathlib import Path; from snapshot import verify; root=Path("/backups/ci-automation"); archive=next(root.glob("homebridge-backup-*.tar.gz")); verify(archive,root); print("ok encrypted Bridge database restore integrity; key is outside backup sources")'
+
       - name: Restore-check live SQLite backups from read-only volumes
         run: |
           set -eu
@@ -316,4 +328,9 @@ jobs:
       # Always clean up, even on failure.
       - name: Stop the stack
         if: always()
-        run: docker compose --profile bridge down -v
+        run: |
+          if [ -f "$RUNNER_TEMP/homebridge-key" ]; then
+            HOMEBRIDGE_KEY_PATH="$RUNNER_TEMP/homebridge-key" docker compose -f docker-compose.yml -f docker-compose.automation.yml --profile bridge down -v
+          else
+            docker compose --profile bridge down -v
+          fi

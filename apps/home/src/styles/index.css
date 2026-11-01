@@ -879,3 +879,10 @@ a:focus-visible {
     repeating-linear-gradient(to bottom, rgba(60, 30, 10, 0.07) 0 1px, transparent 1px 3px),
     radial-gradient(ellipse at center, transparent 55%, rgba(60, 30, 10, 0.14) 100%);
 }
+.followup-terms { padding-left: 1.4rem; line-height: 1.6; }
+.followup-details { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .5rem 1rem; }
+.followup-details dd { margin: 0; overflow-wrap: anywhere; }
+.followup-consent { display: flex; gap: .75rem; align-items: flex-start; line-height: 1.5; }
+.followup-consent input { flex: none; margin-top: .25rem; }
+.followup-actions, .followup-grant { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; margin: 1rem 0; }
+@media (max-width: 540px) { .followup-details { grid-template-columns: 1fr; } .followup-details dd { margin-bottom: .5rem; } }

@@ -74,7 +74,7 @@ apps/
   homevault/           HomeVault frontend — the only app whose code ever sees a plaintext secret
   homevault-backend/   HomeVault backend — stores only ciphertext, never a key
 services/backup/       Nightly backup of every app's data volume
-services/homebridge/   Optional stateless cross-app search (Tier 2)
+services/homebridge/   Optional search and consented Monitor follow-up tasks (Tier 2)
 design/                Icon set + wordmark, shared across every frontend
 scripts/               Windows dev launcher (see docs/DEVELOPMENT.md)
 docs/                  Architecture, security, API reference, deployment, roadmap
@@ -93,11 +93,11 @@ docs/                  Architecture, security, API reference, deployment, roadma
 
 ## Tests
 
-462 automated tests across 14 suites (9 backends, 4 frontends, the shared identity client), run with
+481 automated tests across 14 suites (9 backends, 4 frontends, the shared identity client), run with
 `npm test` from the repo root (or inside any one suite's own folder):
 
 ```
-homecore                68 tests
+homecore                69 tests
 packages/homecore-client 34 tests  (real HomeCore integration and HTTP failure/cache boundaries)
 apps/homecloud-backend  44 tests
 apps/homemedia-backend  28 tests
@@ -110,7 +110,7 @@ apps/homevault          20 tests  (src/crypto.js — the client-side encryption)
 apps/homenotes          16 tests  (src/markdown.js — the XSS sanitizer)
 apps/hometasks           7 tests  (src/dates.js, src/repeat.js — date and wording helpers)
 apps/homemonitor        13 tests  (src/format.js, src/chart.js — number formatting and chart maths)
-services/homebridge    14 tests  (real-service ownership/search and bounded upstream failures)
+services/homebridge    32 tests  (real-service search/worker, encrypted state, leases, races and upstream failures)
 ```
 
 The other three frontends (`home`, `homecloud`, `homemedia`) have no

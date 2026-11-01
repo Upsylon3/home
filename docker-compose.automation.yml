@@ -1,0 +1,21 @@
+# Explicit opt-in alongside the bridge profile; the default stays search-only.
+# Supply a pre-existing 32-byte key file outside the repo/data/backups.
+services:
+  homebridge:
+    environment:
+      HOMEBRIDGE_DATA_DIR: /data
+      HOMEBRIDGE_KEY_FILE: /run/secrets/homebridge-key
+      HOMEMONITOR_INTERNAL_URL: http://homemonitor-backend:4800
+    volumes:
+      - homebridge_data:/data
+      - type: bind
+        source: ${HOMEBRIDGE_KEY_PATH:?Set an absolute external 32-byte key file path}
+        target: /run/secrets/homebridge-key
+        read_only: true
+        bind:
+          create_host_path: false
+  backup:
+    volumes:
+      - homebridge_data:/sources/homebridge:ro
+volumes:
+  homebridge_data:

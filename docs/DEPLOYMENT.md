@@ -256,7 +256,7 @@ docker compose run --rm --no-deps --entrypoint node homemonitor-backend \
 
 Require successful exit and `{"reset":true}` before `docker compose up`.
 The command rotates the pinned instance UUID and clears evaluation freshness,
-preserving alert incidents, history and queued notifications. A future worker
+preserving alert incidents, history and queued notifications. The worker
 must pause and require owner confirmation for this changed source identity;
 otherwise an old snapshot could silently regenerate incident identities.
 For a pre-feature snapshot, startup creates the first identity. The local
@@ -268,7 +268,7 @@ Do not run it on normal restart.
 Tasks backups now include durable automation receipts and daily counts. Restore
 them together with the tasks database. An older Tasks snapshot can lose newer
 receipts; cross-service exactly-once history is not guaranteed after such a
-restore. Keep this limitation visible when planning future worker recovery.
+restore. Keep this limitation visible when planning worker recovery.
 
 Substitute the volume name for whichever app you're restoring
 (`home_homecore_data`, `home_homemedia_data`, `home_homenotes_data`,
@@ -289,9 +289,77 @@ then use Home's Search page. Without that profile the rest of HOME runs
 normally, and Search explains an unavailable bridge on submission. Users
 choose Notes and/or Tasks on each explicit search; disabled apps in HomeCore's
 registry are not queried. Stop it with `docker compose stop homebridge`.
-There is no retained data or volume to back up, delete or migrate. Remove
-the profile to opt out. Do not expose service port 4900; the gateway is its
+Search-only mode retains no data or volume. Remove the profile to opt out
+after revoking any separately enabled automation grants. Do not expose service
+port 4900; the gateway is its
 only public route. See decision 001 for limits and security boundaries.
+
+### Opt-in Monitor follow-up automation
+
+Default `docker-compose.yml` remains search-only. To configure automation,
+create a protected **32-byte raw key file outside the repository, data volumes
+and backups**, then supply its absolute path. For example, on the operator's
+server (choose an appropriate protected external directory first):
+
+```bash
+umask 077
+openssl rand -out /protected/homebridge-key 32
+export HOMEBRIDGE_KEY_PATH=/protected/homebridge-key
+docker compose -f docker-compose.yml -f docker-compose.automation.yml \
+  --profile bridge up --build -d
+```
+
+The override adds `home_homebridge_data`, mounts the pre-existing key file
+read-only with host-path creation disabled, and adds the Bridge volume to the
+backup service's read-only sources. It adds no key, JWT signing secret or
+`HOMECORE_INTERNAL_SECRET` to backups or the worker. No account is enrolled by
+configuration alone. In Home Settings, an enabled administrator reviews the
+fixed preview and checks explicit consent before Enable/Renew. Core's exact
+30-day expiry and rule state remain visible. Never reuse another service's
+secret as this key, print it in logs or generate it inside the repository.
+
+Native local configuration uses explicit absolute `HOMEBRIDGE_DATA_DIR` and
+`HOMEBRIDGE_KEY_FILE`, plus fixed `HOMEMONITOR_INTERNAL_URL` and
+`HOMETASKS_INTERNAL_URL`. The key must be a regular 32-byte file outside the
+repository/state directory; missing, invalid or unreadable configuration
+leaves automation unavailable while search still starts. A wrong key pauses
+existing rules. Preserve the original key separately: losing it can make an
+uncertain canonical task payload unrecoverable. Revoke old grants directly in
+Core before fresh enrollment; a missing pending payload requires recovery or
+manual attention, never a guessed replacement retry.
+
+Back up the Bridge database with its encrypted credential/payload envelopes
+and plaintext rule/receipt metadata; it is not whole-file database encryption.
+Keep the wrapping key in separate protected key custody, outside every backup
+source. Ordinary restarts preserve enabled rules and pending deliveries but
+reset incomplete qualification; first worker dispatch is on the next five-minute
+timer tick. Leases from an abruptly stopped process expire after 60 seconds.
+
+Before reopening a **restored** Bridge database, stop Bridge and application
+traffic and run this one-off maintenance process with the restored volume:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.automation.yml \
+  run --rm --no-deps --entrypoint node homebridge \
+  scripts/pause-restored-automation.js \
+  --database /data/homebridge.db --confirm-offline-restore
+```
+
+Require successful exit and `{"paused":N}` before reopening traffic. Restored
+rules remain stopped, retry surrender with the original key and require fresh
+owner consent to resume. This prevents restoration from undoing a local Disable
+whose Core revocation was pending. Pending canonical payloads and delivered
+metadata remain intact. The script never loads `.env` or reads the key and
+requires an explicit existing absolute database path; the flag acknowledges
+offline operation rather than detecting/stopping traffic. Normal restarts must
+not run it. Follow the Core and Monitor restore exceptions above as applicable;
+older Tasks restores retain their documented cross-service receipt limitation.
+
+To roll back to search-only, disable every enrolled rule, wait for revocation
+to complete (or revoke directly in Core), then restart with only the base
+Compose file/profile. Keep the volume/key and receipts until the rollback is
+verified. Never drop receipts or delete created tasks as cleanup. A stopped
+Bridge leaves every Tier 1 app and Core grant revocation usable.
 
 ### Update services
 

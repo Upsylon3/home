@@ -37,11 +37,19 @@ publicRouter.post("/verify", limiter(), guarded((req, res) => {
   if (!principal) return fail(res, 403, "DELEGATION_REFUSED", "Delegation is not authorized.");
   res.json({ delegation: principal });
 }));
+// Possession permits only irreversible surrender of the credential's own
+// parent grant, even after expiry/account changes. No metadata is returned.
+publicRouter.post("/surrender", limiter(), guarded((req, res) => {
+  if ((req.body !== undefined && !fields(req.body, [])) || Object.keys(req.query).length) return fail(res, 400, "INVALID_DELEGATION_REQUEST", "Surrender accepts no fields.");
+  const header = req.headers.authorization || "";
+  store.surrender(header.startsWith("Bearer ") ? header.slice(7) : null);
+  res.status(204).end();
+}));
 publicRouter.use(requireAuth);
 publicRouter.get("/", guarded((req, res) => res.json({ grants: store.list(req.user.id) })));
 publicRouter.delete("/:id", guarded((req, res) => { store.revoke(req.user.id, req.params.id); res.status(204).end(); }));
 
-// Issuance is not exposed by the public gateway or a browser UI. A future
+// Issuance is not exposed by the public gateway or a browser UI. The
 // enrollment server forwards the consenting owner's full session here.
 const issuanceRouter = express.Router();
 issuanceRouter.use(noStore, (req, res, next) => {

@@ -178,10 +178,10 @@ behavior, privacy boundaries and explicit opt-out are recorded in
 [decision 001](decisions/001-homebridge-search.md). The `bridge` Compose profile
 is opt-in; no query or search index is persisted, and no session token is
 retained for background use (the shared five-second identity cache applies). Scheduled
-automation still requires the decided HomeCore-minted scoped credential and
-is not part of this release. HomeVault is never a server-side search source.
+automation uses separate HomeCore-minted capabilities and requires the explicit
+opt-in below. HomeVault is never a server-side search source.
 
-## First scheduled bridge: authority and actions implemented, worker next
+## First scheduled bridge: opt-in Monitor follow-up implemented
 
 [Decision 002](decisions/002-scheduled-monitor-followup.md) scopes critical
 HomeMonitor alerts into a consenting administrator's own HomeTasks inbox.
@@ -199,9 +199,17 @@ transactional evaluation freshness, preserving unknown states and notification
 retries. Tasks now offers create-once receipts with atomic daily limits,
 deletion retirement and concurrent/restart proof. Both action APIs use separate
 capabilities and work independently of Bridge installation.
-Next implement encrypted worker state and enrollment/disable UI, then the
-complete integration gate. No enrollment or scheduled effects are enabled;
-worker migrations **do not exist yet**.
+Encrypted Bridge state, the bounded worker and Home Settings enrollment/disable
+controls now implement the journey. Search-only remains the default. Operators
+must explicitly add the automation Compose override and an external read-only
+key, then each administrator must consent for their own account. Core provides
+independent owner revocation when Bridge is unavailable.
+Real-service/fake-clock tests cover qualification, response loss, restart,
+two-owner isolation, leases, outages and rollback. Browser checks cover desktop
+keyboard controls, mobile layout and direct Core revocation with Bridge offline;
+Docker covers the opt-in topology and encrypted database backup restoration.
+Next work should follow concrete regressions or a separately scoped milestone;
+this does not commit other brainstorm integrations or replace external reviews.
 HomeSync inactivity was rejected for this first bridge because current
 timestamps do not prove healthy idle check-ins or completed backup cycles.
 Other source apps and write bridges remain uncommitted.

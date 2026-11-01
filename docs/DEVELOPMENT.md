@@ -247,7 +247,7 @@ npm test
 Or one service at a time:
 
 ```bash
-cd homecore && npm test                    # 68 tests
+cd homecore && npm test                    # 69 tests
 cd packages/homecore-client && npm test    # 34 tests — real HomeCore and HTTP failure/cache boundaries
 cd apps/homecloud-backend && npm test      # 44 tests
 cd apps/homemedia-backend && npm test      # 28 tests
@@ -259,7 +259,7 @@ cd apps/homemonitor-backend && npm test    # 71 tests
 cd apps/homemonitor && npm test            # 13 tests — format.js and chart.js only, see below
 cd apps/homevault-backend && npm test      # 34 tests — includes Trash ownership/lifecycle and legacy schema upgrade
 cd apps/homevault && npm test              # 20 tests — crypto.js only, see below
-cd services/homebridge && npm test         # 14 tests — real-service search and bounded upstream failures
+cd services/homebridge && npm test         # 32 tests — real-service search and bounded upstream failures
 cd apps/homenotes && npm test              # 16 tests — markdown.js only, see below
 ```
 

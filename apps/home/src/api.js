@@ -47,6 +47,13 @@ async function request(path, options = {}) {
 }
 
 export const api = {
+  automation: {
+    status: () => request("/homebridge/automation"),
+    enroll: () => request("/homebridge/automation/enroll", { method: "POST", body: JSON.stringify({ consent: true }) }),
+    disable: () => request("/homebridge/automation/disable", { method: "POST", body: "{}" }),
+    grants: () => request("/core/delegations"),
+    revoke: id => request(`/core/delegations/${encodeURIComponent(id)}`, { method: "DELETE" })
+  },
   search: (query, sources, signal) => request("/homebridge/search", {
     method: "POST", body: JSON.stringify({ query, sources }), signal
   }),

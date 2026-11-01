@@ -26,7 +26,7 @@ function createApp({
   homecoreUrl = HOMECORE_URL,
   notesUrl = process.env.HOMENOTES_INTERNAL_URL || "http://homenotes-backend:4400",
   tasksUrl = process.env.HOMETASKS_INTERNAL_URL || "http://hometasks-backend:4700",
-  timeoutMs = 5000, maxBytes = 1024 * 1024
+  timeoutMs = 5000, maxBytes = 1024 * 1024, automation = null
 } = {}) {
   const core = origin(homecoreUrl);
   const origins = { homenotes: origin(notesUrl), hometasks: origin(tasksUrl) };
@@ -37,6 +37,26 @@ function createApp({
   app.use((req, res, next) => { res.set("Cache-Control", "no-store"); next(); });
   app.use(express.json({ limit: "4kb" }));
   app.get("/api/homebridge/health", (req, res) => res.json({ status: "ok" }));
+  app.get("/api/homebridge/automation", requireAuth, (req, res) => {
+    res.json(automation ? automation.status(req.user.id) : { configured: false, rule: null });
+  });
+  for (const action of ["enroll", "disable"]) {
+    app.post(`/api/homebridge/automation/${action}`, requireAuth, async (req, res) => {
+      if (!automation) return res.status(503).json({ error: "Automation is not configured on this server." });
+      const body = req.body;
+      if (!body || typeof body !== "object" || Array.isArray(body) || Object.keys(req.query).length ||
+          (action === "enroll" ? Object.keys(body).length !== 1 || body.consent !== true : Object.keys(body).length !== 0)) {
+        return res.status(400).json({ error: "Explicit consent is required to enable or renew; disable accepts no fields." });
+      }
+      if (action === "enroll" && req.user.role !== "admin") return res.status(403).json({ error: "Only administrators can enable their own follow-up tasks." });
+      try {
+        const rule = action === "enroll" ? await automation.enroll(req.user.id, req.token) : await automation.disable(req.user.id);
+        res.status(rule.revocationPending ? 202 : 200).json({ rule });
+      } catch (error) {
+        res.status([401, 403, 409, 502].includes(error.status) ? error.status : 500).json({ error: "Could not update follow-up tasks. Check your Core grants and try again." });
+      }
+    });
+  }
   app.post("/api/homebridge/search", requireAuth, async (req, res) => {
     const { query, sources } = req.body || {};
     if (typeof query !== "string" || query.trim().length < 2 || query.trim().length > 200 ||

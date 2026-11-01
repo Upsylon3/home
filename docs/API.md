@@ -24,8 +24,9 @@ shared activity/notifications feed. No files live here.
 
 ### Scheduled-delegation authority
 
-Decision 002's authority and source/destination milestones are implemented.
-There is no enrollment UI, encrypted Bridge state or scheduler yet.
+Decision 002's authority, action APIs and opt-in worker/controls are implemented.
+Default Compose operation remains search-only; enrollment requires protected
+automation storage and explicit owner consent in Home Settings.
 Browser JWTs and opaque capabilities are separate principal types; ordinary
 browser routes reject capabilities.
 
@@ -34,15 +35,24 @@ browser routes reject capabilities.
 | GET | `/api/core/delegations` | Full owner session; `{grants: [...]}` metadata only |
 | DELETE | `/api/core/delegations/:id` | Full owner session; revoke own grant, idempotent `204`; foreign/missing `404` |
 | POST | `/api/core/delegations/verify` | Capability bearer; exact `{audience, action}`; `{delegation: ...}` or `403` |
+| POST | `/api/core/delegations/surrender` | Capability bearer; no body fields/query parameters; revoke only its own parent grant; `204` |
 | POST | `/internal/delegations` | **Internal server only**, full administrator session; exact `{integrationId: "monitor-followup-v1", consent: true}`; `201` |
 | POST | `/internal/delegations/:id/renew` | **Internal server only**, full owner administrator session; exact `{consent: true}`; `200` |
 
 The gateway returns `404` for the internal issuance prefix. Direct Core ports
 must remain private. Origin/Fetch Metadata browser requests are rejected by
 issuance; these headers are defense in depth, not server authentication.
-A future enrollment server must forward the consenting owner's full session,
-persist the returned capabilities encrypted, and return metadata to browsers.
+The enrollment server forwards the consenting owner's full session,
+persists the returned capabilities encrypted, and returns metadata to browsers.
 No shared internal secret can mint a grant. Pending-2FA sessions cannot mint.
+
+Surrender is lifecycle-only authority: it never reads data or creates/renews a
+grant. Either audience may surrender its own grant even after expiry, account
+invalidation or registry disable. A malformed/non-capability bearer is `403`;
+an unknown/rotated well-formed opaque credential receives the same blind `204`
+without affecting replacement credentials. Audit actor is null with a
+metadata-only `homecore.delegation.surrendered` event. This lets a disabled
+Bridge retry revocation after restart without retaining a browser session.
 
 Issuance/renewal returns `{grant, capabilities}`. Each capability contains
 `id`, `audience`, `action` and a once-returned `token` (`hc_dg_` plus 256 random
@@ -224,12 +234,52 @@ Settings are environment variables, all optional (see `apps/homemonitor-backend/
 
 ## HomeBridge (`/api/homebridge`, optional)
 
-Stateless Tier 2 search. No background credential, index or stored queries.
+Tier 2 search remains stateless, with no retained query, result or browser
+session. Automation is separately configured and off by default.
 
 | Method | Path | What it does |
 |---|---|---|
 | GET | `/api/homebridge/health` | *(no auth)* Process health only |
 | POST | `/api/homebridge/search` | Authenticated `{query, sources}`; 2–200 trimmed characters, one or both of `homenotes`, `hometasks`, without duplicates |
+| GET | `/api/homebridge/automation` | Own session; `{configured, rule}` metadata, or `configured: false` with no state/key |
+| POST | `/api/homebridge/automation/enroll` | Full administrator session; exact `{consent: true}`; enroll/renew own rule and confirm current Monitor instance |
+| POST | `/api/homebridge/automation/disable` | Own session; exact `{}`; stop dispatch immediately and surrender the stored grant |
+
+Mutations refuse query parameters and caller-chosen subjects/scopes. Enrollment
+lists the owner's Core grants, creates or renews the fixed integration on
+private Core routes, encrypts the pair while disabled, validates a fresh Monitor
+projection and only then enables the rule. Failure compensates with surrender;
+persisted revocation failures stay disabled and retry after restart. An orphan
+grant remains visible/revocable directly through Core if storage itself fails.
+Concurrent enrollment returns `409`; missing configuration `503`, rejected
+consent `400`, non-admin `403`, upstream enrollment failure `502`.
+
+Control replies contain `{rule}` and `200`, or `202` while revocation remains
+pending. Rule metadata includes grant/source IDs, exact expiry, `enabled`,
+`revocationPending`, `status`, bounded reason code, last checked/success/delivery
+times, retry time, qualifying count and pending count. No credential, ciphertext,
+key, payload or browser session is returned. A non-admin can still see/disable
+their own existing rule with a valid session. Home Settings independently lists
+Core grants and offers direct owner revocation when Bridge is unavailable.
+
+The worker starts a cycle every five minutes. Four strictly newer critical
+evaluations must span 15 minutes with no gap over ten minutes; feed age must
+be at most two minutes and future skew at most 30 seconds. Warning, unknown,
+missing/stale/non-new readings, outages and restart reset incomplete qualification.
+Changed Monitor instance pauses for fresh consent. Qualified intent persists
+its canonical bounded title/notes/key encrypted before dispatch. Every write
+or retry reads the fresh source again; positive resolution cancels pending
+delivery without modifying an existing task. Tasks also verifies Core live.
+
+SQLite leases prevent overlapping cycles per rule and permit only four cycles
+across workers sharing the database. Each cycle sends at most four pending
+deliveries; disabled/unknown conditions cannot starve eligible incidents.
+Leases last 60 seconds; expired workers recheck ownership before dispatch.
+Requests refuse redirects, cap streamed replies at 256 KiB and cover headers
+and bodies with a five-second deadline. Retry uses the next five-minute tick,
+honoring longer numeric/date `Retry-After` values capped at 24 hours. Conflicts
+pause for attention; auth refusal/expiry pause; outages retain canonical intent.
+Delivered identities survive restart/renewal and discard pending payloads.
 
 Returns `{groups, limit: 20}`. Each group has `source`, `name`, `status`
 (`ok`, `disabled`, `unavailable`), `limited`, and `results`. Each result has
@@ -277,7 +327,7 @@ The automation body must contain exactly `{title, notes, idempotencyKey}`;
 no query parameters. Title is trimmed, nonempty plain text of at most 200
 characters without control characters. Notes are required text of at most
 5000 characters (tabs/newlines allowed). The key is a lowercase 64-character
-SHA-256 hex digest. The future worker derives it from integration version,
+SHA-256 hex digest. The worker derives it from integration version,
 subject, pinned Monitor instance and incident, excluding grant ID and payload.
 The action derives subject and integration namespace only from live Core
 verification, never the request. It creates an open, non-repeating inbox task

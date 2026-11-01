@@ -7,9 +7,20 @@ been checked since.
 ## Part A — implemented today
 
 - Passwords hashed with **bcrypt** (12 rounds); never stored plain.
-- **JWT** auth with a per-user **token version** for instant revocation
-  (password change, "sign out everywhere," admin-disable all take effect
-  immediately, not on next expiry).
+- **JWT** auth with a per-user **token version** for revocation on password
+  change, "sign out everywhere," and admin-disable. HomeCore checks account
+  state on every request; the seven application backends cache a successful
+  verification for at most five seconds from the start of the verification
+  request. They never reuse an expired entry during an outage.
+- **Bounded delegated authentication** (`packages/homecore-client`): a
+  five-second deadline covers both response headers and body; at most 1,000
+  successful identities and 100 distinct in-flight verifications are kept
+  per backend process. Concurrent requests for the same token share one
+  verification. Only HomeCore's explicit `401`/`403` refuses the session;
+  upstream failures and malformed responses fail closed with a retryable
+  `502`, timeout with `504`, and local verification saturation with `503`.
+  These failures do not clear the user's shared browser session. Redirects
+  are refused and upstream response bodies are never exposed in errors.
 - Auth-adjacent routes (login, register, password change, 2FA
   setup/disable) **rate-limited** — 10 attempts / 15 minutes / IP.
 - Security headers via `helmet` on every response.

@@ -7,6 +7,10 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 
 ## [Unreleased]
 
+### Fixed
+- Preserve the shared browser session when HomeCore verification is unavailable: application backends now return retryable 5xx errors instead of treating upstream failures as expired credentials. Add a five-second request/body deadline, bounded identity and in-flight caches, and shared verification for simultaneous requests using the same token. Expired cache entries never authorize requests during an outage.
+- Add 28 shared-client regression and integration checks, including real HomeCore account disabling/logout, upstream errors, stalled responses, malformed identities, cache expiry/capacity and concurrent requests. Document the existing five-second delegated-revocation window accurately.
+
 ### Changed
 - Correct the SemVer timeline: consolidate the Atari visual-refresh phases into one release and normalize subsequent product milestones.
 - Reconcile the legacy Git refs without rewriting the public commit graph.

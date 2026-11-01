@@ -139,10 +139,9 @@ router.patch(
 );
 
 // POST /api/homevault/vault/regenerate-recovery — replaces only the
-// recovery-key wrap path. Invalidates any previously downloaded/printed
-// recovery kit immediately (the old recovery key can no longer unwrap
-// anything useful) — the frontend should make this consequence obvious
-// before calling it, not just after.
+// recovery-key wrap path. The old kit cannot unwrap this new envelope, but
+// an old kit plus an older envelope still exposes the unchanged vault key.
+// This is not cryptographic revocation of a compromised key or item rekeying.
 router.post(
   "/vault/regenerate-recovery",
   asyncHandler(async (req, res) => {
@@ -160,10 +159,10 @@ router.post(
 );
 
 // DELETE /api/homevault/vault — destroys the vault and every item in it.
-// Irreversible: there is no server-side backup of the unwrapped key, by
-// design, so this isn't a soft-delete/Trash situation the way HomeCloud's
-// files are — once this runs, the data is gone even with the correct
-// master password. Matches the threat model's "HomeCore admin overreach"
+// No in-app undo: current rows are removed, including Trash. Older backups
+// may still contain the encrypted envelopes/items, and unlocked devices
+// may still hold the vault key. This is not secure erasure or deletion of
+// external copies. Matches the threat model's "HomeCore admin overreach"
 // row: this is the one action an account holder (or, via a future admin
 // route, HomeCore) can take on a vault without ever being able to read
 // it first.

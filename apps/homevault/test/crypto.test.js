@@ -56,17 +56,15 @@ test("recovery key parsing tolerates lowercase and stray whitespace", () => {
   assert.deepEqual([...parsed], [...original]);
 });
 
-// The trailing base32 character in a formatted recovery key is a
-// checksum, not key material — see crypto.js's formatRecoveryKey
-// comment for why. These two tests are the reason it exists: catching
+// A CRC-8 byte is appended before base32 encoding; it is not a separate
+// trailing character/group. These tests check its purpose: catching
 // a transcription error immediately, with a message that says so,
 // rather than silently producing a different 32-byte key that only
 // fails much later when it doesn't unwrap the vault.
 test("parseRecoveryKey rejects a single mistyped character with a clear, distinct error", () => {
   const original = generateRecoveryKeyBytes();
   const formatted = formatRecoveryKey(original);
-  // Flip one character in the middle of the key portion (not the
-  // trailing checksum character itself) to a different valid base32
+  // Flip one character in the middle of the key portion to a different valid base32
   // character — simulating a real, easy-to-make single-character typo.
   const flipIndex = 10;
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
@@ -207,6 +205,41 @@ test("exportKeyRaw/importAesKeyRaw round-trips a generated key", async () => {
   const reimported = await importAesKeyRaw(raw);
   const probe = await encryptString("round trip", key);
   assert.equal(await decryptString(probe.ciphertext, probe.iv, reimported), "round trip");
+});
+
+test("a master-unlocked vault key can be rewrapped for password change and recovery regeneration", async () => {
+  const original = await generateVaultKey();
+  const oldMaster = await importAesKeyRaw(await deriveMasterKeyBits("old dummy master password", generateSalt(), FAST_PARAMS));
+  const newMaster = await importAesKeyRaw(await deriveMasterKeyBits("new dummy master password", generateSalt(), FAST_PARAMS));
+  const oldEnvelope = await wrapVaultKey(original, oldMaster);
+  const stored = await encryptJSON({ password: "disposable item secret" }, original);
+  const unlocked = await unwrapVaultKey(oldEnvelope.ciphertext, oldEnvelope.iv, oldMaster);
+  const changed = await wrapVaultKey(unlocked, newMaster);
+  const changedKey = await unwrapVaultKey(changed.ciphertext, changed.iv, newMaster);
+  assert.deepEqual(await decryptJSON(stored.ciphertext, stored.iv, changedKey), { password: "disposable item secret" });
+  const recovery = await importAesKeyRaw(generateRecoveryKeyBytes());
+  const regenerated = await wrapVaultKey(changedKey, recovery);
+  const recovered = await unwrapVaultKey(regenerated.ciphertext, regenerated.iv, recovery);
+  assert.deepEqual(await decryptJSON(stored.ciphertext, stored.iv, recovered), { password: "disposable item secret" });
+  // Rewrapping is not data-key rotation: historical wrappers still expose
+  // the same key, including for items encrypted after the password change.
+  const historical = await unwrapVaultKey(oldEnvelope.ciphertext, oldEnvelope.iv, oldMaster);
+  const laterItem = await encryptString("later disposable item", changedKey);
+  assert.equal(await decryptString(laterItem.ciphertext, laterItem.iv, historical), "later disposable item");
+  assert.equal(oldMaster.extractable, false); assert.equal(newMaster.extractable, false); assert.equal(recovery.extractable, false);
+});
+
+test("a recovery-unwrapped vault key can establish a new master path without re-encrypting items", async () => {
+  const original = await generateVaultKey();
+  const recovery = await importAesKeyRaw(generateRecoveryKeyBytes());
+  const recoveryEnvelope = await wrapVaultKey(original, recovery);
+  const title = await encryptString("disposable title", original);
+  const key = await unwrapVaultKey(recoveryEnvelope.ciphertext, recoveryEnvelope.iv, recovery);
+  const master = await importAesKeyRaw(await deriveMasterKeyBits("replacement dummy master", generateSalt(), FAST_PARAMS));
+  const replacement = await wrapVaultKey(key, master);
+  const reopened = await unwrapVaultKey(replacement.ciphertext, replacement.iv, master);
+  assert.equal(await decryptString(title.ciphertext, title.iv, reopened), "disposable title");
+  assert.equal(key.extractable, true); assert.equal(reopened.extractable, true);
 });
 
 // Slower, real-parameter test kept separate and last: confirms the actual

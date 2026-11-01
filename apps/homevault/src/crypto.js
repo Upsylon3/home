@@ -105,16 +105,14 @@ export function base32ToBytes(str) {
 // keys, 2FA recovery codes) for exactly this "a human needs to copy this
 // correctly" problem.
 //
-// The last group is a single checksum character (see crc8 below), not
-// key material — it exists purely so a mistyped/mis-scanned character
-// is caught immediately, with a clear "you made a typo" message, rather
-// than silently producing a different, wrong 32-byte key that only
+// The 32 key bytes plus one CRC-8 byte encode to 53 unpadded characters,
+// grouped by five (the final group has three). The checksum exists so a
+// mistyped/mis-scanned character is caught with a clear typo message,
+// rather than silently producing a different, wrong 32-byte key that only
 // fails much later (and unhelpfully) when it doesn't unwrap the vault.
-// This is error *detection*, not a security control — it's exactly as
-// guessable as any other single base32 character, so it adds no
-// meaningful resistance if someone is deliberately guessing recovery
-// keys (rate limiting and the key's own 256 bits of entropy already
-// handle that).
+// This is error detection, not a security control: anyone can recompute
+// the unkeyed CRC. It adds no entropy or resistance to deliberate key
+// guessing; entropy comes from the random 32-byte key itself.
 export function formatRecoveryKey(bytes) {
   const raw = bytesToBase32(withChecksum(bytes));
   return raw.match(/.{1,5}/g).join("-");
@@ -268,5 +266,8 @@ export async function wrapVaultKey(vaultKey, wrappingKey) {
 
 export async function unwrapVaultKey(ciphertextB64, ivB64, wrappingKey) {
   const raw = await decryptBytes(ciphertextB64, ivB64, wrappingKey);
-  return importAesKeyRaw(raw);
+  // Match generateVaultKey's policy: an unlocked vault key must support
+  // rewrapping for password changes, recovery and recovery-kit rotation.
+  // Master/recovery wrapping keys still use non-extractable imports above.
+  return crypto.subtle.importKey("raw", raw, { name: "AES-GCM", length: 256 }, true, AES_KEY_USAGES);
 }

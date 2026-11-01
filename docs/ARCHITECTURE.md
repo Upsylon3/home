@@ -144,6 +144,13 @@ endpoints) repeated in every app. Not yet implemented — this is the
 design to build against once HomeBridge's first scheduled bridge is
 started.
 
+The first scheduled scope is now recorded in
+[decision 002](decisions/002-scheduled-monitor-followup.md): persistent critical
+Monitor alerts become the consenting administrator's personal follow-up
+tasks. Two audience-bound capabilities cover only a curated alert read and
+create-once task action. This remains a design, not an implemented credential
+system or scheduler; live search still uses only the current user session.
+
 ## 5. The gateway
 
 A single public entry point (`gateway/nginx.conf`, published at

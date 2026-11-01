@@ -140,16 +140,18 @@ another app's API *as* a user with nothing to forward. **Decided: a
 scoped service credential HomeCore mints for HomeBridge**, recognized
 for a narrow allow-list of actions — one new concept in one place,
 instead of a second trust mechanism (shared-secret `/internal/...`
-endpoints) repeated in every app. Not yet implemented — this is the
-design to build against once HomeBridge's first scheduled bridge is
-started.
+endpoints) repeated in every app. Core now implements the authority and
+separate shared verifier; action consumers and the worker are still absent.
 
 The first scheduled scope is now recorded in
 [decision 002](decisions/002-scheduled-monitor-followup.md): persistent critical
 Monitor alerts become the consenting administrator's personal follow-up
 tasks. Two audience-bound capabilities cover only a curated alert read and
-create-once task action. This remains a design, not an implemented credential
-system or scheduler; live search still uses only the current user session.
+create-once task action. Core issues hash-only, 30-day, account-bound grants
+with live revocation and private server-to-server mint/renew routes. Browser
+session middleware remains separate. The Monitor/Tasks action APIs,
+encrypted Bridge persistence, enrollment UI and scheduler remain planned;
+live search still uses only the current user session.
 
 ## 5. The gateway
 

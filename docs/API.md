@@ -22,6 +22,64 @@ application backend within that window. HomeCore itself checks immediately.
 Identity, sessions, 2FA, the application registry, permissions, and the
 shared activity/notifications feed. No files live here.
 
+### Scheduled-delegation authority
+
+This foundation implements decision 002's authority milestone only. There is
+no enrollment UI, scheduler or delegated Monitor/Tasks action endpoint yet.
+Browser JWTs and opaque capabilities are separate principal types; ordinary
+browser routes reject capabilities.
+
+| Method | Path | Authorization and result |
+|---|---|---|
+| GET | `/api/core/delegations` | Full owner session; `{grants: [...]}` metadata only |
+| DELETE | `/api/core/delegations/:id` | Full owner session; revoke own grant, idempotent `204`; foreign/missing `404` |
+| POST | `/api/core/delegations/verify` | Capability bearer; exact `{audience, action}`; `{delegation: ...}` or `403` |
+| POST | `/internal/delegations` | **Internal server only**, full administrator session; exact `{integrationId: "monitor-followup-v1", consent: true}`; `201` |
+| POST | `/internal/delegations/:id/renew` | **Internal server only**, full owner administrator session; exact `{consent: true}`; `200` |
+
+The gateway returns `404` for the internal issuance prefix. Direct Core ports
+must remain private. Origin/Fetch Metadata browser requests are rejected by
+issuance; these headers are defense in depth, not server authentication.
+A future enrollment server must forward the consenting owner's full session,
+persist the returned capabilities encrypted, and return metadata to browsers.
+No shared internal secret can mint a grant. Pending-2FA sessions cannot mint.
+
+Issuance/renewal returns `{grant, capabilities}`. Each capability contains
+`id`, `audience`, `action` and a once-returned `token` (`hc_dg_` plus 256 random
+bits); Core stores SHA-256 hashes only. The fixed pair is `homemonitor` /
+`monitor.alerts.read` and `hometasks` / `tasks.automation.create-once`. No
+caller-chosen subject, scopes or expiry are accepted. A grant lasts 30 days
+from consent and binds the account's current token version. A second create
+returns `409`; renewal preserves grant identity and rotates both credentials
+atomically. Renewal requires fresh consent even after expiry or revocation.
+
+Owner metadata includes ID, subject, integration, timestamps, capability
+IDs/audiences/actions, `dailyCreateLimit: 20` and status (`active`, `revoked`,
+`expired`, `invalidated`, `apps-disabled`). It never includes tokens or hashes.
+Listing/revoking one's own grant remains possible after role loss with a valid
+new session. Every verification reads current grant, enabled administrator,
+token version and both required registry entries. Disabled/missing apps,
+expiry, revocation, demotion and session invalidation refuse verification.
+No successful check is cached. Unknown state fails closed.
+
+The verified principal contains only `kind: "delegation"`, `subjectUserId`,
+`grantId`, `credentialId`, `integrationId`, `audience`, `action`, `expiresAt`
+and `dailyCreateLimit: 20`. This limit is authority metadata; the future Tasks
+action must enforce it transactionally. `@home/homecore-client` exports
+`createDelegationVerifier`, `verifyDelegation` and `requireDelegation` for
+fixed route audiences/actions. The middleware sets only `req.delegation`;
+it does not populate browser `req.user` or widen `requireAuth`.
+
+Delegation replies use `Cache-Control: no-store`. Invalid input returns `400`,
+missing/invalid owner sessions `401`, insufficient authority `403`, unknown
+owner grant `404`, existing grant or unavailable required apps `409`.
+Verification/issuance has a 120-request/minute IP limit (`429`). Shared-client
+errors are retryable `502` (unavailable/malformed), `503` (busy) or `504`
+(five-second request/body deadline). It rejects redirects and replies over
+8 KiB, permits at most 100 pending checks and strips unknown principal fields.
+
+### Session and platform routes
+
 | Method | Path | What it does |
 |---|---|---|
 | POST | `/api/auth/register` | Create an account (first ever = admin) |

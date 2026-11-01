@@ -150,7 +150,7 @@ container (`apps/home/nginx.conf`), which must start with HomeCloud and
 HomeCore missing.
 
 ```bash
-bash gateway/test/gateway-smoke.sh      # 53 checks; prints "SKIP" if nginx isn't installed
+bash gateway/test/gateway-smoke.sh      # 55 checks; prints "SKIP" if nginx isn't installed
 ```
 
 ## Testing backups
@@ -247,8 +247,8 @@ npm test
 Or one service at a time:
 
 ```bash
-cd homecore && npm test                    # 53 tests
-cd packages/homecore-client && npm test    # 28 tests — real HomeCore and HTTP failure/cache boundaries
+cd homecore && npm test                    # 68 tests
+cd packages/homecore-client && npm test    # 34 tests — real HomeCore and HTTP failure/cache boundaries
 cd apps/homecloud-backend && npm test      # 44 tests
 cd apps/homemedia-backend && npm test      # 28 tests
 cd apps/homenotes-backend && npm test      # 24 tests

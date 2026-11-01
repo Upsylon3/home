@@ -154,6 +154,10 @@ req GET "/api/hometasks/tasks?status=done&today=2026-10-09"
 expect_body   "API paths are passed through UNCHANGED (prefix kept)" '"path": "/api/hometasks/tasks?status=done&today=2026-10-09"'
 req GET /api/auth/me
 expect_body   "/api/auth/... reaches HomeCore, path unchanged" '"path": "/api/auth/me"'
+req POST /internal/delegations -H 'Content-Type: application/json' -d '{"integrationId":"monitor-followup-v1","consent":true}'
+expect_status "delegation issuance is not exposed by the public gateway" 404
+req POST /internal/delegations/example/renew -H 'Content-Type: application/json' -d '{"consent":true}'
+expect_status "delegation renewal is not exposed by the public gateway" 404
 req GET /sync/
 expect_body   "/sync/ reaches homesync-backend as /" '"path": "/"'
 req POST /api/hometasks/tasks -H 'Content-Type: application/json' -d '{"title":"x"}'

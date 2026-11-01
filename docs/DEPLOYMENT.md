@@ -221,6 +221,30 @@ docker run --rm \
 docker compose up
 ```
 
+**Core restore exception:** when restoring `home_homecore_data`, do not run the
+last `up` command until restored delegations have been revoked. Keep Core,
+HomeBridge, the gateway and application traffic offline. With the current Core
+image built, run this one-off process against the restored volume:
+
+```bash
+docker compose run --rm --no-deps --entrypoint node homecore \
+  scripts/revoke-restored-delegations.js \
+  --database /data/homecore.db --confirm-offline-restore
+```
+
+It must exit successfully and print `{"revoked":N}` (including zero for an old
+snapshot without delegation tables). On failure keep services offline. This
+revokes every restored grant, audits the operation without credentials and
+preserves account/app data. Owners must explicitly re-enroll later; never
+restore Bridge credentials as a way around this. Then resume with `docker
+compose up`. The offline flag acknowledges an operator precondition; the
+script cannot detect external traffic or stop services for you.
+
+For a local disposable restore, the equivalent is `node
+homecore/scripts/revoke-restored-delegations.js --database <absolute-existing-Core-db>
+--confirm-offline-restore`. No default database path or `.env` is loaded, and a
+missing file is never created. Ordinary restarts must not run this maintenance.
+
 Substitute the volume name for whichever app you're restoring
 (`home_homecore_data`, `home_homemedia_data`, `home_homenotes_data`,
 `home_homesync_data`, `home_homevault_data` — the `home_` prefix comes
@@ -254,6 +278,12 @@ Each service migrates its own SQLite schema forward automatically on
 startup (see each service's `db.js` — plain `CREATE TABLE IF NOT
 EXISTS`/`ALTER TABLE` statements, no separate migration runner). Check
 [CHANGELOG.md](../CHANGELOG.md) for anything that needs a manual step.
+
+Core's delegation migration adds two tables without changing existing users
+or sessions. Before downgrading Core, revoke grants while the new authority
+is available (or use the offline maintenance command with all traffic stopped).
+Leave additive tables in place; do not delete audit records or drop tables as
+rollback cleanup. No worker is enabled by this foundation update.
 
 HomeVault's Trash upgrade adds only a nullable `deleted_at` column. Existing
 items stay active and their ciphertext, IVs and key envelopes are unchanged.

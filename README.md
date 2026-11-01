@@ -93,7 +93,7 @@ docs/                  Architecture, security, API reference, deployment, roadma
 
 ## Tests
 
-489 automated tests across 14 suites (9 backends, 4 frontends, the shared identity client), run with
+492 automated tests across 14 suites (9 backends, 4 frontends, the shared identity client), run with
 `npm test` from the repo root (or inside any one suite's own folder):
 
 ```
@@ -103,10 +103,10 @@ apps/homecloud-backend  44 tests
 apps/homemedia-backend  28 tests
 apps/homenotes-backend  24 tests
 apps/homesync-backend   20 tests
-apps/homevault-backend  34 tests
+apps/homevault-backend  35 tests
 apps/hometasks-backend  69 tests
 apps/homemonitor-backend 71 tests
-apps/homevault          20 tests  (src/crypto.js — the client-side encryption)
+apps/homevault          22 tests  (src/crypto.js — the client-side encryption)
 apps/homenotes          16 tests  (src/markdown.js — the XSS sanitizer)
 apps/hometasks           7 tests  (src/dates.js, src/repeat.js — date and wording helpers)
 apps/homemonitor        13 tests  (src/format.js, src/chart.js — number formatting and chart maths)
@@ -139,6 +139,8 @@ what each layer covers.
   setup, backups, upgrading
 - [docs/SECURITY.md](docs/SECURITY.md) — what's protecting this today,
   and HomeVault's threat model and v0 status
+- [docs/HOMEVAULT_REVIEW.md](docs/HOMEVAULT_REVIEW.md) — independent-review
+  handoff, safe reproduction and unresolved security questions; review remains open
 - [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md) — visual direction,
   for anyone designing a new screen
 - [docs/ROADMAP.md](docs/ROADMAP.md) — what's next

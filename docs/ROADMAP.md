@@ -40,6 +40,9 @@ remain follow-ups; per-database consistency does not establish those guarantees.
    status callout for exactly what's been verified by automated test
    versus what still needs human review. Nothing real should go into a
    HomeVault vault before this happens.
+   [The review handoff](HOMEVAULT_REVIEW.md) is prepared with source map,
+   disposable reproduction and explicit open questions. Its post-unlock
+   rewrap fix and automated/browser evidence do not close this review item.
 2. **HomeSync Android: run it on a real device.** The app now builds
    and passes its unit tests in CI (`android.yml`), after three rounds of
    fixes for problems the 1.1.4 upgrades had hidden (see `CHANGELOG.md`).

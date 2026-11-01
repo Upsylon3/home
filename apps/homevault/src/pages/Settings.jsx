@@ -149,6 +149,8 @@ export default function Settings({ onVaultUpdated }) {
       <h2 style={{ marginTop: 32 }}>Change master password</h2>
       <p style={{ color: "var(--text-dim)", fontSize: 13 }}>
         Your vault key doesn't change — only how it's protected does. Every item stays exactly as it is.
+        An old password plus an older backup envelope can still expose that key. This does not revoke a
+        compromised vault key.
       </p>
       {passwordError && <div className="error-banner" style={{ marginBottom: 12 }}>{passwordError}</div>}
       {passwordMessage && <div className="error-banner" style={{ marginBottom: 12, color: "var(--teal)", borderColor: "var(--teal)" }}>{passwordMessage}</div>}
@@ -182,8 +184,9 @@ export default function Settings({ onVaultUpdated }) {
 
       <h2>Recovery key</h2>
       <p style={{ color: "var(--text-dim)", fontSize: 13 }}>
-        Generating a new one immediately invalidates any recovery key you saved before — make sure you save the new
-        one before leaving this page.
+        Generating a new key replaces the recovery path for the current vault. Save the new key before leaving.
+        Old keys can still unlock older backup envelopes, which expose the same vault key. This does not revoke a
+        compromised key or re-encrypt your items.
       </p>
       {recoveryError && <div className="error-banner" style={{ marginBottom: 12 }}>{recoveryError}</div>}
       {newRecoveryKit ? (
@@ -206,8 +209,8 @@ export default function Settings({ onVaultUpdated }) {
       <div className="danger-zone">
         <h3>Danger zone</h3>
         <p style={{ fontSize: 13 }}>
-          Deleting your vault permanently destroys every item in it, along with the only keys that could ever
-          decrypt them. There is no undo — not even a support request can bring it back, by design.
+          Deleting removes this vault and every active or trashed item from the current server. There is no undo
+          here. Backups, exports and already-unlocked devices can retain copies; this is not secure erasure.
         </p>
         {deleteError && <div className="error-banner" style={{ marginBottom: 12 }}>{deleteError}</div>}
         <div className="field">

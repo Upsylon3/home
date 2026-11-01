@@ -1,5 +1,5 @@
 // The orchestrator: one "tick" = take a snapshot, save history, check the alert
-// rules, send any notifications, remember the new alert state.
+// rules, commit alert state/freshness and notification intent, then deliver.
 //
 // server.js runs tick() on a timer. Tests call tick() by hand with fake parts,
 // which is why the parts are passed in rather than imported here.
@@ -35,21 +35,26 @@ function createMonitor({ config, collector, history, notifier, now = Date.now })
       const previous = history.loadAlertState();
       const { next, notify } = evaluateAlerts(conditions, previous, snapshot.at);
 
-      if (config.alertsEnabled && notify.length > 0) {
+      let evaluationError;
+      try { history.commitEvaluation(next, snapshot.at, config.alertsEnabled ? notify : []); }
+      catch (error) { evaluationError = error; }
+      // Even a saturated queue must be drained. Otherwise a new transition
+      // could repeatedly fail its commit and prevent delivery forever.
+      const pending = config.alertsEnabled ? history.pendingNotifications() : [];
+      if (pending.length > 0) {
         try {
-          await notifier(notify);
+          await notifier(pending.map(item => item.payload));
+          history.acknowledgeNotifications(pending.map(item => item.id));
           lastNotifyError = null;
         } catch (err) {
-          // HomeCore is unreachable or refused. We do NOT save the new state:
-          // the same alerts will be worked out again on the next tick and
-          // sent then, so a notification is never silently lost.
+          // Fresh state remains committed; durable notification intent is
+          // retried separately, including after a restart or later resolution.
           lastNotifyError = err.message;
           console.error(`[homemonitor] couldn't send notifications, will retry: ${err.message}`);
-          return snapshot;
         }
       }
 
-      history.saveAlertState(next);
+      if (evaluationError) throw evaluationError;
       return snapshot;
     } finally {
       ticking = false;

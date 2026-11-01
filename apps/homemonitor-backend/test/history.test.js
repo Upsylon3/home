@@ -69,8 +69,8 @@ test("prune drops old samples and very old daily rows", () => {
 });
 
 test("alert state round-trips, and saving replaces the old state completely", () => {
-  const a = { active: true, checks: 2, since: "t0", severity: "critical", title: "A is down", body: "HTTP 500" };
-  const b = { active: false, checks: 1, since: null, severity: "warning", title: "B", body: "" };
+  const a = { active: true, checks: 2, since: "t0", severity: "critical", title: "A is down", body: "HTTP 500", incidentId: require("node:crypto").randomUUID(), state: "active" };
+  const b = { active: false, checks: 1, since: null, severity: "warning", title: "B", body: "", incidentId: null, state: "pending" };
   history.saveAlertState({ "service:a": a, "disk:b": b });
   assert.deepEqual(history.loadAlertState(), { "service:a": a, "disk:b": b });
 

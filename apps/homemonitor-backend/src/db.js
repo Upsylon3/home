@@ -1,7 +1,7 @@
 // HomeMonitor's own small database: a little history for the charts, and the
 // current alert state. Like every Home app it owns its data and never touches
-// another app's database. Nothing here is precious: if this file is deleted
-// the monitor just starts its history afresh.
+// another app's database. Instance/incident identity and queued notifications
+// are durable too: deleting this database changes the source identity.
 const fs = require("fs");
 const path = require("path");
 const Database = require("better-sqlite3");
@@ -48,5 +48,7 @@ db.exec(`
     body TEXT NOT NULL DEFAULT ''
   );
 `);
+
+require("./incidentSchema").ensureIncidentSchema(db);
 
 module.exports = { db, DATA_DIR };

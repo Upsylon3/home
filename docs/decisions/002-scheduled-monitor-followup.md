@@ -1,8 +1,8 @@
 # First scheduled bridge: critical alerts become personal follow-up tasks
 
-Status: **authority milestone implemented**: Core grants, separate shared
-verification and offline restore revocation. Action APIs, enrollment controls,
-encrypted worker state and scheduling remain unimplemented. HOME still
+Status: **authority and source/destination milestones implemented**: Core grants,
+separate verification, Monitor incidents/feed and Tasks create-once receipts.
+Enrollment controls, encrypted worker state and scheduling remain unimplemented. HOME still
 ships only the live, read-only HomeBridge search from decision 001. This
 decision authorizes no deployment, real credential issuance or automatic
 enrollment. The next implementation must satisfy the gates below.
@@ -34,19 +34,21 @@ HomeMonitor's existing alerts and notifications continue independently.
   already distinguishes active incidents and warning/critical severity.
   [Its history](../../apps/homemonitor-backend/src/history.js) persists `key`
   and `since`. However, [the monitor](../../apps/homemonitor-backend/src/monitor.js)
-  can collect a fresh snapshot without saving new alert state when notification
-  delivery fails. Snapshot time alone therefore does not prove fresh alerts.
-  Also, the current service condition clears whenever it is not `down`,
-  including `unknown`, and missing conditions are dropped. That is not enough
-  to prove resolution or preserve an incident across unknown readings.
+  previously collected fresh snapshots without saving alert state on notification
+  failure, cleared unknown services and dropped missing conditions. Those gaps
+  are now corrected: state/freshness/outbox commit atomically and unknown/missing
+  conditions preserve open incident identity. Use the committed evaluation time,
+  never snapshot time alone, as freshness evidence.
 - [The current Monitor API](../../apps/homemonitor-backend/src/app.js) is
-  administrator-only and returns broad status/history, not a scoped alert feed.
+  keeps broad status/history administrator-only and adds a separate curated
+  capability-only alert feed.
 - [HomeTasks creation](../../apps/hometasks-backend/src/tasks.js) has ownership
-  checks but no durable idempotency contract. A timeout after a successful
-  insert could otherwise produce duplicate tasks on retry.
+  checks and now a separate create-once action with durable receipts and daily
+  limits. A timeout after commit replays the same receipt without a second task.
 - [HomeCore authentication](../../homecore/src/middleware/authMiddleware.js)
   and [the shared client](../../packages/homecore-client/src/verify.js) verify
-  browser sessions. They do not yet implement service capabilities.
+  browser sessions; the separate delegation verifier implements scoped
+  capabilities without widening session authentication.
 - HomeSync was considered and rejected for this first bridge:
   [device registration](../../apps/homesync-backend/src/devices.js) initializes
   `last_seen_at`, and [upload handling](../../apps/homesync-backend/src/sync.js)
@@ -134,10 +136,17 @@ creation, not cryptographic attestation of the scheduler's reasoning.
    positive clear can do so. Correct this source behavior explicitly with
    regressions rather than inferring resolution in Bridge. Existing status
    schemas and notifier delivery/retry guarantees stay compatible.
+   **Implemented:** `GET /api/homemonitor/automation/alerts`, durable instance
+   and incident UUIDs, explicit states and transactional freshness. Durable
+   notification intent preserves at-least-once retries even after resolution
+   or restart; a failed partial batch can still duplicate notifications.
 3. HomeTasks adds a generic scoped create-once action accepting only a
    bounded title, notes and idempotency key. Core supplies subject/namespace;
    reject every other creation field. A local transaction inserts the task
    and unique receipt together. Return only task ID/link and receipt state.
+   **Implemented:** `POST /api/hometasks/automation/tasks`; exact title/notes/key
+   schema, subject/integration isolation, retained payload-hash receipts,
+   deletion retirement and the transactional UTC daily cap. See `docs/API.md`.
 4. HomeBridge adds owner-session enrollment, status and disable controls,
    its own durable rule/receipt state and the bounded worker. It alone knows
    how Monitor alerts map to task payloads. Neither Tier 1 app detects
@@ -151,6 +160,9 @@ not as already available endpoints in this design change.
 The worker pins the Monitor instance UUID during enrollment. A different
 instance pauses the rule and requires owner confirmation; a restored/reset
 Monitor must not silently turn old conditions into a burst of new tasks.
+Before reopening a restored Monitor database, run the offline identity-reset
+command in `docs/DEPLOYMENT.md`. It rotates the instance ID and clears freshness;
+ordinary restarts do neither. A future worker must pause on that identity change.
 An incident UUID survives severity changes and restarts, and changes only
 when a resolved condition genuinely opens again. Do not use title or wall
 clock alone as the incident identity. Preserve that UUID across unknown
@@ -261,6 +273,8 @@ Implement in this order, with independently reviewable tests:
    then transactional create-once receipts with concurrent/replayed requests,
    manual deletion, changed payload, daily limits and crash-after-commit proof.
    These are generic own-resource APIs, independent of Bridge installation.
+   Implemented with real-Core HTTP tests, SQLite rollback checks, concurrent
+   process tests, abrupt exit after commit, UTC rollover and restore maintenance.
 3. **Worker and controls:** real disposable Core/Monitor/Tasks integration,
    fake clock, enrollment/disable UI, encrypted persistence and restart proof.
    Exercise short-lived warnings, stale/future/repeated evaluations, severity
@@ -275,5 +289,5 @@ Implement in this order, with independently reviewable tests:
 
 Completion means the implemented journey and authorization boundary pass
 these gates and merge under the repository workflow. This document alone
-does not complete the scheduler. Only authority credentials, endpoints and
-additive Core tables currently exist; gates 2–4 remain open.
+does not complete the scheduler. Authority and own-resource action endpoints
+exist with additive local schemas; gates 3–4 remain open.

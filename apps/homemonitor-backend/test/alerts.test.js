@@ -79,7 +79,9 @@ test("an alert resolves once, and a resolved notice names the original problem",
   assert.equal(notify.length, 1);
   assert.equal(notify[0].kind, "resolved");
   assert.equal(notify[0].title, "Resolved: HomeCloud is not responding");
-  assert.deepEqual(next, {});
+  assert.equal(next["service:homecloud"].state, "resolved");
+  assert.equal(next["service:homecloud"].active, false);
+  assert.equal(next["service:homecloud"].incidentId, state["service:homecloud"].incidentId);
 });
 
 test("a disk hovering around the threshold doesn't flap", () => {
@@ -101,9 +103,10 @@ test("active alerts keep fresh wording while they last", () => {
   assert.equal(state["disk:data"].since, T); // but "since" stays at when it opened
 });
 
-test("state for something that no longer exists is dropped quietly", () => {
+test("missing conditions preserve open incidents as unknown without claiming resolution", () => {
   const previous = { "service:gone": { active: true, checks: 5, since: T, severity: "critical", title: "Gone is down", body: "" } };
   const { next, notify } = evaluateAlerts(conditionsFor({}), previous, T);
-  assert.equal(next["service:gone"], undefined);
+  assert.equal(next["service:gone"].active, true);
+  assert.equal(next["service:gone"].state, "unknown");
   assert.deepEqual(notify, []);
 });

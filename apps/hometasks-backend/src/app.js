@@ -32,7 +32,9 @@ app.get("/api/hometasks/health", (req, res) => {
   res.json({ status: "ok", homecoreUrl: HOMECORE_URL });
 });
 
-// Everything below needs a valid login.
+// This narrow action uses a separate capability principal, never req.user.
+app.use("/api/hometasks", require("./automation"));
+// Browser routes below need a valid login.
 app.use("/api/hometasks", requireAuth, projectRoutes);
 app.use("/api/hometasks", requireAuth, taskRoutes);
 

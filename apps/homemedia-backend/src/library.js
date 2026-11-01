@@ -75,7 +75,14 @@ router.get(
 
     files.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-    res.json({ files: files.map((f) => ({ ...f, favorited: favoriteIds.has(f.id) })) });
+    let limit = files.length;
+    if (req.query.limit !== undefined) {
+      limit = Number(req.query.limit);
+      if (!Number.isInteger(limit) || limit < 1 || limit > 200) {
+        return res.status(400).json({ error: "limit must be an integer between 1 and 200." });
+      }
+    }
+    res.json({ files: files.slice(0, limit).map((f) => ({ ...f, favorited: favoriteIds.has(f.id) })), truncated: files.length > limit });
   })
 );
 

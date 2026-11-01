@@ -141,6 +141,13 @@ router.get("/all", (req, res) => {
     return res.status(400).json({ error: `type must be one of: ${ALL_FILES_TYPE_FILTERS.join(", ")}` });
   }
 
+  const requestedLimit = req.query.limit === undefined ? ALL_FILES_LIMIT : Number(req.query.limit);
+  if (!Number.isInteger(requestedLimit) || requestedLimit < 1 || requestedLimit > ALL_FILES_LIMIT) {
+    return res.status(400).json({ error: `limit must be an integer between 1 and ${ALL_FILES_LIMIT}.` });
+  }
+  const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
+  const query = search || null;
+
   const rows = db
     .prepare(
       `SELECT id, original_name AS name, size, mimetype, folder_id AS folderId, created_at AS createdAt,
@@ -148,13 +155,14 @@ router.get("/all", (req, res) => {
        FROM files
        WHERE user_id = ? AND deleted_at IS NULL
          AND (? IS NULL OR mimetype LIKE ? || '/%')
+         AND (? IS NULL OR instr(lower(original_name), lower(?)) > 0)
        ORDER BY created_at DESC
        LIMIT ?`
     )
-    .all(req.user.id, type ?? null, type ?? null, ALL_FILES_LIMIT + 1);
+    .all(req.user.id, type ?? null, type ?? null, query, query, requestedLimit + 1);
 
-  const truncated = rows.length > ALL_FILES_LIMIT;
-  if (truncated) rows.length = ALL_FILES_LIMIT;
+  const truncated = rows.length > requestedLimit;
+  if (truncated) rows.length = requestedLimit;
 
   res.json({ files: rows.map((r) => ({ ...r, hasThumbnail: Boolean(r.hasThumbnail) })), truncated });
 });

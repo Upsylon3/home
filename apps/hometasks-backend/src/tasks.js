@@ -153,8 +153,16 @@ router.get(
       status === "done"
         ? "completed_at DESC, id DESC"
         : "due_date IS NULL, due_date ASC, priority DESC, id ASC";
+    let limit = null;
+    if (req.query.limit !== undefined) {
+      limit = Number(req.query.limit);
+      if (!Number.isInteger(limit) || limit < 1 || limit > 200) {
+        return res.status(400).json({ error: "limit must be an integer between 1 and 200." });
+      }
+    }
 
-    const rows = db.prepare(`SELECT * FROM tasks WHERE ${conditions.join(" AND ")} ORDER BY ${orderBy}`).all(...params);
+    const sql = `SELECT * FROM tasks WHERE ${conditions.join(" AND ")} ORDER BY ${orderBy}${limit === null ? "" : " LIMIT ?"}`;
+    const rows = db.prepare(sql).all(...(limit === null ? params : [...params, limit]));
     res.json({ tasks: rows.map(serializeTask) });
   })
 );

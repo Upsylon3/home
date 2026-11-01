@@ -284,11 +284,12 @@ services:
   backup:
     build: ./services/backup
     restart: unless-stopped
-    environment: { BACKUP_INTERVAL_SECONDS: 86400, BACKUP_RETENTION_DAYS: 14 }
+    environment: { BACKUP_INTERVAL_SECONDS: 86400, BACKUP_RETENTION_DAYS: 14, BACKUP_TIMEOUT_SECONDS: 3600 }
     # One read-only source mount per app data volume, each under its own
     # /sources/<name> subdirectory — see services/backup/backup.sh, which
     # loops over every subdirectory it finds here. Adding a future app's
-    # backup coverage is one line here, no backup.sh change needed.
+    # SQLite backup coverage is one line here, no backup.sh change needed.
+    # Each volume must contain at least one root-level *.db database.
     volumes:
       - homecore_data:/sources/homecore:ro
       - homecloud_backend_data:/sources/homecloud-backend:ro

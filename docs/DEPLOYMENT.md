@@ -144,10 +144,23 @@ it for LAN use, and it is plain HTTP.
 The `backup` service snapshots every app's data volume to `backups/` on
 the host once a day by default (`BACKUP_INTERVAL_SECONDS`,
 `BACKUP_RETENTION_DAYS` in `docker-compose.yml`), one `.tar.gz` per app.
+The backup image includes Python 3 for its standard-library SQLite backup API;
+no Python packages, application credentials or Docker socket are required.
 
-Each archive is written to a unique `.partial.*` file, checked for archive
-readability, then published without replacing an existing archive. Retention
-runs **only for a source whose new archive was successfully published**.
+Each root-level `*.db` is copied through SQLite's online backup API inside a
+read transaction. Committed WAL data is included; live database files and
+their `-wal`, `-shm` and `-journal` sidecars are never copied into the archive.
+Other regular files and directories retain their paths, including hidden
+files. A database uploaded inside HomeCloud's `uploads/` is ordinary content.
+Empty/uninitialized volumes, corrupt databases and symlinks fail closed.
+
+Each archive is written to a unique `.partial.*` file. Before publication,
+the helper restores every archived database into temporary storage and runs
+`PRAGMA integrity_check`. It also checks the presence and recorded size of
+every HomeCloud upload (including trash), plus referenced thumbnails. The
+compressed archive is then read through and published without replacing an
+existing archive. Retention runs **only for a source whose new archive was
+successfully published**.
 Creation, validation or publication failures preserve that source's previous
 backups regardless of age, and other sources still run. A retention failure
 is reported as a failed cycle; the daemon retries on its next interval.
@@ -158,13 +171,39 @@ For a single cycle with an exit status (zero only if every source succeeds):
 docker compose run --rm backup --once
 ```
 
-**Consistency limitation:** these are still file-level archives of live
-volumes, including SQLite WAL files. Archive readability is not proof of a
-transaction-consistent database or a coherent snapshot across services.
-SQLite-aware snapshots and automated database restore verification remain
-required follow-up work. For a coordinated manual archive, stop application
-writers first and verify restoration into disposable volumes before relying
-on it. Never test a restore over your only copy of real data.
+`BACKUP_TIMEOUT_SECONDS` bounds snapshot creation and restore verification per
+source (default 3600 seconds, followed by up to 10 seconds of termination
+grace). Increase it for large upload volumes or slow disks. Temporary database
+copies use backup storage, with roughly one extra database copy per source;
+large uploads are streamed without a second on-disk copy. A read transaction
+can delay WAL checkpointing, so leave free space on both source and backup
+disks. An interruption may leave `.partial.*` or `.snapshot-*` scratch files;
+these are never published archives. Remove abandoned scratch files only when
+no backup process is running.
+
+**Consistency boundary:** each SQLite database is transaction-consistent, but
+separate services are not captured at one shared point in time. Concurrent
+HomeCloud permanent deletion can make a cycle fail rather than publish a
+backup with a missing referenced file; retry when deletion has finished.
+Checks verify SQLite structure and upload presence/size, not historical file
+content authenticity or all cross-service references. Media thumbnails are
+regenerable cache files. A WAL database on a read-only mount requires readable
+existing WAL/shared-memory sidecars; an offline database without them may
+fail until the app is running again. The helper never bypasses SQLite locking
+with `immutable=1` or grants source write access to work around this.
+
+For a coordinated offline archive, stop all application writers first and
+verify restoration into disposable volumes before relying on it. Never test
+a restore over your only copy of real data. To repeat structural verification
+of an existing archive (scratch space is needed beside the archive):
+
+```bash
+docker compose run --rm --entrypoint python3 backup \
+  /snapshot.py --verify /backups/<file>.tar.gz
+```
+
+This verifier expects the new standalone-database format. Older raw archives
+containing SQLite sidecars require a separate offline restore drill.
 
 **This only protects against in-app mistakes** (an accidental permanent
 delete) — it does not protect against the whole machine failing, since

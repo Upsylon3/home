@@ -6,10 +6,14 @@ INTERVAL_SECONDS="${BACKUP_INTERVAL_SECONDS:-86400}"   # default: once a day
 RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-14}"           # default: keep 2 weeks
 SOURCE_ROOT="${BACKUP_SOURCE_DIR:-/sources}"
 DEST_ROOT="${BACKUP_DIR:-/backups}"
+TIMEOUT_SECONDS="${BACKUP_TIMEOUT_SECONDS:-3600}"
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
 case "$INTERVAL_SECONDS" in ''|*[!0-9]*|0) echo "[backup] invalid interval" >&2; exit 1 ;; esac
 if ! [ "$INTERVAL_SECONDS" -gt 0 ]; then echo "[backup] invalid interval" >&2; exit 1; fi
 case "$RETENTION_DAYS" in ''|*[!0-9]*) echo "[backup] invalid retention" >&2; exit 1 ;; esac
+case "$TIMEOUT_SECONDS" in ''|*[!0-9]*|0) echo "[backup] invalid timeout" >&2; exit 1 ;; esac
+if ! [ "$TIMEOUT_SECONDS" -gt 0 ]; then echo "[backup] invalid timeout" >&2; exit 1; fi
 case "${1:-}" in ''|--once) ;; *) echo "Usage: backup.sh [--once]" >&2; exit 1 ;; esac
 mkdir -p "$DEST_ROOT"
 
@@ -53,7 +57,8 @@ run_backup() {
     # GNU coreutils is installed by the Dockerfile. --no-clobber plus the
     # source check also detects another process publishing this timestamp
     # first; -T prevents moving an archive inside an unexpected directory.
-    if tar czf "$tmp" -C "$source_dir" . && tar tzf "$tmp" >/dev/null && \
+    if timeout --kill-after=10s "$TIMEOUT_SECONDS" python3 "$SCRIPT_DIR/snapshot.py" "$source_dir" "$tmp" && \
+      tar tzf "$tmp" >/dev/null && \
       mv -T --no-clobber "$tmp" "$dest" && [ ! -e "$tmp" ]; then
       echo "[backup] finished '${name}'"
       # A failed source keeps ALL its old backups, however old they are.

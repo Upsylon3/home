@@ -149,17 +149,25 @@ bash gateway/test/gateway-smoke.sh      # 53 checks; prints "SKIP" if nginx isn'
 npm run test:backup
 ```
 
-This runs ten tests against the real `services/backup/backup.sh` with
-disposable source/output directories. It extracts a successful archive and
-injects failures during creation, validation, publication, temporary-file
-creation and retention. It also checks missing mounts, invalid configuration,
-timestamp collisions and preservation of unrelated archives. CI runs this
-suite on Linux; Windows users need Linux/WSL (the native Windows run explicitly
-skips it). The script's `BACKUP_SOURCE_DIR` and `BACKUP_DIR` overrides make
-isolated testing possible; Docker keeps `/sources` and `/backups` by default.
+This runs 23 tests against the real `services/backup/backup.sh` with
+throwaway SQLite databases and disposable source/output directories. Install
+Python 3 with its `sqlite3` module, GNU tar, coreutils and findutils first.
+The suite verifies restoration of committed WAL data, exclusion of uncommitted
+writes and sidecars, transaction consistency under continuous writes,
+HomeCloud upload/thumbnail references (including trash), corrupt or missing
+databases, unsupported links, deadlines, and the existing failure/retention
+and publication-collision cases. It never uses a real application data path.
 
-These tests validate archive handling, not live SQLite consistency; see
-`DEPLOYMENT.md`'s backup limitation.
+CI runs the suite on Linux; Windows users need Linux/WSL (native Windows
+explicitly skips it). `BACKUP_SOURCE_DIR` and `BACKUP_DIR` isolate test data;
+Docker defaults to `/sources` and `/backups`. `BACKUP_TIMEOUT_SECONDS` bounds
+each source's snapshot/archive/restore-check helper.
+
+The Docker CI job additionally creates an account and upload through the real
+gateway, backs up all eight running services through their read-only volume
+mounts, and restore-checks every database using the shipped Alpine/Python
+image. It verifies the restored account, upload bytes and database writes.
+See `DEPLOYMENT.md` for guarantees, disk requirements and remaining limits.
 
 ## Running with Docker instead
 

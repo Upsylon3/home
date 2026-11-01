@@ -208,6 +208,21 @@ jobs:
           curl -fsS -o /dev/null -H "Authorization: Bearer $token" "$BASE/api/homecloud/files"
           echo "ok  cross-service auth"
 
+          printf 'backup restore smoke\n' > /tmp/backup-smoke.txt
+          curl -fsS -o /dev/null -H "Authorization: Bearer $token" \
+            -F 'file=@/tmp/backup-smoke.txt' "$BASE/api/homecloud/files/upload"
+
+      - name: Restore-check live SQLite backups from read-only volumes
+        run: |
+          set -eu
+          # Separate output prevents collisions with the automatic startup
+          # cycle. All sources retain their production read-only mounts.
+          docker compose stop backup
+          docker compose run --rm -e BACKUP_DIR=/backups/ci-restore-check backup --once
+          docker compose run --rm -T --entrypoint python3 \
+            -v "$PWD/services/backup/test/compose-restore.py:/compose-restore.py:ro" \
+            backup /compose-restore.py
+
       # docs/ROADMAP.md item 10: one stopped app must not take the gateway, or
       # any other app, down. HomeTasks is stopped on purpose (frontend and
       # backend), the rest is checked, then it is started again and must be

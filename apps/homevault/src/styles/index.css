@@ -1253,3 +1253,29 @@ a:focus-visible {
 .item-row:hover {
   box-shadow: inset 3px 0 0 var(--amber-dim);
 }
+
+.trash-row {
+  flex-wrap: wrap;
+  cursor: default;
+}
+
+.trash-item-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.trash-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.trash-actions .btn {
+  min-height: 44px;
+}
+
+@media (max-width: 480px) {
+  .trash-actions {
+    width: 100%;
+  }
+}

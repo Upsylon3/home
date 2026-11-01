@@ -1,7 +1,7 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { setToken } from "../api.js";
 import { useVault } from "../vaultContext.jsx";
-import { KeyGlyph, GearGlyph, PlusGlyph } from "../components/icons.jsx";
+import { KeyGlyph, GearGlyph, PlusGlyph, TrashGlyph } from "../components/icons.jsx";
 import AppIcon from "../components/AppIcon.jsx";
 import ThemeToggle from "../components/ThemeToggle.jsx";
 
@@ -37,6 +37,11 @@ export default function Layout({ user, onLogout }) {
             <li>
               <NavLink to="/" end className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
                 <KeyGlyph size={15} /> All items
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/trash" className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
+                <TrashGlyph size={15} /> Trash
               </NavLink>
             </li>
           </ul>
@@ -80,6 +85,10 @@ export default function Layout({ user, onLogout }) {
         <NavLink to="/" end className={({ isActive }) => `bottom-nav-item${isActive ? " active" : ""}`}>
           <KeyGlyph size={18} />
           Items
+        </NavLink>
+        <NavLink to="/trash" className={({ isActive }) => `bottom-nav-item${isActive ? " active" : ""}`}>
+          <TrashGlyph size={18} />
+          Trash
         </NavLink>
         <NavLink to="/settings" className={({ isActive }) => `bottom-nav-item${isActive ? " active" : ""}`}>
           <GearGlyph size={18} />

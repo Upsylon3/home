@@ -40,7 +40,8 @@ function serializeItemSummary(row) {
     encryptedTitle: row.encrypted_title,
     encryptedTitleIv: row.encrypted_title_iv,
     createdAt: row.created_at,
-    updatedAt: row.updated_at
+    updatedAt: row.updated_at,
+    deletedAt: row.deleted_at
   };
 }
 
@@ -59,7 +60,13 @@ router.get(
   "/vault/items",
   asyncHandler(async (req, res) => {
     const vault = requireVault(req);
-    const rows = db.prepare("SELECT * FROM vault_items WHERE vault_id = ? ORDER BY updated_at DESC").all(vault.id);
+    if (req.query.trash !== undefined && req.query.trash !== "true" && req.query.trash !== "false") {
+      return res.status(400).json({ error: "trash must be true or false." });
+    }
+    const trash = req.query.trash === "true";
+    const rows = trash
+      ? db.prepare("SELECT * FROM vault_items WHERE vault_id = ? AND deleted_at IS NOT NULL ORDER BY deleted_at DESC, id DESC").all(vault.id)
+      : db.prepare("SELECT * FROM vault_items WHERE vault_id = ? AND deleted_at IS NULL ORDER BY updated_at DESC, id DESC").all(vault.id);
     res.json({ items: rows.map(serializeItemSummary) });
   })
 );
@@ -68,7 +75,7 @@ router.get(
   "/vault/items/:id",
   asyncHandler(async (req, res) => {
     const vault = requireVault(req);
-    const row = db.prepare("SELECT * FROM vault_items WHERE id = ? AND vault_id = ?").get(req.params.id, vault.id);
+    const row = db.prepare("SELECT * FROM vault_items WHERE id = ? AND vault_id = ? AND deleted_at IS NULL").get(req.params.id, vault.id);
     if (!row) return res.status(404).json({ error: "Item not found." });
     res.json({ item: serializeItemFull(row) });
   })
@@ -99,7 +106,7 @@ router.patch(
   "/vault/items/:id",
   asyncHandler(async (req, res) => {
     const vault = requireVault(req);
-    const existing = db.prepare("SELECT * FROM vault_items WHERE id = ? AND vault_id = ?").get(req.params.id, vault.id);
+    const existing = db.prepare("SELECT * FROM vault_items WHERE id = ? AND vault_id = ? AND deleted_at IS NULL").get(req.params.id, vault.id);
     if (!existing) return res.status(404).json({ error: "Item not found." });
 
     requireEncryptedFields(req.body, ["encryptedTitle", "encryptedTitleIv", "encryptedData", "encryptedDataIv"]);
@@ -119,8 +126,28 @@ router.delete(
   "/vault/items/:id",
   asyncHandler(async (req, res) => {
     const vault = requireVault(req);
-    const result = db.prepare("DELETE FROM vault_items WHERE id = ? AND vault_id = ?").run(req.params.id, vault.id);
+    const result = db.prepare("UPDATE vault_items SET deleted_at = datetime('now') WHERE id = ? AND vault_id = ? AND deleted_at IS NULL").run(req.params.id, vault.id);
     if (result.changes === 0) return res.status(404).json({ error: "Item not found." });
+    res.status(204).end();
+  })
+);
+
+router.post(
+  "/vault/items/:id/restore",
+  asyncHandler(async (req, res) => {
+    const vault = requireVault(req);
+    const result = db.prepare("UPDATE vault_items SET deleted_at = NULL WHERE id = ? AND vault_id = ? AND deleted_at IS NOT NULL").run(req.params.id, vault.id);
+    if (result.changes === 0) return res.status(404).json({ error: "Item not found in Trash." });
+    res.status(204).end();
+  })
+);
+
+router.delete(
+  "/vault/items/:id/permanent",
+  asyncHandler(async (req, res) => {
+    const vault = requireVault(req);
+    const result = db.prepare("DELETE FROM vault_items WHERE id = ? AND vault_id = ? AND deleted_at IS NOT NULL").run(req.params.id, vault.id);
+    if (result.changes === 0) return res.status(404).json({ error: "Item not found in Trash." });
     res.status(204).end();
   })
 );

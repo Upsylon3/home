@@ -247,7 +247,7 @@ cd apps/hometasks-backend && npm test      # 54 tests
 cd apps/hometasks && npm test              # 7 tests — dates.js and repeat.js only, see below
 cd apps/homemonitor-backend && npm test    # 60 tests
 cd apps/homemonitor && npm test            # 13 tests — format.js and chart.js only, see below
-cd apps/homevault-backend && npm test      # 28 tests
+cd apps/homevault-backend && npm test      # 34 tests — includes Trash ownership/lifecycle and legacy schema upgrade
 cd apps/homevault && npm test              # 20 tests — crypto.js only, see below
 cd apps/homenotes && npm test              # 16 tests — markdown.js only, see below
 ```

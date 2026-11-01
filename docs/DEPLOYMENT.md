@@ -242,6 +242,13 @@ startup (see each service's `db.js` — plain `CREATE TABLE IF NOT
 EXISTS`/`ALTER TABLE` statements, no separate migration runner). Check
 [CHANGELOG.md](../CHANGELOG.md) for anything that needs a manual step.
 
+HomeVault's Trash upgrade adds only a nullable `deleted_at` column. Existing
+items stay active and their ciphertext, IVs and key envelopes are unchanged.
+Trash is included in normal encrypted database backups. Before downgrading to
+a version without Trash support, restore or permanently delete each trashed
+item using the new version: the old backend ignores `deleted_at` and would
+show those items as active again. Do not drop the column to roll back.
+
 ## Troubleshooting
 
 - **Frontend loads but login fails:** almost always a wrong address, or

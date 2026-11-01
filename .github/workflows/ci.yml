@@ -63,7 +63,7 @@ jobs:
       # what catches a Dependabot PR that edited one but not the other.
       - run: npm ci
 
-      # Runs every workspace's own test suite (362 tests at time of writing).
+      # Runs every workspace's own test suite, including the HomeBridge real-HomeCore integration tests.
       - run: npm test
 
       # The tests don't compile the React code, so a broken import in a
@@ -150,7 +150,7 @@ jobs:
           sed -i "s|^JWT_SECRET=.*|JWT_SECRET=$(openssl rand -hex 32)|" homecore/.env
           sed -i "s|^HOMECORE_INTERNAL_SECRET=.*|HOMECORE_INTERNAL_SECRET=$(openssl rand -hex 32)|" homecore/.env
 
-      # Builds all 17 images. This is the first real test of the base-image
+      # Builds all 18 images. This is the first real test of the base-image
       # bumps (node:26-slim, nginx:1.31-alpine, alpine:3.24).
       - name: Build every image
         run: docker compose build

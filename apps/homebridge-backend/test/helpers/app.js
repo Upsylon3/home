@@ -38,7 +38,7 @@ async function startTestApp() {
       return json(res, 200, {
         files: [
           { id: 44, name: "family-photo.jpg", size: 2048, mimetype: "image/jpeg", createdAt: "2026-10-30 10:00:00" },
-          { id: 45, name: "annual-report.pdf", size: 4096, mimetype: "application/pdf", createdAt: "2026-10-29 10:00:00" }
+          { id: 45, name: "family-budget.pdf", size: 4096, mimetype: "application/pdf", createdAt: "2026-10-29 10:00:00" }
         ],
         truncated: false
       });
@@ -47,7 +47,7 @@ async function startTestApp() {
       return json(res, 200, {
         files: [
           { id: 44, name: "family-photo.jpg", kind: "image", mimetype: "image/jpeg", createdAt: "2026-10-30 10:00:00" },
-          { id: 46, name: "holiday-video.mp4", kind: "video", mimetype: "video/mp4", createdAt: "2026-10-28 10:00:00" }
+          { id: 46, name: "family-holiday.mp4", kind: "video", mimetype: "video/mp4", createdAt: "2026-10-28 10:00:00" }
         ]
       });
     }

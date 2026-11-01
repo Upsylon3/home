@@ -58,7 +58,7 @@ test("search combines user-scoped results and removes duplicate media files", as
   const data = await response.json();
 
   assert.equal(data.query, "family");
-  assert.ok(data.results.some((result) => result.source === "homecloud" && result.title === "annual-report.pdf"));
+  assert.ok(data.results.some((result) => result.source === "homecloud" && result.title === "family-budget.pdf"));
   assert.ok(data.results.some((result) => result.source === "homemedia" && result.title === "family-photo.jpg"));
   assert.ok(data.results.some((result) => result.source === "homemedia" && result.kind === "album"));
   assert.ok(data.results.some((result) => result.source === "homenotes" && result.title === "Family trip notes"));
@@ -81,7 +81,7 @@ test("a disabled app is not queried and is reported explicitly", async () => {
     const data = await response.json();
     const notes = data.sources.find((source) => source.slug === "homenotes");
     assert.equal(notes.status, "disabled");
-    assert.equal(app.providerState.calls.length - beforeCalls, 3);
+    assert.equal(app.providerState.calls.length - beforeCalls, 4);
   } finally {
     app.homecore.db.prepare("UPDATE hc_applications SET enabled = 1 WHERE slug = 'homenotes'").run();
   }

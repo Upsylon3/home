@@ -229,7 +229,7 @@ npm test
 Or one service at a time:
 
 ```bash
-cd homecore && npm test                    # 51 tests
+cd homecore && npm test                    # 53 tests
 cd packages/homecore-client && npm test    # 28 tests — real HomeCore and HTTP failure/cache boundaries
 cd apps/homecloud-backend && npm test      # 41 tests
 cd apps/homemedia-backend && npm test      # 28 tests

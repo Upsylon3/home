@@ -91,6 +91,19 @@ async function tryConsumeRecoveryCode(userId, candidate) {
   return false;
 }
 
+// Hashing is asynchronous and must stay outside the write transaction.
+// Decide first-account privileges only after it completes, under the same
+// SQLite write lock as insertion. Otherwise concurrent requests can all
+// observe an empty user table and each grant themselves the admin role.
+const createAccount = db.transaction((username, passwordHash) => {
+  if (db.prepare("SELECT id FROM users WHERE username = ?").get(username)) return null;
+  const role = db.prepare("SELECT COUNT(*) AS n FROM users").get().n === 0 ? "admin" : "user";
+  const info = db
+    .prepare("INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)")
+    .run(username, passwordHash, role);
+  return { id: info.lastInsertRowid, username, role, token_version: 0 };
+});
+
 router.post(
   "/register",
   authLimiter,
@@ -114,21 +127,14 @@ router.post(
       return res.status(409).json({ error: "That username is already taken." });
     }
 
-    // The very first account created on a fresh server becomes the admin,
-    // so there's always someone who can manage the family's accounts without
-    // any manual database setup.
-    const userCount = db.prepare("SELECT COUNT(*) AS n FROM users").get().n;
-    const role = userCount === 0 ? "admin" : "user";
-
     const passwordHash = await bcrypt.hash(password, 12);
-    const info = db
-      .prepare("INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)")
-      .run(username, passwordHash, role);
+    const user = createAccount.immediate(username, passwordHash);
+    // Another request may have claimed this username while bcrypt yielded.
+    if (!user) return res.status(409).json({ error: "That username is already taken." });
 
-    const user = { id: info.lastInsertRowid, username, token_version: 0 };
     const token = signToken(user);
     recordSession(user.id, token, req.headers["user-agent"]);
-    res.status(201).json({ token, user: { id: user.id, username: user.username, role } });
+    res.status(201).json({ token, user: { id: user.id, username: user.username, role: user.role } });
   })
 );
 

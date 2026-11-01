@@ -8,6 +8,7 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 ## [Unreleased]
 
 ### Fixed
+- Preserve previous backups when archive creation, validation or publication fails; prune only after a readable replacement for the same source is published. Report publication/retention failures accurately, continue other sources, and avoid overwriting archives on timestamp collisions. Add a one-cycle mode and ten isolated archive/restore/failure regression tests to CI. Live SQLite snapshot consistency remains explicitly unverified.
 - Preserve the shared browser session when HomeCore verification is unavailable: application backends now return retryable 5xx errors instead of treating upstream failures as expired credentials. Add a five-second request/body deadline, bounded identity and in-flight caches, and shared verification for simultaneous requests using the same token. Expired cache entries never authorize requests during an outage.
 - Add 28 shared-client regression and integration checks, including real HomeCore account disabling/logout, upstream errors, stalled responses, malformed identities, cache expiry/capacity and concurrent requests. Document the existing five-second delegated-revocation window accurately.
 

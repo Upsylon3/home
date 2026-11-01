@@ -145,6 +145,27 @@ The `backup` service snapshots every app's data volume to `backups/` on
 the host once a day by default (`BACKUP_INTERVAL_SECONDS`,
 `BACKUP_RETENTION_DAYS` in `docker-compose.yml`), one `.tar.gz` per app.
 
+Each archive is written to a unique `.partial.*` file, checked for archive
+readability, then published without replacing an existing archive. Retention
+runs **only for a source whose new archive was successfully published**.
+Creation, validation or publication failures preserve that source's previous
+backups regardless of age, and other sources still run. A retention failure
+is reported as a failed cycle; the daemon retries on its next interval.
+
+For a single cycle with an exit status (zero only if every source succeeds):
+
+```bash
+docker compose run --rm backup --once
+```
+
+**Consistency limitation:** these are still file-level archives of live
+volumes, including SQLite WAL files. Archive readability is not proof of a
+transaction-consistent database or a coherent snapshot across services.
+SQLite-aware snapshots and automated database restore verification remain
+required follow-up work. For a coordinated manual archive, stop application
+writers first and verify restoration into disposable volumes before relying
+on it. Never test a restore over your only copy of real data.
+
 **This only protects against in-app mistakes** (an accidental permanent
 delete) — it does not protect against the whole machine failing, since
 the backup lives on the same disk. Copy `backups/` somewhere else

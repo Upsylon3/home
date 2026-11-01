@@ -143,6 +143,24 @@ HomeCore missing.
 bash gateway/test/gateway-smoke.sh      # 53 checks; prints "SKIP" if nginx isn't installed
 ```
 
+## Testing backups
+
+```bash
+npm run test:backup
+```
+
+This runs ten tests against the real `services/backup/backup.sh` with
+disposable source/output directories. It extracts a successful archive and
+injects failures during creation, validation, publication, temporary-file
+creation and retention. It also checks missing mounts, invalid configuration,
+timestamp collisions and preservation of unrelated archives. CI runs this
+suite on Linux; Windows users need Linux/WSL (the native Windows run explicitly
+skips it). The script's `BACKUP_SOURCE_DIR` and `BACKUP_DIR` overrides make
+isolated testing possible; Docker keeps `/sources` and `/backups` by default.
+
+These tests validate archive handling, not live SQLite consistency; see
+`DEPLOYMENT.md`'s backup limitation.
+
 ## Running with Docker instead
 
 See [DEPLOYMENT.md](DEPLOYMENT.md) — `docker compose up --build -d` runs

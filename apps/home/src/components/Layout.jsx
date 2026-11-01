@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { api, setToken } from "../api.js";
-import { GridGlyph, GearGlyph } from "./icons.jsx";
+import { GridGlyph, GearGlyph, SearchGlyph } from "./icons.jsx";
 import AppIcon from "./AppIcon.jsx";
 import NotificationBell from "./NotificationBell.jsx";
 import ThemeToggle from "./ThemeToggle.jsx";
@@ -36,6 +36,11 @@ export default function Layout({ user, onLogout }) {
             <li>
               <NavLink to="/" end className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
                 <AppIcon name="home" size={15} /> Home
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/search" className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
+                <SearchGlyph size={15} /> Search
               </NavLink>
             </li>
             {apps
@@ -83,6 +88,9 @@ export default function Layout({ user, onLogout }) {
             <AppIcon name="home" size={18} /> Home
           </div>
           <div className="topbar-actions">
+            <NavLink to="/search" className="icon-btn" aria-label="Search">
+              <SearchGlyph />
+            </NavLink>
             <ThemeToggle className="icon-btn" iconOnly />
             <NotificationBell />
             <NavLink to="/settings" className="icon-btn" aria-label="Settings">
@@ -102,6 +110,10 @@ export default function Layout({ user, onLogout }) {
         <NavLink to="/apps" className={({ isActive }) => `bottom-nav-item${isActive ? " active" : ""}`}>
           <GridGlyph size={18} />
           Apps
+        </NavLink>
+        <NavLink to="/search" className={({ isActive }) => `bottom-nav-item${isActive ? " active" : ""}`}>
+          <SearchGlyph size={18} />
+          Search
         </NavLink>
         <NavLink to="/settings" className={({ isActive }) => `bottom-nav-item${isActive ? " active" : ""}`}>
           <GearGlyph size={18} />

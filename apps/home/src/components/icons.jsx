@@ -79,3 +79,12 @@ export function AutoGlyph(props) {
     </svg>
   );
 }
+
+export function SearchGlyph(props) {
+  return (
+    <svg viewBox="0 0 20 20" width={props.size || 18} height={props.size || 18} {...common}>
+      <circle cx="8.5" cy="8.5" r="5.2" />
+      <path d="m12.4 12.4 4.1 4.1" />
+    </svg>
+  );
+}

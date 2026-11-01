@@ -6,6 +6,7 @@ import Register from "./pages/Register.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import Apps from "./pages/Apps.jsx";
 import Settings from "./pages/Settings.jsx";
+import SearchPage from "./pages/Search.jsx";
 import Layout from "./components/Layout.jsx";
 
 export default function App() {
@@ -58,6 +59,7 @@ export default function App() {
       <Route element={<Layout user={user} onLogout={() => setUser(null)} />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/apps" element={<Apps />} />
+        <Route path="/search" element={<SearchPage />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

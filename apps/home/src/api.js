@@ -91,5 +91,10 @@ export const api = {
   // application manifest yet (§8) for Home to pull this from any
   // arbitrary app, so this call is intentionally HomeCloud-specific
   // rather than pretending to be generic.
-  homecloudQuota: () => request("/homecloud/files/quota")
+  homecloudQuota: () => request("/homecloud/files/quota"),
+
+  // A live, read-only search across enabled apps. HomeBridge forwards this
+  // same session token to each provider; it does not index or store content.
+  globalSearch: (query, limit = 8) =>
+    request(`/homebridge/search?q=${encodeURIComponent(query)}&limit=${limit}`)
 };

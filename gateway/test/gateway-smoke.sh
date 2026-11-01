@@ -143,6 +143,7 @@ expect_body   "a deep link becomes /settings upstream" '"path": "/settings"'
 req GET "/api/hometasks/tasks?status=done&today=2026-10-09"
 expect_body   "API paths are passed through UNCHANGED (prefix kept)" '"path": "/api/hometasks/tasks?status=done&today=2026-10-09"'
 req GET /api/homebridge/health
+expect_status "HomeBridge answers through the gateway" 200
 expect_body   "/api/homebridge/... reaches HomeBridge, path unchanged" '"path": "/api/homebridge/health"'
 req GET /api/auth/me
 expect_body   "/api/auth/... reaches HomeCore, path unchanged" '"path": "/api/auth/me"'

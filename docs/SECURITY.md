@@ -46,6 +46,18 @@ been checked since.
   admin-overridable).
 - File/folder/note ownership enforced server-side on every route —
   never a frontend check.
+
+- **HomeBridge global search is live and user-scoped.** The service validates
+  the caller's existing bearer token with HomeCore, reads the enabled-app
+  registry, and forwards that exact token to each provider API. HomeCloud,
+  HomeMedia, HomeNotes and HomeTasks still execute their own authentication
+  and ownership checks; HomeBridge never connects to their databases. Search
+  is synchronous and read-only: there is no content index, persisted result,
+  background credential or third-party processor. HomeVault is deliberately
+  excluded so vault metadata and ciphertext remain outside the cross-app
+  search surface. A provider outage only removes that source from the current
+  result set; it does not broaden access or block the other providers.
+
 - HomeNotes' Markdown preview is sanitized with `DOMPurify.sanitize()`
   (`apps/homenotes/src/markdown.js`) before it ever reaches
   `dangerouslySetInnerHTML`. Not a precaution — a real, confirmed stored

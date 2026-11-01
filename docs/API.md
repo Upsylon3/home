@@ -49,6 +49,25 @@ user token. They all use the one check in `homecore/src/internalAuth.js`.
   and creates one notification for every enabled admin account. Answers
   `201 { delivered: n }`. `"admins"` is the only audience so far.
 
+## HomeBridge (`/api/homebridge`)
+
+Stateless, read-only, user-initiated cross-app search. Requires the signed-in
+user's bearer token. HomeBridge checks HomeCore's app registry and queries only
+enabled providers; it forwards the same token so each provider performs its
+normal authorization and ownership checks. Provider outages are reported per
+source and do not fail results from other apps. Search is not indexed or
+persisted, and HomeVault is intentionally excluded.
+
+| Method | Path | What it does |
+|---|---|---|
+| GET | `/api/homebridge/health` | Public service health check |
+| GET | `/api/homebridge/search?q=<query>&limit=8` | Search files, media/albums, notes and tasks; query length 2–100, per-source limit 1–12 |
+
+Search returns `{ query, total, results, sources }`. Each result contains
+`id`, `source`, `kind`, `title`, `description`, `updatedAt` and
+`href`. Each source reports `available`, `disabled`, `not_installed` or
+`unavailable`, plus its result count and truncation flag.
+
 ## HomeCloud backend (`/api/homecloud`, `/api/share`)
 
 File storage: upload, folders, Trash, share links.

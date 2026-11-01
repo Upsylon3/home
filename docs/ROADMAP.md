@@ -20,9 +20,10 @@ HomeMonitor → HomeAI. HomeVault first because it's security-critical and
 already had a full threat model (`SECURITY.md`) — **v0 is now built**
 (see `ARCHITECTURE.md`'s status table), so HomeTasks came next (**built: backend, web app and repeating tasks; reminders and assignment are the follow-ups**): the
 highest everyday-value, most conventional build (CRUD app, no new
-architectural pattern needed). HomeBridge after that, once there are
-enough real apps for its cross-app ideas (`ROADMAP.md`'s brainstorm
-below) to actually matter. HomeMonitor (**v0 built**, see `ARCHITECTURE.md`)
+architectural pattern needed). HomeBridge followed HomeTasks and now has its first complete milestone:
+stateless global search across enabled apps. Future bridges should be added
+one concrete user journey at a time, with their own failure and authorization
+semantics. HomeMonitor (**v0 built**, see `ARCHITECTURE.md`)
 and HomeAI last — lower urgency, and HomeAI specifically benefits from permission enforcement landing
 first (see below).
 
@@ -163,11 +164,9 @@ generic per-app dashboard stat (staying hardcoded per app for now).
 
 ## Cross-module ideas brainstorm (speculative)
 
-Everything below rides on infrastructure that already exists — the
-shared event bus and the application registry — so most of these are "a
-new listener, zero new plumbing" rather than new infrastructure per
-idea. None of this is committed; it's raw material for when HomeBridge
-(Tier 2, see `ARCHITECTURE.md` §4) gets built.
+HomeBridge Tier 2 now exists, with global search as its first read-only
+bridge. The ideas below remain speculative proposals for future cross-app
+features; do not treat them as approved scope.
 
 **The showcase-level ideas:**
 
@@ -176,9 +175,9 @@ idea. None of this is committed; it's raw material for when HomeBridge
   the same feed, and the dashboard becomes an actual life timeline.
   Cheap relative to its value — arguably the single best
   effort-to-payoff idea on this list.
-- **Global search** across HomeCloud filenames, HomeMedia photos/EXIF,
-  HomeNotes, HomeTasks, and (carefully — see the security note below)
-  HomeVault item titles, but only when already unlocked.
+**Implemented in HomeBridge v1:** live global search across HomeCloud file
+names, HomeMedia items/albums, HomeNotes and HomeTasks. HomeVault is
+intentionally not included; it is never queried by HomeBridge.
 - **"This needs attention" becomes a real task, automatically.** Any
   module's warning state can optionally spawn a HomeTasks entry instead
   of a notification that gets swiped away — HomeSync hasn't synced in 9

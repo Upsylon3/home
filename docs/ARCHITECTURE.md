@@ -98,12 +98,17 @@ Tier 1 — Independent apps
   zero.
   Contains ZERO optional/enhancement cross-app behavior.
 
-Tier 2 — HomeBridge
-  One separate, optional service (not yet built). Contains every
-  optional cross-app behavior — see ROADMAP.md. Detects which apps are
-  present via Tier 0's registry and activates only the bridges whose
-  required apps are actually there. If it's stopped or never installed,
-  every Tier 1 app keeps working exactly as if it never existed.
+Tier 2 — HomeBridge (`apps/homebridge-backend/`)
+  One separate, optional service for cross-app behavior. **v1 is built:**
+  stateless, read-only global search across enabled HomeCloud, HomeMedia,
+  HomeNotes and HomeTasks APIs. It reads the signed-in user's app registry
+  from HomeCore, forwards that same user token to each provider, and lets
+  each provider enforce its own authentication and ownership rules. It
+  stores no index, owns no database, and does not search HomeVault. A
+  missing or stopped provider only marks that source unavailable; a missing
+  HomeBridge leaves every Tier 1 app usable. Future scheduled/background
+  bridges are separate work and must use the scoped service credential
+  decision documented below.
 ```
 
 **Why the gateway is Tier 0, not Tier 2:** it's tempting to file it under
@@ -124,16 +129,15 @@ every app needs to be reachable at all, same category as HomeCore.
 - Must be fully functional with every other Tier 1 app and HomeBridge
   absent.
 
-**HomeBridge's background-trigger auth — decided:** most bridges react
-to a live request that already carries a user's token. Some won't (a
-scheduled check firing with nobody browsing) and will need to call
-another app's API *as* a user with nothing to forward. **Decided: a
-scoped service credential HomeCore mints for HomeBridge**, recognized
-for a narrow allow-list of actions — one new concept in one place,
-instead of a second trust mechanism (shared-secret `/internal/...`
-endpoints) repeated in every app. Not yet implemented — this is the
-design to build against once HomeBridge's first scheduled bridge is
-started.
+**HomeBridge's background-trigger auth — decided, not yet implemented:**
+v1 only handles a live user request and forwards the user's existing
+bearer token. A future scheduled/background bridge has no user token to
+forward. **Decided: a scoped service credential HomeCore mints for
+HomeBridge**, recognized for a narrow allow-list of actions — one new
+concept in one place, instead of a second trust mechanism (shared-secret
+`/internal/...` endpoints) repeated in every app. Implement this only
+when a concrete background bridge needs it; do not give the v1 search
+service broad machine credentials.
 
 ## 5. The gateway
 

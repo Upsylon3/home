@@ -7,6 +7,10 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 
 ## [Unreleased]
 
+### Added
+- Build HomeBridge v1, a stateless global search across enabled HomeCloud, HomeMedia, HomeNotes and HomeTasks APIs. Results are user-scoped, provider outages are isolated, and HomeVault remains excluded.
+- Add HomeBridge to Docker Compose, the gateway, local development and the Home dashboard navigation.
+
 ### Changed
 - Correct the SemVer timeline: consolidate the Atari visual-refresh phases into one release and normalize subsequent product milestones.
 - Reconcile the legacy Git refs without rewriting the public commit graph.

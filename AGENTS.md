@@ -67,7 +67,7 @@ The Node runtime baseline is now **Node 26 LTS** across the 15 Node-based Docker
 
 ## 4. Engineering rules
 
-- Respect the three-tier architecture in `docs/ARCHITECTURE.md`. Tier 1 apps own their process and database. Never access a sibling app's database or add optional cross-app behavior to a Tier 1 app; optional cross-app behavior belongs in HomeBridge.
+- Respect the three-tier architecture in `docs/ARCHITECTURE.md`. Tier 1 apps own their process and database. Never access a sibling app's database or add optional cross-app behavior to a Tier 1 app; optional cross-app behavior belongs in HomeBridge. HomeBridge v1 is implemented as stateless global search; new bridge behavior must be a deliberate, separately tested user journey and may not pull HomeVault into search or indexing.
 - Backend authorization is authoritative. Frontend hiding is never a security boundary.
 - Preserve ownership checks, session boundaries, data isolation, HomeVault's client-side encryption model and the security decisions in `docs/SECURITY.md`.
 - Prefer additive, reversible database migrations. Test migrations against disposable databases. Never run migrations against a production or personal data directory.

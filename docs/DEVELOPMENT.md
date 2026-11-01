@@ -55,6 +55,15 @@ cd apps/homevault-backend && HOMECORE_INTERNAL_URL=http://localhost:4000 npm run
 # HomeTasks' backend — also no HOMECLOUD_BACKEND_INTERNAL_URL (no files).
 cd apps/hometasks-backend && HOMECORE_INTERNAL_URL=http://localhost:4000 npm run dev # :4700
 
+# HomeBridge — optional Tier 2 global search. It needs HomeCore to
+# authenticate users and the provider APIs only when a search is submitted.
+cd apps/homebridge-backend && PORT=4900 \
+  HOMECORE_INTERNAL_URL=http://localhost:4000 \
+  HOMECLOUD_BACKEND_INTERNAL_URL=http://localhost:4500 \
+  HOMEMEDIA_BACKEND_INTERNAL_URL=http://localhost:4200 \
+  HOMENOTES_BACKEND_INTERNAL_URL=http://localhost:4400 \
+  HOMETASKS_BACKEND_INTERNAL_URL=http://localhost:4700 npm run dev # :4900
+
 # HomeMonitor's backend — needs the SAME HOMECORE_INTERNAL_SECRET as HomeCore, for
 # the app list and notifications. In dev there is no gateway, so SERVICE_URLS says
 # where each app's health endpoint is, and ALERTS_ENABLED=false stops it sending
@@ -76,6 +85,10 @@ Visit whichever frontend's port you started. `homemedia-backend`,
 `HOMECORE_INTERNAL_URL`/`HOMECLOUD_BACKEND_INTERNAL_URL` to Docker-network
 hostnames that only resolve inside Compose — the inline env vars above
 override that for local dev.
+
+HomeBridge has no database or persistent index to back up. Start it only if
+cross-app search is wanted; if a provider is not running, search reports that
+source as unavailable and still returns results from other enabled apps.
 
 Nothing here is backed up automatically outside Docker — see
 [DEPLOYMENT.md](DEPLOYMENT.md) §Backups for the real mechanism.

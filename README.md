@@ -20,6 +20,7 @@ you choose to set that up.
 | **HomeSync** | Android app that backs up phone photos/videos to HomeCloud | Backend built and tested; Android app builds and passes its unit tests in CI, but has never been run on a device — see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) |
 | **HomeVault** | Client-side-encrypted password/secrets manager | **v0 built, self-reviewed twice, not independently reviewed** — see [docs/SECURITY.md](docs/SECURITY.md) before storing anything real |
 | **HomeCore** | Shared identity, sessions, permissions, and the app registry — no UI of its own | Built |
+| **HomeBridge** | Stateless, read-only global search across enabled apps; no separate index or database | Built (v1) |
 | **HomeTasks** | Tasks and projects, due dates, priorities, repeating tasks | Built — backend and web app, tested |
 | **HomeMonitor** | Server, services and backups at a glance, with alerts (admins only) | **v0 built** — backend and web app, tested |
 | HomeAI | Assistant | Not started — see [docs/ROADMAP.md](docs/ROADMAP.md) |
@@ -58,6 +59,7 @@ HOME_MASTER_SPECIFICATION.md   The governing product/architecture spec — see D
 HOME_ARTISTIC_DIRECTION.md     The governing visual/UX spec
 gateway/              nginx — the single public entry point (see docs/ARCHITECTURE.md)
 homecore/             Identity, sessions, permissions, the app registry — shared by every app
+apps/homebridge-backend/ Optional Tier 2 cross-app service (global search v1)
 packages/
   homecore-client/    Shared client every other backend uses to verify a request with HomeCore
 apps/

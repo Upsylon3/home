@@ -98,12 +98,16 @@ export default function ItemDetail() {
   }
 
   async function handleDelete() {
-    if (!window.confirm("Delete this item? This can't be undone.")) return;
+    if (!window.confirm("Move this item to Trash? You can restore it from Trash.")) return;
+    setSaving(true);
+    setError("");
     try {
       await api.items.remove(itemId);
       navigate("/");
     } catch (err) {
       setError(err.message);
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -248,8 +252,8 @@ export default function ItemDetail() {
             Cancel
           </button>
           {!isNew && (
-            <button className="btn-danger-ghost btn" type="button" onClick={handleDelete} style={{ marginLeft: "auto" }}>
-              <TrashGlyph size={14} /> Delete
+            <button className="btn-danger-ghost btn" type="button" disabled={saving} onClick={handleDelete} style={{ marginLeft: "auto" }}>
+              <TrashGlyph size={14} /> Move to Trash
             </button>
           )}
         </div>

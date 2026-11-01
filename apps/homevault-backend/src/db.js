@@ -79,4 +79,12 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_vault_items_vault_id ON vault_items(vault_id);
 `);
 
+// Additive upgrade for existing vaults; NULL keeps every old item active.
+// Match HomeCore's lightweight migrations and propagate unexpected errors.
+try {
+  db.exec("ALTER TABLE vault_items ADD COLUMN deleted_at TEXT");
+} catch (err) {
+  if (!/duplicate column name/i.test(err.message)) throw err;
+}
+
 module.exports = { db };

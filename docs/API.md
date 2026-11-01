@@ -192,11 +192,21 @@ anything real.
 | PATCH | `/api/homevault/vault/rewrap` | Replace the master-password wrap path (change password, or complete a recovery) |
 | POST | `/api/homevault/vault/regenerate-recovery` | Replace the recovery-key wrap path only |
 | DELETE | `/api/homevault/vault` | Destroy the vault and every item in it — irreversible |
-| GET | `/api/homevault/vault/items` | List item summaries (encrypted title, not the full secret payload) |
+| GET | `/api/homevault/vault/items` | List active item summaries; `?trash=true` lists Trash instead (`trash` accepts only `true` or `false`) |
 | GET | `/api/homevault/vault/items/:id` | Full item, including encrypted data |
 | POST | `/api/homevault/vault/items` | Create an item (`type`: `login` \| `note` \| `card`) |
 | PATCH | `/api/homevault/vault/items/:id` | Update an item's encrypted fields |
-| DELETE | `/api/homevault/vault/items/:id` | Permanently delete an item |
+| DELETE | `/api/homevault/vault/items/:id` | Move an active item to Trash (204); a second delete returns 404 |
+| POST | `/api/homevault/vault/items/:id/restore` | Restore an item from Trash without changing its ciphertext (204) |
+| DELETE | `/api/homevault/vault/items/:id/permanent` | Permanently delete an item already in Trash (204); active or missing items return 404 |
+
+Both lists return encrypted titles and public metadata, including nullable
+`deletedAt`, never the full secret payload. Normal item reads and updates
+exclude Trash. All operations remain scoped to the caller's own vault;
+another user's item returns 404. Trash has no automatic expiration: encrypted
+items remain recoverable until the owner explicitly deletes them permanently
+or destroys the whole vault. Permanent deletion removes the live database row,
+not historical backups or forensic remnants in SQLite/storage.
 
 ## HomeSync backend (`/api/homesync`)
 

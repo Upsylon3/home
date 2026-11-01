@@ -116,6 +116,7 @@ function AuthedRoutes({ user, setUser, vaultRecord, setVaultRecord }) {
       <Route path="/unlock" element={<Navigate to="/" replace />} />
       <Route element={<Layout user={user} onLogout={() => setUser(null)} />}>
         <Route path="/" element={<Vault />} />
+        <Route path="/trash" element={<Vault key="trash" trash />} />
         <Route path="/items/:itemId" element={<ItemDetail />} />
         <Route path="/settings" element={<Settings vaultRecord={vaultRecord} onVaultUpdated={setVaultRecord} />} />
         <Route path="*" element={<Navigate to="/" replace />} />

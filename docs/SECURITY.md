@@ -268,10 +268,15 @@ them on (merged only after the same CI run passed) to `alpine:3.24` and
 >   Part A above and "Shared-origin XSS" below) and not blockers for
 >   this v0 existing, but remain blockers for exposing it beyond a
 >   trusted LAN.
-> - **Deferred out of v0, not forgotten**: soft-delete/undo for a
->   deleted item (currently permanent, like the vault-level delete),
->   and any HomeCore-admin-facing vault-reset action (today only the
->   account holder can delete their own vault, from Settings).
+> - **Item deletion is recoverable through Trash.** Titles and secret data
+>   stay encrypted, with the same ciphertext and IVs. Only deletion time is
+>   added as public metadata. Trash has no automatic expiration; the owner
+>   can restore an item or explicitly delete it forever. Whole-vault deletion
+>   remains irreversible and includes Trash. Deleting a database row is not
+>   secure erasure of SQLite pages, storage media or historical backups.
+> - **Deferred out of v0, not forgotten**: any HomeCore-admin-facing
+>   vault-reset action (today only the account holder can delete their own
+>   vault, from Settings).
 
 HomeVault is the ecosystem's answer to Bitwarden/1Password — holding
 passwords, secure notes, TOTP secrets, recovery info, and API keys.

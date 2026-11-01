@@ -61,10 +61,12 @@ export const api = {
   },
 
   items: {
-    list: () => request("/homevault/vault/items"),
+    list: (trash = false) => request(`/homevault/vault/items${trash ? "?trash=true" : ""}`),
     get: (id) => request(`/homevault/vault/items/${id}`),
     create: (body) => request("/homevault/vault/items", { method: "POST", body: JSON.stringify(body) }),
     update: (id, body) => request(`/homevault/vault/items/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
-    remove: (id) => request(`/homevault/vault/items/${id}`, { method: "DELETE" })
+    remove: (id) => request(`/homevault/vault/items/${id}`, { method: "DELETE" }),
+    restore: (id) => request(`/homevault/vault/items/${id}/restore`, { method: "POST" }),
+    purge: (id) => request(`/homevault/vault/items/${id}/permanent`, { method: "DELETE" })
   }
 };

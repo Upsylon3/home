@@ -159,3 +159,74 @@ test("supports all three item types", async () => {
     assert.equal(res.body.item.type, type);
   }
 });
+
+test("deletion keeps ciphertext in Trash; restore returns the same item", async () => {
+  const client = await clientWithVault();
+  const created = await client.post("/api/homevault/vault/items", fakeItem());
+  const original = created.body.item;
+  const path = `/api/homevault/vault/items/${original.id}`;
+  assert.equal((await client.delete(path)).status, 204);
+  assert.deepEqual((await client.get("/api/homevault/vault/items")).body.items, []);
+  assert.equal((await client.get(path)).status, 404);
+  assert.equal((await client.patch(path, fakeItem())).status, 404);
+  const trash = await client.get("/api/homevault/vault/items?trash=true");
+  assert.equal(trash.status, 200);
+  assert.equal(trash.body.items.length, 1);
+  assert.equal(trash.body.items[0].id, original.id);
+  assert.ok(trash.body.items[0].deletedAt);
+  assert.equal(trash.body.items[0].encryptedData, undefined);
+  assert.equal((await client.post(`${path}/restore`)).status, 204);
+  assert.deepEqual((await client.get(path)).body.item, original);
+  assert.deepEqual((await client.get("/api/homevault/vault/items?trash=true")).body.items, []);
+  assert.equal((await client.post(`${path}/restore`)).status, 404);
+});
+
+test("permanent deletion requires Trash and removes the ciphertext row", async () => {
+  const client = await clientWithVault();
+  const created = await client.post("/api/homevault/vault/items", fakeItem());
+  const id = created.body.item.id;
+  const path = `/api/homevault/vault/items/${id}`;
+  assert.equal((await client.delete(`${path}/permanent`)).status, 404);
+  assert.equal((await client.get(path)).status, 200);
+  await client.delete(path);
+  assert.equal((await client.delete(`${path}/permanent`)).status, 204);
+  const { db } = await startTestApp();
+  assert.equal(db.prepare("SELECT * FROM vault_items WHERE id = ?").get(id), undefined);
+  assert.equal((await client.post(`${path}/restore`)).status, 404);
+  assert.equal((await client.delete(`${path}/permanent`)).status, 404);
+});
+
+test("Trash, restore, and purge preserve ownership and require authentication", async () => {
+  const alice = await clientWithVault();
+  const bob = await clientWithVault();
+  const { makeClient } = require("./helpers/client");
+  const anon = makeClient(homevaultBaseUrl);
+  const created = await alice.post("/api/homevault/vault/items", fakeItem());
+  const path = `/api/homevault/vault/items/${created.body.item.id}`;
+  await alice.delete(path);
+  assert.deepEqual((await bob.get("/api/homevault/vault/items?trash=true")).body.items, []);
+  assert.equal((await bob.post(`${path}/restore`)).status, 404);
+  assert.equal((await bob.delete(`${path}/permanent`)).status, 404);
+  assert.equal((await anon.get("/api/homevault/vault/items?trash=true")).status, 401);
+  assert.equal((await anon.post(`${path}/restore`)).status, 401);
+  assert.equal((await anon.delete(`${path}/permanent`)).status, 401);
+  assert.equal((await alice.get("/api/homevault/vault/items?trash=true")).body.items.length, 1);
+  assert.equal((await alice.post(`${path}/restore`)).status, 204);
+});
+
+test("deleting the vault also removes trashed items", async () => {
+  const client = await clientWithVault();
+  const created = await client.post("/api/homevault/vault/items", fakeItem());
+  await client.delete(`/api/homevault/vault/items/${created.body.item.id}`);
+  await client.delete("/api/homevault/vault");
+  const { db } = await startTestApp();
+  assert.equal(db.prepare("SELECT * FROM vault_items WHERE id = ?").get(created.body.item.id), undefined);
+});
+
+test("Trash query rejects ambiguous filters", async () => {
+  const client = await clientWithVault();
+  for (const query of ["trash=1", "trash=", "trash=true&trash=false"]) {
+    assert.equal((await client.get(`/api/homevault/vault/items?${query}`)).status, 400, query);
+  }
+  assert.equal((await client.get("/api/homevault/vault/items?trash=false")).status, 200);
+});

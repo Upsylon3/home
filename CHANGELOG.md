@@ -7,6 +7,9 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 
 ## [Unreleased]
 
+### Added
+- Add encrypted HomeVault Trash: recover accidentally deleted items or explicitly delete them forever. Trash has no automatic expiration; whole-vault deletion still destroys all items. An additive migration preserves existing ciphertext and keys. Independent security review remains outstanding.
+
 ### Fixed
 - Replace raw live SQLite archiving with transaction-consistent online snapshots, restore-check every archived database, and reject missing or wrong-size HomeCloud uploads before publication. Preserve read-only source mounts and the existing archive layout. Add configurable per-source deadlines, 13 snapshot/reference/failure regressions, and a full-stack Docker restore drill; cross-service snapshots remain uncoordinated.
 - Preserve previous backups when archive creation, validation or publication fails; prune only after a readable replacement for the same source is published. Report publication/retention failures accurately, continue other sources, and avoid overwriting archives on timestamp collisions. Add a one-cycle mode and ten isolated archive/restore/failure regression tests to CI.

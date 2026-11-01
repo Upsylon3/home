@@ -1,9 +1,10 @@
 // GET /api/core/permissions — HOME_MASTER_SPECIFICATION.md §7.4.
 //
-// This lists the permission catalog and, importantly, is NOT yet wired up
-// as an enforcement layer on any route (in HomeCloud or HomeCore itself).
-// Authorization today is still §28's Layer 1 (identity) + Layer 2 (role:
-// admin/user), exactly as it was before this migration. This table and its
+// This lists the application-manifest catalog, not a browser-session grant
+// enforcement layer. Separate action/audience-bound delegation checks do
+// not establish a caller-app identity or implement these catalog grants.
+// Ordinary authorization uses identity, current roles and resource ownership.
+// This table and its
 // links to applications (§7.5) establish the foundation for Layer 3
 // (per-permission checks) without a real per-user grant model yet — that's
 // a deliberate, explicitly-scoped-out v0 limitation, not an oversight.

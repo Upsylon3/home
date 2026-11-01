@@ -1,7 +1,6 @@
-// HomeCore v0 entry point. Mounted at /api/core in server.js, alongside
-// (not instead of) this service's own /api/auth, /api/admin, and
-// /api/activity — see HOME_MASTER_SPECIFICATION.md §10 "Keep application
-// APIs separate."
+// Canonical HomeCore entry point. Legacy top-level auth/admin/activity
+// mounts remain compatible; shared router instances preserve authorization,
+// session behavior and rate-limit counters across both URL families.
 //
 // Requiring ./db here — before any routes are set up — is what actually
 // creates the hc_ tables, adds the new users columns, seeds the permission
@@ -22,6 +21,9 @@ const permissionsRoutes = require("./permissions");
 const activityRoutes = require("./activity");
 const notificationsRoutes = require("./notifications");
 const { publicRouter: delegationRoutes } = require("./delegations");
+const authRoutes = require("../auth");
+const adminRoutes = require("../admin");
+const homecloudActivityRoutes = require("./homecloudActivity");
 
 runSeed();
 
@@ -31,6 +33,11 @@ router.use(attachRequestId);
 // Public, unauthenticated — see health.js for why.
 router.use("/health", healthRoutes);
 router.use("/delegations", delegationRoutes);
+router.use("/auth", authRoutes);
+router.use("/admin", adminRoutes);
+// The existing /activity and /activity/me are cross-application views.
+// Give the legacy HomeCloud-shaped personal feed an explicit scoped path.
+router.use("/activity/homecloud", homecloudActivityRoutes);
 
 // Everything else requires a signed-in HomeCloud/HomeCore identity.
 router.use("/system", requireAuth, systemRoutes);

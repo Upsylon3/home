@@ -93,11 +93,11 @@ docs/                  Architecture, security, API reference, deployment, roadma
 
 ## Tests
 
-481 automated tests across 14 suites (9 backends, 4 frontends, the shared identity client), run with
+489 automated tests across 14 suites (9 backends, 4 frontends, the shared identity client), run with
 `npm test` from the repo root (or inside any one suite's own folder):
 
 ```
-homecore                69 tests
+homecore                77 tests
 packages/homecore-client 34 tests  (real HomeCore integration and HTTP failure/cache boundaries)
 apps/homecloud-backend  44 tests
 apps/homemedia-backend  28 tests

@@ -206,6 +206,14 @@ jobs:
           [ -n "$token" ] || { echo "no token in response"; exit 1; }
           echo "ok  registered"
 
+          echo "--- canonical Core routes preserve legacy identity and scoped feeds"
+          curl -fsS -H "Authorization: Bearer $token" "$BASE/api/core/auth/me" \
+            | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const u=JSON.parse(s);if(u.username!=='ci-admin'||u.role!=='admin')process.exit(1)})"
+          for path in /api/core/activity/homecloud /api/core/admin/activity; do
+            curl -fsS -H "Authorization: Bearer $token" "$BASE$path" \
+              | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{if(!Array.isArray(JSON.parse(s).activity))process.exit(1)})"
+          done
+
           echo "--- delegation authority keeps issuance private"
           for path in /internal/delegations /internal/delegations/example/renew; do
             code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE$path" \

@@ -373,6 +373,14 @@ startup (see each service's `db.js` — plain `CREATE TABLE IF NOT
 EXISTS`/`ALTER TABLE` statements, no separate migration runner). Check
 [CHANGELOG.md](../CHANGELOG.md) for anything that needs a manual step.
 
+Core's canonical auth/admin/activity aliases are additive and need no database
+migration or client cutover. Existing top-level routes keep working. Deploy the
+updated Core before changing any consumer to `/api/core/auth` or
+`/api/core/admin`; if later rolling back to a Core version without aliases,
+restore those consumers' legacy prefixes first. Current shipped clients remain
+on the compatible paths. Activity scopes and known error payloads are unchanged;
+see `API.md` for the exact mapping. No alias-removal deadline is introduced.
+
 Core's delegation migration adds two tables without changing existing users
 or sessions. Before downgrading Core, revoke grants while the new authority
 is available (or use the offline maintenance command with all traffic stopped).

@@ -177,21 +177,25 @@ them on (merged only after the same CI run passed) to `alpine:3.24` and
   shared origin, HomeVault's encrypted blobs — on the public internet,
   so treat the overlay network as the safer default and read the
   trade-offs in that section first.
-- **Permission enforcement is declarative, not enforced.** Applications
+- **Application-manifest permissions are declarative for browser-session APIs.** Applications
   declare intended permissions in their manifest (HomeCore's application
-  registry), but no code path currently checks a permission before
+  registry), but those catalog declarations are not checked before
   granting access to another application's resource — `HOME_MASTER_SPECIFICATION.md`
   §28 calls for four enforced authorization layers (identity, role,
   permission, ownership); layer 3 (permission) is the one not actually
-  implemented yet. Ordinary ownership checks (each app checking "does
-  this row belong to this user?" directly) are the only real
-  enforcement today — fine for HomeCloud/HomeMedia/HomeSync/HomeNotes
+  implemented yet. Identity, role and resource-ownership checks do operate;
+  manifest declarations add no caller-application isolation today. That gap
+  is accepted for HomeCloud/HomeMedia/HomeSync/HomeNotes
   as built, but **not** something HomeVault, or any future
   security-sensitive app, should rely on as a boundary — see "sibling
   application overreach" below. **Decided:** deliberately deferred
   until HomeVault actually needs it, rather than built speculatively
   ahead of a real consumer — but it's a hard
   prerequisite for HomeVault specifically, not indefinitely optional.
+  The separately enforced action/audience checks for background capabilities
+  below do not solve this generic model: ordinary browser sessions identify a
+  user, not the calling application. Canonical Core route aliases preserve
+  existing identity, role and ownership checks without claiming new permissions.
 - **Minor, low-severity: `/api/auth/login` reveals whether a disabled
   account exists.** An unknown username and a wrong password for a real
   account both return the same generic "Incorrect username or

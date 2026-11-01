@@ -1,8 +1,8 @@
 # API reference
 
 All routes require `Authorization: Bearer <token>` unless noted
-otherwise. Get a token from `POST /api/auth/login` (and, if 2FA is
-enabled, `POST /api/auth/2fa/verify`). Admin routes additionally require
+otherwise. Get a token from `POST /api/core/auth/login` (and, if 2FA is
+enabled, `POST /api/core/auth/2fa/verify`). Admin routes additionally require
 the signed-in user to have the `admin` role.
 
 Paths below are as reached through the gateway (`http://<host>:8080/...`)
@@ -17,10 +17,45 @@ session and allow retry for these failures. A successful verification may
 be cached for up to five seconds, so account revocation propagates to an
 application backend within that window. HomeCore itself checks immediately.
 
-## HomeCore (`/api/auth`, `/api/admin`, `/api/activity`, `/api/core`)
+## HomeCore (`/api/core`, with legacy compatibility aliases)
 
 Identity, sessions, 2FA, the application registry, permissions, and the
 shared activity/notifications feed. No files live here.
+
+### Canonical paths and compatibility policy
+
+New integrations can use the canonical paths below. Existing callers,
+including web apps, Android and the shared identity client, remain compatible
+without a token, session, account or data migration:
+
+| Existing path | Canonical path | Contract |
+|---|---|---|
+| `/api/auth/*` | `/api/core/auth/*` | Same registration, login, 2FA and session handlers |
+| `/api/admin/*` | `/api/core/admin/*` | Same administrator-only account/Cloud-audit handlers |
+| `/api/activity` | `/api/core/activity/homecloud` | Same personal HomeCloud-scoped `{activity}` feed |
+
+These are shared router mounts, not redirects or duplicate implementations.
+All attached auth attempts share one IP budget across paths and endpoints;
+switching prefixes cannot reset the limiter. Tokens issued through either
+prefix work through both. Known success and failure payloads retain the
+legacy contract, including string `error` fields and Core's existing `403`
+for disabled accounts. This additive path migration does not silently convert
+auth/admin error formats to the platform `{error: {code, message, requestId}}`
+shape. Other Core platform routes keep their established format.
+
+Existing `/api/core/activity` (administrator, all users/all applications) and
+`/api/core/activity/me` (own events, all applications) retain their distinct
+audiences and `{events}` shapes. The Cloud-specific alias neither replaces
+those routes nor broadens a user's feed. `/api/core/admin/activity` remains
+the existing administrator Cloud-only view, not a cross-app audit alias.
+
+No compatibility endpoint is removed, redirected or assigned a sunset date.
+Existing shipped clients are unchanged. Deploy Core with these aliases
+**before** switching a consumer to canonical paths. To roll back to an older
+Core that lacks aliases, first roll back any such consumer to the legacy
+prefix; current clients already use it. Any future removal or error-contract
+change requires an explicit versioned migration with caller and security proof.
+Internal service endpoints are not aliased under these public prefixes.
 
 ### Scheduled-delegation authority
 
@@ -92,18 +127,18 @@ errors are retryable `502` (unavailable/malformed), `503` (busy) or `504`
 
 | Method | Path | What it does |
 |---|---|---|
-| POST | `/api/auth/register` | Create an account (first ever = admin) |
-| POST | `/api/auth/login` | Log in (or start 2FA if enabled) |
-| POST | `/api/auth/2fa/verify` | Complete login with a 2FA/recovery code |
-| GET | `/api/auth/me` | Current user (id, username, role, quota override) |
-| POST | `/api/auth/change-password` | Change password, revokes other sessions |
-| POST | `/api/auth/logout-everywhere` | Revoke every session |
-| POST | `/api/auth/2fa/setup` \| `/confirm` \| `/disable` \| `/recovery-codes` | 2FA lifecycle |
-| GET | `/api/activity` | HomeCloud-scoped activity feed for the current user |
-| GET | `/api/admin/activity` | *(admin)* HomeCloud-scoped activity feed, every user |
-| POST | `/api/admin/users/:id/disabled` \| `/role` \| `/quota` | *(admin)* Account management |
-| POST | `/api/admin/users/:id/2fa/disable` | *(admin)* Reset a lost-phone 2FA |
-| POST | `/api/admin/users/:id/reset-password` | *(admin)* Set a new password for someone who forgot theirs; revokes their sessions |
+| POST | `/api/core/auth/register` | Create an account (first ever = admin) |
+| POST | `/api/core/auth/login` | Log in (or start 2FA if enabled) |
+| POST | `/api/core/auth/2fa/verify` | Complete login with a 2FA/recovery code |
+| GET | `/api/core/auth/me` | Current user (id, username, role, quota override) |
+| POST | `/api/core/auth/change-password` | Change password, revokes other sessions |
+| POST | `/api/core/auth/logout-everywhere` | Revoke every session |
+| POST | `/api/core/auth/2fa/setup` \| `/confirm` \| `/disable` \| `/recovery-codes` | 2FA lifecycle |
+| GET | `/api/core/activity/homecloud` | HomeCloud-scoped activity feed for the current user |
+| GET | `/api/core/admin/activity` | *(admin)* HomeCloud-scoped activity feed, every user |
+| POST | `/api/core/admin/users/:id/disabled` \| `/role` \| `/quota` | *(admin)* Account management |
+| POST | `/api/core/admin/users/:id/2fa/disable` | *(admin)* Reset a lost-phone 2FA |
+| POST | `/api/core/admin/users/:id/reset-password` | *(admin)* Set a new password for someone who forgot theirs; revokes their sessions |
 | GET | `/api/core/health` | *(no auth)* Liveness/storage check |
 | GET | `/api/core/system` | System info (version, uptime) |
 | GET | `/api/core/users/me` | Identity fields HomeCore itself owns (displayName) |

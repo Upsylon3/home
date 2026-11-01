@@ -67,3 +67,16 @@ test("a visitor can't dodge the limiter by inventing a different address in X-Fo
   for (let i = 0; i < 11; i++) await attempt(`10.99.99.${i}, 203.0.113.7`);
   assert.equal((await attempt("1.2.3.4, 203.0.113.7")).status, 429);
 });
+
+test("canonical and compatibility auth prefixes share one attempt budget across endpoints", async () => {
+  const visitor = { headers: { "X-Forwarded-For": "198.51.100.33" } };
+  const client = makeClient(baseUrl);
+  for (let i = 0; i < 5; i++) {
+    assert.equal((await client.post("/api/auth/login", { username: "nobody", password: "wrong-password" }, visitor)).status, 401);
+    assert.equal((await client.post("/api/core/auth/login", { username: "nobody", password: "wrong-password" }, visitor)).status, 401);
+  }
+  assert.equal((await client.post("/api/core/auth/register", { username: "new_person", password: "TestPassword123!" }, visitor)).status, 429);
+  assert.equal((await client.post("/api/auth/login", { username: "nobody", password: "wrong-password" }, visitor)).status, 429);
+  const unspent = { headers: { "X-Forwarded-For": "198.51.100.34" } };
+  assert.equal((await client.post("/api/core/auth/login", { username: "nobody", password: "wrong-password" }, unspent)).status, 401);
+});

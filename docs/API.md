@@ -46,6 +46,10 @@ shared activity/notifications feed. No files live here.
 | GET | `/api/core/notifications` | Notifications for the current user |
 | PATCH | `/api/core/notifications/:id/read` | Mark one as read |
 
+Registration atomically assigns the administrator role to exactly the first
+created account. A username claimed by a concurrent registration returns
+`409 { error: "That username is already taken." }`.
+
 `POST /internal/events`, `GET /internal/users/usage`, `GET /internal/apps`
 and `POST /internal/notifications` (not shown above) are machine-to-machine
 routes authenticated with a shared secret (`HOMECORE_INTERNAL_SECRET`), not a

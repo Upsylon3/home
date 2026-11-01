@@ -7,6 +7,10 @@ been checked since.
 ## Part A — implemented today
 
 - Passwords hashed with **bcrypt** (12 rounds); never stored plain.
+- First-account administrator assignment and account insertion occur in one
+  immediate SQLite transaction after password hashing. Concurrent first
+  registrations cannot each claim administrator privileges, and concurrent
+  duplicate usernames receive a conflict instead of an internal error.
 - **JWT** auth with a per-user **token version** for revocation on password
   change, "sign out everywhere," and admin-disable. HomeCore checks account
   state on every request; the seven application backends cache a successful

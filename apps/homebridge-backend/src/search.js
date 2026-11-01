@@ -95,7 +95,7 @@ async function searchHomeMedia({ query, limit, token }) {
   );
   for (const album of matchingAlbums) {
     results.push(
-      toResult("homemedia", "album", album, album.name, `${album.itemCount} items`, album.updatedAt, "/media/")
+      toResult("homemedia", "album", album, album.name, `${album.itemCount} items`, album.updatedAt, `/media/albums/${encodeURIComponent(album.id)}`)
     );
   }
   results.sort((a, b) => {
@@ -112,7 +112,7 @@ async function searchHomeNotes({ query, limit, token }) {
   const notes = Array.isArray(data.notes) ? data.notes.slice(0, limit) : [];
   return {
     results: notes.map((note) =>
-      toResult("homenotes", "note", note, note.title, note.excerpt, note.updatedAt, "/notes/")
+      toResult("homenotes", "note", note, note.title, note.excerpt, note.updatedAt, `/notes/notes/${encodeURIComponent(note.id)}`)
     ),
     truncated: notes.length >= limit
   };
@@ -136,7 +136,7 @@ async function searchHomeTasks({ query, limit, token }) {
           .filter(Boolean)
           .join(" · "),
         task.updatedAt || task.completedAt || task.createdAt,
-        "/tasks/"
+        "/tasks/all"
       )
     ),
     truncated: tasks.length >= limit

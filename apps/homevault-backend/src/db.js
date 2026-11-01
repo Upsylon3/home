@@ -77,6 +77,15 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_vault_items_vault_id ON vault_items(vault_id);
+
+  -- Deliberately no FK to vaults: the audit must survive its deletion.
+  CREATE TABLE IF NOT EXISTS vault_admin_resets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    actor_user_id INTEGER NOT NULL,
+    target_user_id INTEGER NOT NULL,
+    vault_id INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
 `);
 
 // Additive upgrade for existing vaults; NULL keeps every old item active.

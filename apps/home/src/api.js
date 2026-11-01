@@ -47,6 +47,13 @@ async function request(path, options = {}) {
 }
 
 export const api = {
+  vaultAdmin: {
+    users: () => request("/core/admin/users"),
+    status: id => request(`/homevault/admin/users/${encodeURIComponent(id)}/vault`),
+    reset: (id, vaultId, confirmation) => request(`/homevault/admin/users/${encodeURIComponent(id)}/vault`, {
+      method: "DELETE", body: JSON.stringify({ vaultId, confirmation })
+    })
+  },
   automation: {
     status: () => request("/homebridge/automation"),
     enroll: () => request("/homebridge/automation/enroll", { method: "POST", body: JSON.stringify({ consent: true }) }),

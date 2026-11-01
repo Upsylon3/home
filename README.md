@@ -93,7 +93,7 @@ docs/                  Architecture, security, API reference, deployment, roadma
 
 ## Tests
 
-492 automated tests across 14 suites (9 backends, 4 frontends, the shared identity client), run with
+500 automated tests across 14 suites (9 backends, 4 frontends, the shared identity client), run with
 `npm test` from the repo root (or inside any one suite's own folder):
 
 ```
@@ -103,7 +103,7 @@ apps/homecloud-backend  44 tests
 apps/homemedia-backend  28 tests
 apps/homenotes-backend  24 tests
 apps/homesync-backend   20 tests
-apps/homevault-backend  35 tests
+apps/homevault-backend  43 tests
 apps/hometasks-backend  69 tests
 apps/homemonitor-backend 71 tests
 apps/homevault          22 tests  (src/crypto.js — the client-side encryption)

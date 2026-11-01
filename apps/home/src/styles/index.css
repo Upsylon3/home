@@ -117,7 +117,8 @@ a:focus-visible {
   font-family: var(--font-mono);
 }
 
-.field input {
+.field input,
+.field select {
   width: 100%;
   background: var(--bg);
   border: 1px solid var(--border);
@@ -128,7 +129,8 @@ a:focus-visible {
   font-family: var(--font-mono);
 }
 
-.field input:focus {
+.field input:focus,
+.field select:focus {
   border-color: var(--amber-dim);
 }
 

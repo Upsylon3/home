@@ -55,9 +55,10 @@ remain follow-ups; per-database consistency does not establish those guarantees.
 3. **HomeVault follow-ups deferred out of v0**: benchmarking Argon2id's
    parameters against real
    minimum self-hosting hardware (v0 ships OWASP's default, untested
-   against, say, a Raspberry Pi specifically), and an admin-facing
-   vault-reset action for HomeCore (today only the account holder can
-   delete their own vault). Item soft-delete/undo is now implemented through
+   against, say, a Raspberry Pi specifically). The administrator vault-reset
+   action is implemented in Home Settings with live Core authority, explicit
+   confirmation, replacement-vault protection and a local transactional audit
+   ([decision 003](decisions/003-vault-admin-reset.md)). Item soft-delete/undo is now implemented through
    encrypted Trash with explicit restore and permanent deletion. Trash has no
    automatic expiration; whole-vault deletion includes it.
 4. **Done: align the HomeSync Android adaptive icon with the shared icon set.**
@@ -174,8 +175,8 @@ generic per-app dashboard stat (staying hardcoded per app for now).
   retry and WorkManager's built-in `requiresBatteryNotLow` constraint
   stay as the permanent design, not gaps waiting to be filled.
 - **HomeVault:** benchmarking Argon2id on
-  minimum hardware, and an admin-facing vault-reset action — see item 3
-  above. The core vault itself is built (v0).
+  minimum hardware — see item 3 above. Administrator reset is now built.
+  The core vault itself is built (v0).
 
 ## HomeBridge first release
 

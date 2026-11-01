@@ -314,6 +314,11 @@ problem:
   worth doing if a third frontend ever wants its own "create account"
   link, not urgent before that.
 
+Home Settings also provides the bounded administrator Vault-reset action in
+[decision 003](decisions/003-vault-admin-reset.md). It calls Vault directly; live
+Core session verification supplies authority, while deletion and audit stay in
+Vault's own database. No sibling Tier 1 dependency or Core database access is added.
+
 ## 7. Status by application
 
 | App | Status |

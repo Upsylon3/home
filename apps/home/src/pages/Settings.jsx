@@ -5,6 +5,7 @@ import { timeAgo } from "../utils.js";
 import ThemeToggle from "../components/ThemeToggle.jsx";
 import RetroControl from "../components/RetroControl.jsx";
 import FollowupControls from "../components/FollowupControls.jsx";
+import VaultResetControls from "../components/VaultResetControls.jsx";
 
 // Home's Settings only covers what HomeCore itself owns: display name and
 // sessions (§7.1, §7.2). Password, username, and two-factor auth are still
@@ -63,6 +64,7 @@ export default function Settings() {
       {error && <div className="error-banner">{error}</div>}
 
       <FollowupControls user={user} />
+      {user.role === "admin" && <VaultResetControls />}
 
       <div className="panel">
         <h3 className="panel-title">Appearance</h3>

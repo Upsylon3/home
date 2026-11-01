@@ -163,9 +163,8 @@ router.post(
 // may still contain the encrypted envelopes/items, and unlocked devices
 // may still hold the vault key. This is not secure erasure or deletion of
 // external copies. Matches the threat model's "HomeCore admin overreach"
-// row: this is the one action an account holder (or, via a future admin
-// route, HomeCore) can take on a vault without ever being able to read
-// it first.
+// row: an account holder or the separate, live-authorized administrator
+// reset route can remove a vault without being able to decrypt it first.
 router.delete(
   "/vault",
   asyncHandler(async (req, res) => {

@@ -178,7 +178,8 @@ jobs:
                       /api/homecloud/health /api/homemedia/health \
                       /api/homenotes/health /api/homesync/health \
                       /api/homevault/health \
-                      /api/hometasks/health /api/homemonitor/health; do
+                      /api/hometasks/health /api/homemonitor/health \
+                      /api/homebridge/health; do
             curl -fsS -o /dev/null "$BASE$path"
             echo "ok  $path"
           done
@@ -203,6 +204,29 @@ jobs:
           # (gateway -> homecloud-backend -> homecore) is wired up.
           curl -fsS -o /dev/null -H "Authorization: Bearer $token" "$BASE/api/homecloud/files"
           echo "ok  cross-service auth"
+
+          echo "--- create one real note and task, then find both through HomeBridge"
+          curl -fsS -X POST "$BASE/api/homenotes/notes" \
+            -H "Authorization: Bearer $token" -H 'Content-Type: application/json' \
+            -d '{"title":"HomeBridge smoke note","content":"cross-app search integration marker"}' > /dev/null
+          curl -fsS -X POST "$BASE/api/hometasks/tasks" \
+            -H "Authorization: Bearer $token" -H 'Content-Type: application/json' \
+            -d '{"title":"HomeBridge smoke task"}' > /dev/null
+          search=$(curl -fsS -G "$BASE/api/homebridge/search" \
+            -H "Authorization: Bearer $token" --data-urlencode 'q=homebridge')
+          echo "$search" | node -e '
+            let body = "";
+            process.stdin.on("data", chunk => body += chunk).on("end", () => {
+              const data = JSON.parse(body);
+              const note = data.results.some(item => item.source === "homenotes" && item.title === "HomeBridge smoke note");
+              const task = data.results.some(item => item.source === "hometasks" && item.title === "HomeBridge smoke task");
+              if (!note || !task) {
+                console.error("HomeBridge did not return both live app records:", data);
+                process.exit(1);
+              }
+              console.log("ok  HomeBridge found a real note and task through their own APIs");
+            });
+          '
 
       # docs/ROADMAP.md item 10: one stopped app must not take the gateway, or
       # any other app, down. HomeTasks is stopped on purpose (frontend and

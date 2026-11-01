@@ -35,7 +35,7 @@ trap cleanup EXIT
 declare -A IP PORT_OF
 n=0
 for entry in home:8000 homecloud:8000 homemedia:8000 homenotes:8000 hometasks:8000 homemonitor:8000 homevault:8000 \
-             homecore:4000 homemedia-backend:4200 homesync-backend:4300 homenotes-backend:4400 \
+             homecore:4000 homebridge-backend:4900 homemedia-backend:4200 homesync-backend:4300 homenotes-backend:4400 \
              homecloud-backend:4500 homevault-backend:4600 hometasks-backend:4700 homemonitor-backend:4800; do
   n=$((n + 1))
   IP[${entry%%:*}]="127.0.1.$n"
@@ -118,13 +118,16 @@ req GET /api/hometasks/health
 expect_status "backend missing: answers 503" 503
 expect_body   "  ...as JSON, naming the app" '"error":"HomeTasks is offline'
 expect_header "  ...with a JSON content type" "^content-type: application/json"
+req GET /api/homebridge/health
+expect_status "HomeBridge missing: answers 503" 503
+expect_body   "  ...with its own offline message" "HomeBridge is offline"
 req GET /api/auth/me
 expect_body   "HomeCore missing: login path says HomeCore" "HomeCore is offline"
 req GET /cloud
 expect_status "redirects still work with no apps (/cloud -> /cloud/)" 301
 
 echo "== 2. Apps that ARE running work, with paths passed correctly"
-for a in home homecore hometasks hometasks-backend homemedia-backend homesync-backend; do app_up "$a"; done
+for a in home homecore homebridge-backend hometasks hometasks-backend homemedia-backend homesync-backend; do app_up "$a"; done
 sleep 1.5   # the gateway's DNS cache is 1 second in this test
 
 req GET /
@@ -139,6 +142,8 @@ req GET /tasks/settings
 expect_body   "a deep link becomes /settings upstream" '"path": "/settings"'
 req GET "/api/hometasks/tasks?status=done&today=2026-10-09"
 expect_body   "API paths are passed through UNCHANGED (prefix kept)" '"path": "/api/hometasks/tasks?status=done&today=2026-10-09"'
+req GET /api/homebridge/health
+expect_body   "/api/homebridge/... reaches HomeBridge, path unchanged" '"path": "/api/homebridge/health"'
 req GET /api/auth/me
 expect_body   "/api/auth/... reaches HomeCore, path unchanged" '"path": "/api/auth/me"'
 req GET /sync/

@@ -232,6 +232,19 @@ still need the master password or recovery key from that point in time.
 
 ## Upgrading
 
+### Optional cross-app search
+
+Run `docker compose --profile bridge up --build -d` to include HomeBridge,
+then use Home's Search page. Without that profile the rest of HOME runs
+normally, and Search explains an unavailable bridge on submission. Users
+choose Notes and/or Tasks on each explicit search; disabled apps in HomeCore's
+registry are not queried. Stop it with `docker compose stop homebridge`.
+There is no retained data or volume to back up, delete or migrate. Remove
+the profile to opt out. Do not expose service port 4900; the gateway is its
+only public route. See decision 001 for limits and security boundaries.
+
+### Update services
+
 ```bash
 git pull
 docker compose up --build -d

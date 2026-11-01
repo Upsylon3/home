@@ -8,6 +8,7 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 ## [Unreleased]
 
 ### Added
+- Add HomeBridge v0: optional read-only Notes/Tasks search from Home, with explicit source choice, ownership-preserving live requests, partial-failure states and resource links. Keep queries and results ephemeral; exclude HomeVault. Add opt-in Compose deployment, bounded upstream requests, integration/failure tests and gateway/full-stack checks. HomeTasks resource links also work without HomeBridge.
 - Add encrypted HomeVault Trash: recover accidentally deleted items or explicitly delete them forever. Trash has no automatic expiration; whole-vault deletion still destroys all items. An additive migration preserves existing ciphertext and keys. Independent security review remains outstanding.
 
 ### Fixed

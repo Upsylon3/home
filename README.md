@@ -23,6 +23,7 @@ you choose to set that up.
 | **HomeTasks** | Tasks and projects, due dates, priorities, repeating tasks | Built — backend and web app, tested |
 | **HomeMonitor** | Server, services and backups at a glance, with alerts (admins only) | **v0 built** — backend and web app, tested |
 | HomeAI | Assistant | Not started — see [docs/ROADMAP.md](docs/ROADMAP.md) |
+| **HomeBridge** | Optional read-only search across your notes and tasks from Home | **v0 built** — opt in with Compose's `bridge` profile; see [the decision record](docs/decisions/001-homebridge-search.md) |
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how these fit
 together, and [docs/SECURITY.md](docs/SECURITY.md) for what's protecting
@@ -73,6 +74,7 @@ apps/
   homevault/           HomeVault frontend — the only app whose code ever sees a plaintext secret
   homevault-backend/   HomeVault backend — stores only ciphertext, never a key
 services/backup/       Nightly backup of every app's data volume
+services/homebridge/   Optional stateless cross-app search (Tier 2)
 design/                Icon set + wordmark, shared across every frontend
 scripts/               Windows dev launcher (see docs/DEVELOPMENT.md)
 docs/                  Architecture, security, API reference, deployment, roadmap
@@ -91,7 +93,7 @@ docs/                  Architecture, security, API reference, deployment, roadma
 
 ## Tests
 
-401 automated tests across 13 suites (8 backends, 4 frontends, the shared identity client), run with
+415 automated tests across 14 suites (9 backends, 4 frontends, the shared identity client), run with
 `npm test` from the repo root (or inside any one suite's own folder):
 
 ```
@@ -108,6 +110,7 @@ apps/homevault          20 tests  (src/crypto.js — the client-side encryption)
 apps/homenotes          16 tests  (src/markdown.js — the XSS sanitizer)
 apps/hometasks           7 tests  (src/dates.js, src/repeat.js — date and wording helpers)
 apps/homemonitor        13 tests  (src/format.js, src/chart.js — number formatting and chart maths)
+services/homebridge    14 tests  (real-service ownership/search and bounded upstream failures)
 ```
 
 The other three frontends (`home`, `homecloud`, `homemedia`) have no

@@ -47,6 +47,9 @@ async function request(path, options = {}) {
 }
 
 export const api = {
+  search: (query, sources, signal) => request("/homebridge/search", {
+    method: "POST", body: JSON.stringify({ query, sources }), signal
+  }),
   login: (username, password) =>
     request("/auth/login", { method: "POST", body: JSON.stringify({ username, password }) }),
 

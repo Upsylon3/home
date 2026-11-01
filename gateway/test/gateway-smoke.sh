@@ -36,7 +36,7 @@ declare -A IP PORT_OF
 n=0
 for entry in home:8000 homecloud:8000 homemedia:8000 homenotes:8000 hometasks:8000 homemonitor:8000 homevault:8000 \
              homecore:4000 homemedia-backend:4200 homesync-backend:4300 homenotes-backend:4400 \
-             homecloud-backend:4500 homevault-backend:4600 hometasks-backend:4700 homemonitor-backend:4800; do
+             homecloud-backend:4500 homevault-backend:4600 hometasks-backend:4700 homemonitor-backend:4800 homebridge:4900; do
   n=$((n + 1))
   IP[${entry%%:*}]="127.0.1.$n"
   PORT_OF[${entry%%:*}]="${entry##*:}"
@@ -123,12 +123,25 @@ expect_body   "HomeCore missing: login path says HomeCore" "HomeCore is offline"
 req GET /cloud
 expect_status "redirects still work with no apps (/cloud -> /cloud/)" 301
 
+req POST /api/homebridge/search -H 'Content-Type: application/json' -d '{"query":"trip","sources":["homenotes"]}'
+expect_status "optional HomeBridge can be absent" 503
+expect_body "missing bridge is named in the error" "HomeBridge is offline"
+
 echo "== 2. Apps that ARE running work, with paths passed correctly"
 for a in home homecore hometasks hometasks-backend homemedia-backend homesync-backend; do app_up "$a"; done
 sleep 1.5   # the gateway's DNS cache is 1 second in this test
 
 req GET /
 expect_body   "/ reaches Home" '"app": "home"'
+app_up homebridge
+sleep 1.5
+req POST /api/homebridge/search -H 'Content-Type: application/json' -d '{"query":"trip","sources":["homenotes"]}'
+expect_body "bridge API reaches the optional service" '"app": "homebridge"'
+expect_body "bridge path is preserved" '"path": "/api/homebridge/search"'
+app_gone homebridge
+sleep 1.5
+req GET /
+expect_body "Home still works after bridge removal" '"app": "home"'
 expect_body   "  ...with the path unchanged" '"path": "/"'
 req GET "/tasks/assets/app.js?v=2&x=%20y"
 expect_body   "/tasks/... reaches the HomeTasks frontend" '"app": "hometasks"'

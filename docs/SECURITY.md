@@ -6,6 +6,15 @@ been checked since.
 
 ## Part A — implemented today
 
+- **HomeBridge v0 is optional and read-only.** It authenticates through the
+  shared HomeCore client and forwards only the live user's token to selected,
+  enabled Notes/Tasks public APIs, whose ownership checks remain authoritative.
+  There is no background token, database, index, telemetry or query/result
+  persistence. Query text is submitted by POST; responses are `no-store`.
+  Fixed configured origins, refused redirects, bounded bodies and deadlines
+  constrain upstream requests. Registry failure fails closed; source failures
+  are explicit. HomeVault is excluded. See decision 001 for the v0 boundary.
+
 - Passwords hashed with **bcrypt** (12 rounds); never stored plain.
 - First-account administrator assignment and account insertion occur in one
   immediate SQLite transaction after password hashing. Concurrent first

@@ -129,6 +129,32 @@ Settings are environment variables, all optional (see `apps/homemonitor-backend/
 `GATEWAY_URL` / `SERVICE_URLS` (where to reach each app's health endpoint),
 `ALERTS_ENABLED` (`false` shows alerts on screen without sending notifications).
 
+## HomeBridge (`/api/homebridge`, optional)
+
+Stateless Tier 2 search. No background credential, index or stored queries.
+
+| Method | Path | What it does |
+|---|---|---|
+| GET | `/api/homebridge/health` | *(no auth)* Process health only |
+| POST | `/api/homebridge/search` | Authenticated `{query, sources}`; 2–200 trimmed characters, one or both of `homenotes`, `hometasks`, without duplicates |
+
+Returns `{groups, limit: 20}`. Each group has `source`, `name`, `status`
+(`ok`, `disabled`, `unavailable`), `limited`, and `results`. Each result has
+`source`, `id`, `title`, `excerpt`, `href`. Source-native matching/order apply:
+Notes excludes Trash and searches title/content; Tasks searches title/notes,
+including completed tasks. Titles/excerpts are bounded to 240/160 characters.
+An unavailable source leaves other results intact. Missing/disabled apps are
+never contacted. Registry failure returns 502, not unverified results. Request
+validation returns 400, oversized request bodies 413; authentication uses the
+shared HomeCore client. Responses are `no-store`; query text is a POST body,
+not a gateway access-log URL. Upstream calls refuse redirects and enforce
+five-second header/body deadlines and 1 MiB response limits. See
+[the decision record](decisions/001-homebridge-search.md).
+
+HomeTasks supports `/tasks/all?task=<id>` and `/tasks/done?task=<id>` resource
+links, opening the existing editor through the owned-task API. These links
+work independently of HomeBridge. HomeNotes links use `/notes/notes/<id>`.
+
 ## HomeTasks backend (`/api/hometasks`)
 
 Tasks and projects. Every route except `health` needs a login, and every

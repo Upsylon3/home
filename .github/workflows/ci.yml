@@ -160,15 +160,15 @@ jobs:
           sed -i "s|^JWT_SECRET=.*|JWT_SECRET=$(openssl rand -hex 32)|" homecore/.env
           sed -i "s|^HOMECORE_INTERNAL_SECRET=.*|HOMECORE_INTERNAL_SECRET=$(openssl rand -hex 32)|" homecore/.env
 
-      # Builds all 17 images. This is the first real test of the base-image
+      # Builds all 18 images, including the optional HomeBridge service.
       # bumps (node:26-slim, nginx:1.31-alpine, alpine:3.24).
       - name: Build every image
-        run: docker compose build
+        run: docker compose --profile bridge build
 
       # --wait blocks until every service with a healthcheck reports
       # healthy, and fails if one never does.
       - name: Start the whole stack
-        run: docker compose up -d --wait --wait-timeout 180
+        run: docker compose --profile bridge up -d --wait --wait-timeout 180
 
       # Everything below goes through the gateway on :8080, exactly like a
       # browser would, so it also proves the nginx routing table is right.
@@ -217,6 +217,29 @@ jobs:
           printf 'backup restore smoke\n' > /tmp/backup-smoke.txt
           curl -fsS -o /dev/null -H "Authorization: Bearer $token" \
             -F 'file=@/tmp/backup-smoke.txt' "$BASE/api/homecloud/files/upload"
+
+      - name: HomeBridge search and optional-service isolation
+        run: |
+          set -eu
+          BASE=http://localhost:8080
+          resp=$(curl -fsS -X POST "$BASE/api/auth/register" -H 'Content-Type: application/json' -d '{"username":"ci-search","password":"ci-search-password-123"}')
+          token=$(echo "$resp" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).token))")
+          curl -fsS -o /dev/null -H "Authorization: Bearer $token" -H 'Content-Type: application/json' -d '{"title":"bridge needle","content":"a note"}' "$BASE/api/homenotes/notes"
+          curl -fsS -o /dev/null -H "Authorization: Bearer $token" -H 'Content-Type: application/json' -d '{"title":"bridge needle"}' "$BASE/api/hometasks/tasks"
+          curl -fsS -H "Authorization: Bearer $token" -H 'Content-Type: application/json' -d '{"query":"bridge needle","sources":["homenotes","hometasks"]}' "$BASE/api/homebridge/search" > /tmp/bridge-search.json
+          node -e "const r=require('/tmp/bridge-search.json'); if(r.groups.length!==2 || r.groups.some(g=>g.status!=='ok'||g.results.length!==1)) throw new Error('Search did not reach both real apps');"
+          curl -fsS -o /dev/null "$BASE/search"
+          docker compose stop homebridge
+          [ "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/api/homebridge/health")" = "503" ]
+          curl -fsS -o /dev/null "$BASE/"
+          curl -fsS -o /dev/null "$BASE/api/homenotes/health"
+          curl -fsS -o /dev/null "$BASE/api/hometasks/health"
+          docker compose --profile bridge start homebridge
+          for i in $(seq 1 30); do
+            [ "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/api/homebridge/health")" = "200" ] && break
+            sleep 2
+          done
+          curl -fsS -o /dev/null "$BASE/api/homebridge/health"
 
       - name: Restore-check live SQLite backups from read-only volumes
         run: |
@@ -276,4 +299,4 @@ jobs:
       # Always clean up, even on failure.
       - name: Stop the stack
         if: always()
-        run: docker compose down -v
+        run: docker compose --profile bridge down -v

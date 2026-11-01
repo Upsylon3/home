@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useOutletContext, useParams } from "react-router-dom";
+import { useNavigate, useOutletContext, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../api.js";
 import { greeting, shortDate } from "../dates.js";
 import QuickAdd from "../components/QuickAdd.jsx";
@@ -31,9 +31,13 @@ export default function Tasks({ view }) {
   const { user, projects, summary, today, reloadSidebar } = useOutletContext();
   const { projectId } = useParams(); // only present on the project view
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const linkedTask = searchParams.get("task");
 
   const [tasks, setTasks] = useState(null); // null means "still loading"
-  const [error, setError] = useState("");
+  const [listError, setError] = useState("");
+  const [linkError, setLinkError] = useState("");
+  const error = linkError || listError;
   const [editing, setEditing] = useState(null); // the task open in the dialog, if any
   const [searchText, setSearchText] = useState(""); // what is typed in the box
   const [query, setQuery] = useState(""); // the typed text, after a short pause
@@ -41,6 +45,15 @@ export default function Tasks({ view }) {
   const [renaming, setRenaming] = useState(null); // text of the rename box, or null
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [notice, setNotice] = useState(""); // a short "what just happened" message
+
+  function closeTask() {
+    setEditing(null);
+    if (linkedTask !== null) {
+      const next = new URLSearchParams(searchParams);
+      next.delete("task");
+      setSearchParams(next, { replace: true });
+    }
+  }
 
   const project = view === "project" ? projects.find((p) => String(p.id) === projectId) : null;
   const showSearch = view === "all" || view === "done" || view === "project";
@@ -54,6 +67,23 @@ export default function Tasks({ view }) {
     setConfirmingDelete(false);
     setError("");
   }, [view, projectId]);
+
+  // Resource links work with or without the optional search service.
+  // The API checks ownership, including tasks outside the visible list.
+  useEffect(() => {
+    setLinkError("");
+    if (linkedTask === null) return;
+    setEditing(null);
+    let cancelled = false;
+    if (!/^[1-9]\d*$/.test(linkedTask) || !Number.isSafeInteger(Number(linkedTask))) {
+      setLinkError("Invalid task link.");
+      return;
+    }
+    api.tasks.get(linkedTask).then(({ data }) => {
+      if (!cancelled) setEditing(data.task);
+    }).catch(err => { if (!cancelled) setLinkError(err.message); });
+    return () => { cancelled = true; };
+  }, [linkedTask]);
 
   // "Debounce": wait until the person pauses typing for a quarter of a second
   // before searching, so we don't send a request for every single keystroke.
@@ -359,7 +389,7 @@ export default function Tasks({ view }) {
             await api.tasks.remove(editing.id);
             await refresh();
           }}
-          onClose={() => setEditing(null)}
+          onClose={closeTask}
         />
       )}
     </main>

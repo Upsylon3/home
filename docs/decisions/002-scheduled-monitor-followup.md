@@ -1,6 +1,8 @@
 # First scheduled bridge: critical alerts become personal follow-up tasks
 
-Status: accepted scope and permission design; **not implemented**. HOME still
+Status: **authority milestone implemented**: Core grants, separate shared
+verification and offline restore revocation. Action APIs, enrollment controls,
+encrypted worker state and scheduling remain unimplemented. HOME still
 ships only the live, read-only HomeBridge search from decision 001. This
 decision authorizes no deployment, real credential issuance or automatic
 enrollment. The next implementation must satisfy the gates below.
@@ -112,12 +114,18 @@ summary came from a real Monitor incident without introducing another trust
 mechanism. This residual risk is explicit: the capability permits constrained
 creation, not cryptographic attestation of the scheduler's reasoning.
 
-## Proposed contracts, not existing APIs
+## Contracts and implementation status
 
 1. HomeCore provides owner-session grant creation, metadata listing,
    revocation and renewal, plus capability introspection. Integration
    `monitor-followup-v1` determines permissions; callers cannot choose
    arbitrary scopes, a different subject or an expiry beyond 30 days.
+   **Implemented:** see `docs/API.md`. Mint/renew are private internal server
+   routes accepting the full consenting owner session; public routes expose
+   metadata, revocation and introspection only. This keeps raw credentials out
+   of browser responses. The gateway blocks private issuance, and Core also
+   rejects browser Origin/Fetch Metadata headers there. The future enrollment
+   server must complete encrypted persistence before reporting success.
 2. HomeMonitor adds a narrow alert-read action. Persist an instance UUID,
    per-incident UUID and successful alert-evaluation timestamp. Update alert
    state, incident identities and evaluation time in one local transaction.
@@ -247,6 +255,8 @@ Implement in this order, with independently reviewable tests:
    consent, 2FA/session boundaries, audience/action isolation, wrong-subject
    refusal, expiry, rotation and every revocation condition. Ordinary browser
    routes must reject capabilities. Unknown registry/auth state fails closed.
+   Implemented and covered by real-Core, HTTP-boundary and disposable restore
+   tests. Migration is additive and normal database reopening preserves grants.
 2. **Source and destination:** stable incident IDs with transactional freshness,
    then transactional create-once receipts with concurrent/replayed requests,
    manual deletion, changed payload, daily limits and crash-after-commit proof.
@@ -265,4 +275,5 @@ Implement in this order, with independently reviewable tests:
 
 Completion means the implemented journey and authorization boundary pass
 these gates and merge under the repository workflow. This document alone
-does not implement the scheduler, credentials, endpoints or migrations.
+does not complete the scheduler. Only authority credentials, endpoints and
+additive Core tables currently exist; gates 2–4 remain open.

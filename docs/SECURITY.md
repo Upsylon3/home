@@ -391,17 +391,34 @@ The shared-vs-separate-origin decision, and the recovery-kit UX, are
 both settled and implemented (see the v0 status callout above) — no
 longer blocking prerequisites.
 
-## Planned scheduled delegation (not implemented)
+## Scheduled delegation authority (actions and worker not implemented)
 
 [Decision 002](decisions/002-scheduled-monitor-followup.md) defines the first
 scheduled bridge and its restricted authority: separate Monitor-read and
 Tasks-create-once capabilities, explicit owner consent, live revocation and
 role checks, expiry, bounded effects and encrypted operational credentials.
 It also records the remaining effect of a compromised running Bridge.
-This is not a current security control: no such credentials, action endpoints
-or worker ship today. Implementation must prove the decision's acceptance
-gates before scheduled work is enabled; retaining browser sessions is not a
-substitute. Existing HomeVault external-review limits remain unchanged.
+Core now implements hash-only 256-bit, audience/action-bound 30-day
+capabilities. Issuance/renewal require fresh explicit consent and a full enabled
+administrator session on private internal routes. Public gateway access to
+those routes is blocked; browser Origin/Fetch Metadata requests are refused.
+Keep direct Core ports private: headers alone cannot establish a trusted server.
+Owner listing/revocation returns metadata only. Auditing is atomic with grant
+writes and never includes tokens or hashes. Account/epoch/registry checks run
+on every capability verification, with no positive cache. Ordinary session
+routes never accept capabilities, and shared middleware sets a separate principal.
+
+Restoring an older Core database can resurrect previously revoked credentials.
+The offline maintenance procedure in `DEPLOYMENT.md` revokes restored grants
+before traffic resumes; a normal restart preserves them. It requires an explicit
+existing database path and an offline acknowledgment, which is an operator
+precondition rather than automatic offline detection.
+
+No delegated action endpoint, enrollment UI, encrypted Bridge state or worker
+ships today. The advertised daily limit must be enforced by the future Tasks
+transaction; authority metadata alone does not implement it. Remaining acceptance
+gates must pass before scheduled work is enabled; retaining browser sessions
+is not a substitute. Existing HomeVault external-review limits remain unchanged.
 
 ## Reporting a vulnerability
 

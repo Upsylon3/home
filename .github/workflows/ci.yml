@@ -206,6 +206,20 @@ jobs:
           [ -n "$token" ] || { echo "no token in response"; exit 1; }
           echo "ok  registered"
 
+          echo "--- delegation authority keeps issuance private"
+          for path in /internal/delegations /internal/delegations/example/renew; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE$path" \
+              -H "Authorization: Bearer $token" -H 'Content-Type: application/json' \
+              -d '{"integrationId":"monitor-followup-v1","consent":true}')
+            [ "$code" = "404" ] || { echo "expected private issuance 404, got $code"; exit 1; }
+          done
+          curl -fsS -H "Authorization: Bearer $token" "$BASE/api/core/delegations" \
+            | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const v=JSON.parse(s);if(!Array.isArray(v.grants)||v.grants.length)process.exit(1)})"
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/api/core/delegations/verify" \
+            -H "Authorization: Bearer $token" -H 'Content-Type: application/json' \
+            -d '{"audience":"homemonitor","action":"monitor.alerts.read"}')
+          [ "$code" = "403" ] || { echo "expected capability refusal 403, got $code"; exit 1; }
+
           echo "--- that token works on a DIFFERENT service"
           # homecloud-backend has no user database of its own. It has to
           # ask HomeCore whether this token is valid, using the shared

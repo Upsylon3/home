@@ -21,6 +21,7 @@ const appsRoutes = require("./apps");
 const permissionsRoutes = require("./permissions");
 const activityRoutes = require("./activity");
 const notificationsRoutes = require("./notifications");
+const { publicRouter: delegationRoutes } = require("./delegations");
 
 runSeed();
 
@@ -29,6 +30,7 @@ router.use(attachRequestId);
 
 // Public, unauthenticated — see health.js for why.
 router.use("/health", healthRoutes);
+router.use("/delegations", delegationRoutes);
 
 // Everything else requires a signed-in HomeCloud/HomeCore identity.
 router.use("/system", requireAuth, systemRoutes);

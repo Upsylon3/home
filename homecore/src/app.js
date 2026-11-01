@@ -90,6 +90,8 @@ app.use("/api/core", homecoreRoutes);
 // Deliberately not under /api — see internalEvents.js's header comment for
 // why this is machine-to-machine (shared-secret) rather than user-facing.
 app.use("/internal/events", internalEventsRoutes);
+// Separate owner-session authorization; not the shared-secret event protocol.
+app.use("/internal/delegations", require("./homecore/delegations").issuanceRouter);
 app.use("/internal/apps", internalAppsRoutes);
 app.use("/internal/notifications", internalNotificationsRoutes);
 

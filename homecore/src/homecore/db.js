@@ -84,6 +84,8 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_hc_sessions_token_hash ON hc_sessions(token_hash);
 `);
 
+require("./delegationStore").ensureSchema(db);
+
 // §7.1 adds display_name, updated_at, and last_login_at to the users table
 // on top of what HomeCloud already has. Nothing currently populates
 // updated_at (there's no profile-edit flow yet beyond display name), so it

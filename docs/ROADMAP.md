@@ -119,7 +119,7 @@ remain follow-ups; per-database consistency does not establish those guarantees.
    unreachable app gets a friendly 503 (a styled page for frontends, JSON for
    APIs) while an app's own error answers pass through untouched. The
    compose `depends_on` workaround is gone. Tested in a real nginx by
-   `gateway/test/gateway-smoke.sh` (53 checks, also run in CI). Home's own
+   `gateway/test/gateway-smoke.sh` (55 checks, also run in CI). Home's own
    container got the same fix, since it used to crash-loop whenever
    HomeCloud's backend was missing. Kept here,
    rather than deleted, so the numbering that other files point at stays
@@ -181,7 +181,7 @@ retained for background use (the shared five-second identity cache applies). Sch
 automation still requires the decided HomeCore-minted scoped credential and
 is not part of this release. HomeVault is never a server-side search source.
 
-## First scheduled bridge: scoped, not implemented
+## First scheduled bridge: authority implemented, actions and worker next
 
 [Decision 002](decisions/002-scheduled-monitor-followup.md) scopes critical
 HomeMonitor alerts into a consenting administrator's own HomeTasks inbox.
@@ -192,9 +192,12 @@ tasks, using separate Core-issued, audience-bound credentials. Enrollment is
 off by default; expiry, revocation, limits and storage protection are part of
 the acceptance criteria.
 
-Implement Core authority/shared verification first, then fresh incident IDs
-and transactional task receipts, then the worker/UI and complete integration
-gate. These endpoints, credentials and migrations **do not exist yet**.
+Core authority/shared verification now exists: consented, audience-bound
+30-day grants, live revocation/account checks, separate capability middleware
+and offline restore revocation. No enrollment or scheduled effects are enabled.
+Next implement fresh incident IDs and transactional task receipts, then the
+worker/UI and complete integration gate. Those action endpoints and worker
+migrations **do not exist yet**.
 HomeSync inactivity was rejected for this first bridge because current
 timestamps do not prove healthy idle check-ins or completed backup cycles.
 Other source apps and write bridges remain uncommitted.

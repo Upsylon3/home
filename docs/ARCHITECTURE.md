@@ -58,7 +58,8 @@ other Tier 1 app currently has a hard dependency on (see §4).
 
 **Database tables** (prefixed `hc_`): `hc_applications`,
 `hc_permissions`, `hc_application_permissions`, `hc_activity_events`,
-`hc_notifications`, `hc_sessions`.
+`hc_notifications`, `hc_sessions`, `hc_delegation_grants`,
+`hc_delegation_credentials`.
 
 Seven applications are registered today: `homecloud`, `homemedia`,
 `homesync`, `homenotes`, `hometasks`, `homemonitor`, `homevault` — pre-seeded by HomeCore's own
@@ -141,7 +142,8 @@ scoped service credential HomeCore mints for HomeBridge**, recognized
 for a narrow allow-list of actions — one new concept in one place,
 instead of a second trust mechanism (shared-secret `/internal/...`
 endpoints) repeated in every app. Core now implements the authority and
-separate shared verifier; action consumers and the worker are still absent.
+separate shared verifier; Monitor/Tasks implement narrow action consumers.
+The worker is still absent.
 
 The first scheduled scope is now recorded in
 [decision 002](decisions/002-scheduled-monitor-followup.md): persistent critical
@@ -149,8 +151,11 @@ Monitor alerts become the consenting administrator's personal follow-up
 tasks. Two audience-bound capabilities cover only a curated alert read and
 create-once task action. Core issues hash-only, 30-day, account-bound grants
 with live revocation and private server-to-server mint/renew routes. Browser
-session middleware remains separate. The Monitor/Tasks action APIs,
-encrypted Bridge persistence, enrollment UI and scheduler remain planned;
+session middleware remains separate. Monitor owns stable incident identity,
+evaluation freshness and notification retry intent; Tasks owns durable
+create-once receipts and transactional daily limits. Both expose only scoped
+own-resource APIs and contain no Bridge detection or alert-to-task mapping.
+Encrypted Bridge persistence, enrollment UI and scheduler remain planned;
 live search still uses only the current user session.
 
 ## 5. The gateway

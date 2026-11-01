@@ -24,8 +24,8 @@ shared activity/notifications feed. No files live here.
 
 ### Scheduled-delegation authority
 
-This foundation implements decision 002's authority milestone only. There is
-no enrollment UI, scheduler or delegated Monitor/Tasks action endpoint yet.
+Decision 002's authority and source/destination milestones are implemented.
+There is no enrollment UI, encrypted Bridge state or scheduler yet.
 Browser JWTs and opaque capabilities are separate principal types; ordinary
 browser routes reject capabilities.
 
@@ -64,8 +64,8 @@ No successful check is cached. Unknown state fails closed.
 
 The verified principal contains only `kind: "delegation"`, `subjectUserId`,
 `grantId`, `credentialId`, `integrationId`, `audience`, `action`, `expiresAt`
-and `dailyCreateLimit: 20`. This limit is authority metadata; the future Tasks
-action must enforce it transactionally. `@home/homecore-client` exports
+and `dailyCreateLimit: 20`. The Tasks action enforces this limit transactionally.
+`@home/homecore-client` exports
 `createDelegationVerifier`, `verifyDelegation` and `requireDelegation` for
 fixed route audiences/actions. The middleware sets only `req.delegation`;
 it does not populate browser `req.user` or widen `requireAuth`.
@@ -171,8 +171,9 @@ HomeCloud (in a top-level `HomeMedia` folder).
 
 ## HomeMonitor backend (`/api/homemonitor`)
 
-Server, service and backup visibility. **Administrators only**: every route
-except `health` needs a login, and a signed-in non-admin gets `403`.
+Server, service and backup visibility. Browser routes are **administrators
+only**: except `health`, they need a login and refuse signed-in non-admins
+with `403`. The separate automation route accepts only its scoped capability.
 
 | Method | Path | What it does |
 |---|---|---|
@@ -180,6 +181,40 @@ except `health` needs a login, and a signed-in non-admin gets `403`.
 | GET | `/api/homemonitor/status` | The latest reading: `system` (CPU %, memory, load, uptime, network), `disks`, `services` (up / degraded / down / unknown, with response time), `backups`, and the active `alerts` |
 | GET | `/api/homemonitor/history?hours=24` | Chart samples (CPU, memory, fullest disk, network), oldest first; 1 to 48 hours |
 | GET | `/api/homemonitor/disk-growth?days=90` | Daily disk usage per disk, plus a rough `forecast` (`daysUntilFull`, `bytesPerDay`) or `null` when there isn't enough history (about 3 days) or the disk isn't growing |
+| GET | `/api/homemonitor/automation/alerts` | `homemonitor` / `monitor.alerts.read` capability only; curated incident projection |
+
+The automation response is `{instanceId, evaluatedAt, conditions}`. Each
+condition contains only `key`, `incidentId` (UUID or null before first opening),
+`state` (`active`, `pending`, `resolved`, `unknown`), `severity` (`warning` or
+`critical`), `title` (at most 200 characters, controls replaced with spaces)
+and `openedAt` (ISO time or null). No diagnostics, paths, status snapshots or
+notification bodies are included. At most 256 conditions and 256 characters
+per key are returned; oversized projections fail with `503`, never truncate
+away an incident. Query parameters are refused with `400`.
+
+Instance and incident UUIDs survive restarts and severity changes. Unknown
+readings, unreadable disks and missing targets retain open identity and return
+`unknown`; only positive clear resolves it. Up/degraded services, healthy
+backups and disks below the hysteresis margin supply positive clear. A later
+opening gets a new incident ID. Resolved conditions retain the previous ID
+while still observed. Legacy open alerts receive an ID during migration but
+remain unknown until evaluated.
+
+Alert state, evaluation timestamp and notification intent commit together.
+Delivery failure cannot make a fresh feed carry old alert state. Notifications
+retry from a durable ordered queue (100 per batch, capacity 1000); partial
+delivery/crash before acknowledgment can duplicate notifications, as before.
+Queue saturation rolls back evaluation, preserving the older freshness time.
+`ALERTS_ENABLED=false` suppresses new notification intent and delivery; any
+previously queued failure remains pending until delivery is enabled again.
+Existing browser status/history response fields remain compatible.
+
+No successful evaluation yet returns `503`. Otherwise the feed returns its
+actual committed evaluation time, including when stale; consumers must enforce
+the decision's two-minute age, 30-second future tolerance and strictly newer
+observation checks. Reading the feed does not trigger collection. Responses
+are `no-store`, and every request verifies authority live in Core. Browser JWTs
+and wrong audiences return `403`; capabilities cannot read broad browser APIs.
 
 Settings are environment variables, all optional (see `apps/homemonitor-backend/src/config.js`):
 `MONITOR_INTERVAL_SECONDS` (30), `DISK_PATHS` (`label=path,...`), `BACKUP_DIR`,
@@ -215,7 +250,7 @@ work independently of HomeBridge. HomeNotes links use `/notes/notes/<id>`.
 
 ## HomeTasks backend (`/api/hometasks`)
 
-Tasks and projects. Every route except `health` needs a login, and every
+Tasks and projects. Browser routes except `health` need a login, and every
 query is scoped to the person asking, so nobody can see or change anyone
 else's tasks. Dates are plain `YYYY-MM-DD` strings. The browser sends its own
 date as `?today=` for the date filters, because the server cannot know a
@@ -236,6 +271,37 @@ person's time zone.
 | POST | `/api/hometasks/tasks/:id/complete?today=` | Tick off (safe to repeat). For a repeating task the task stays in Done and the response also carries `next`, the new copy with the following due date, always after `today`. Ticking twice never creates two copies |
 | POST | `/api/hometasks/tasks/:id/reopen` | Un-tick (safe to repeat). Removes the still-open next copy it created; answers `409` if that copy was already completed |
 | DELETE | `/api/hometasks/tasks/:id` | Delete permanently (there is no Trash for tasks) |
+| POST | `/api/hometasks/automation/tasks` | `hometasks` / `tasks.automation.create-once` capability only; scoped create-once inbox task |
+
+The automation body must contain exactly `{title, notes, idempotencyKey}`;
+no query parameters. Title is trimmed, nonempty plain text of at most 200
+characters without control characters. Notes are required text of at most
+5000 characters (tabs/newlines allowed). The key is a lowercase 64-character
+SHA-256 hex digest. The future worker derives it from integration version,
+subject, pinned Monitor instance and incident, excluding grant ID and payload.
+The action derives subject and integration namespace only from live Core
+verification, never the request. It creates an open, non-repeating inbox task
+with no date, project or priority escalation.
+
+New creation returns `201` with `{receipt: {id, taskId, taskUrl, state: "active"}}`.
+Identical replay returns `200` and the original receipt without changing the
+task, even after manual edits/completion or grant renewal. Changed canonical
+payload for the same subject/namespace/key returns `409`. Canonical payload
+is the trimmed title and exact notes; only its SHA-256 hash is retained in the
+receipt. Receipt records never retain task content. After manual deletion,
+replay returns `200`, `state: "retired"`, the original task ID and `taskUrl: null`;
+it never recreates the task. Receipts have no cleanup TTL.
+
+Task and receipt insert atomically under a SQLite write transaction. At most
+20 new creations per subject/integration/UTC day are accepted; deleted tasks
+still count and successful replays do not consume capacity. Limit exhaustion
+returns `429` with `Retry-After` seconds until UTC midnight. Renewal and
+re-enrollment cannot reset receipts or limits. Validation returns `400`;
+browser sessions, wrong audiences, expired/revoked grants or disabled accounts
+return `403`. Every replay also verifies live authority. Core outage returns
+retryable `502`/`503`/`504` without writing. Replies are `no-store` and expose
+only receipt metadata. The capability cannot list/read/edit/complete/delete
+tasks or manage projects. Tier 1 implements no scheduling or alert mapping.
 
 ## HomeNotes backend (`/api/homenotes`)
 

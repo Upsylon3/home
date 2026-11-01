@@ -181,7 +181,7 @@ retained for background use (the shared five-second identity cache applies). Sch
 automation still requires the decided HomeCore-minted scoped credential and
 is not part of this release. HomeVault is never a server-side search source.
 
-## First scheduled bridge: authority implemented, actions and worker next
+## First scheduled bridge: authority and actions implemented, worker next
 
 [Decision 002](decisions/002-scheduled-monitor-followup.md) scopes critical
 HomeMonitor alerts into a consenting administrator's own HomeTasks inbox.
@@ -194,10 +194,14 @@ the acceptance criteria.
 
 Core authority/shared verification now exists: consented, audience-bound
 30-day grants, live revocation/account checks, separate capability middleware
-and offline restore revocation. No enrollment or scheduled effects are enabled.
-Next implement fresh incident IDs and transactional task receipts, then the
-worker/UI and complete integration gate. Those action endpoints and worker
-migrations **do not exist yet**.
+and offline restore revocation. Monitor now persists instance/incident IDs and
+transactional evaluation freshness, preserving unknown states and notification
+retries. Tasks now offers create-once receipts with atomic daily limits,
+deletion retirement and concurrent/restart proof. Both action APIs use separate
+capabilities and work independently of Bridge installation.
+Next implement encrypted worker state and enrollment/disable UI, then the
+complete integration gate. No enrollment or scheduled effects are enabled;
+worker migrations **do not exist yet**.
 HomeSync inactivity was rejected for this first bridge because current
 timestamps do not prove healthy idle check-ins or completed backup cycles.
 Other source apps and write bridges remain uncommitted.

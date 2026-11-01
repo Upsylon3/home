@@ -5,7 +5,7 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 
-const { requireAuth, HOMECORE_URL } = require("@home/homecore-client");
+const { requireAuth, requireDelegation, HOMECORE_URL } = require("@home/homecore-client");
 const { asyncHandler } = require("./asyncHandler");
 const { forecastFull } = require("./forecast");
 
@@ -36,6 +36,18 @@ function createApp({ monitor, history, now = Date.now }) {
   app.get("/api/homemonitor/health", (req, res) => {
     res.json({ status: "ok", homecoreUrl: HOMECORE_URL });
   });
+
+  app.get("/api/homemonitor/automation/alerts",
+    (req, res, next) => { res.set("Cache-Control", "no-store"); next(); },
+    requireDelegation({ audience: "homemonitor", action: "monitor.alerts.read" }),
+    (req, res) => {
+      try {
+        if (Object.keys(req.query).length) return res.status(400).json({ error: "Alert projection accepts no query parameters." });
+        const feed = history.loadAlertFeed();
+        if (!feed.evaluatedAt) return res.status(503).json({ error: "No alert evaluation is available yet." });
+        res.json(feed);
+      } catch { res.status(503).json({ error: "Alert projection is unavailable." }); }
+    });
 
   const guarded = express.Router();
   guarded.use(requireAuth, requireAdmin);

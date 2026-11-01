@@ -245,9 +245,35 @@ homecore/scripts/revoke-restored-delegations.js --database <absolute-existing-Co
 --confirm-offline-restore`. No default database path or `.env` is loaded, and a
 missing file is never created. Ordinary restarts must not run this maintenance.
 
+**Monitor restore exception:** before reopening a restored
+`home_homemonitor_data` volume, keep services/traffic offline and run:
+
+```bash
+docker compose run --rm --no-deps --entrypoint node homemonitor-backend \
+  scripts/reset-restored-identity.js \
+  --database /data/homemonitor.db --confirm-offline-restore
+```
+
+Require successful exit and `{"reset":true}` before `docker compose up`.
+The command rotates the pinned instance UUID and clears evaluation freshness,
+preserving alert incidents, history and queued notifications. A future worker
+must pause and require owner confirmation for this changed source identity;
+otherwise an old snapshot could silently regenerate incident identities.
+For a pre-feature snapshot, startup creates the first identity. The local
+equivalent uses `node apps/homemonitor-backend/scripts/reset-restored-identity.js`
+with the same explicit absolute database path and offline flag. It never loads
+`.env` or creates a missing database. The flag does not detect/stop traffic.
+Do not run it on normal restart.
+
+Tasks backups now include durable automation receipts and daily counts. Restore
+them together with the tasks database. An older Tasks snapshot can lose newer
+receipts; cross-service exactly-once history is not guaranteed after such a
+restore. Keep this limitation visible when planning future worker recovery.
+
 Substitute the volume name for whichever app you're restoring
 (`home_homecore_data`, `home_homemedia_data`, `home_homenotes_data`,
-`home_homesync_data`, `home_homevault_data` — the `home_` prefix comes
+`home_homesync_data`, `home_homevault_data`, `home_hometasks_data`,
+`home_homemonitor_data` — the `home_` prefix comes
 from `docker-compose.yml`'s pinned `name: home`). Test this
 occasionally — an untested backup isn't one you can count on. For
 HomeVault specifically: a restored backup is exactly as readable as it
@@ -284,6 +310,15 @@ or sessions. Before downgrading Core, revoke grants while the new authority
 is available (or use the offline maintenance command with all traffic stopped).
 Leave additive tables in place; do not delete audit records or drop tables as
 rollback cleanup. No worker is enabled by this foundation update.
+
+Monitor adds incident/state columns, a source-identity row and a notification
+outbox. Existing open alerts receive stable IDs and remain unknown until the
+next successful evaluation. Tasks adds a receipt table/index without changing
+ordinary task rows. Keep these additive records on downgrade. Before using
+an older app version that lacks capability actions, revoke grants and pause
+consumers; normal browser operations remain available. An older Monitor cannot
+maintain incident freshness or the outbox, so do not run a scheduled consumer
+against it. This update still enables no scheduler or enrollment UI.
 
 HomeVault's Trash upgrade adds only a nullable `deleted_at` column. Existing
 items stay active and their ciphertext, IVs and key envelopes are unchanged.

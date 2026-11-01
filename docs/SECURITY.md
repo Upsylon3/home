@@ -391,7 +391,7 @@ The shared-vs-separate-origin decision, and the recovery-kit UX, are
 both settled and implemented (see the v0 status callout above) — no
 longer blocking prerequisites.
 
-## Scheduled delegation authority (actions and worker not implemented)
+## Scheduled delegation authority and actions (worker not implemented)
 
 [Decision 002](decisions/002-scheduled-monitor-followup.md) defines the first
 scheduled bridge and its restricted authority: separate Monitor-read and
@@ -414,11 +414,26 @@ before traffic resumes; a normal restart preserves them. It requires an explicit
 existing database path and an offline acknowledgment, which is an operator
 precondition rather than automatic offline detection.
 
-No delegated action endpoint, enrollment UI, encrypted Bridge state or worker
-ships today. The advertised daily limit must be enforced by the future Tasks
-transaction; authority metadata alone does not implement it. Remaining acceptance
-gates must pass before scheduled work is enabled; retaining browser sessions
-is not a substitute. Existing HomeVault external-review limits remain unchanged.
+Monitor's action returns only bounded incident/condition metadata and the
+committed evaluation time. Unknown/missing readings cannot resolve an open
+incident. Notification failure is independent of state freshness through an
+atomic durable outbox. Offline Monitor restore maintenance rotates the pinned
+instance and clears freshness before traffic resumes, preventing the future
+worker from silently accepting rolled-back incident history as the same source.
+
+Tasks' action accepts only bounded title/notes and an idempotency key. Subject
+and integration come from Core. Atomic receipts prevent duplicate creation
+across concurrent requests, response loss, renewal and manual deletion. The
+20-new-tasks/subject/integration/UTC-day cap counts retained receipts, including
+deleted tasks. Receipts retain payload hashes for conflict detection but no
+task content; hashes still permit guesses about known candidate payloads.
+Restoring Tasks to an older snapshot can roll back receipts and cannot promise
+cross-service exactly-once history. Never prune receipts to reclaim storage
+without a new explicit duplicate-prevention design.
+
+No enrollment UI, encrypted Bridge state or worker ships today. Remaining
+acceptance gates must pass before scheduled work is enabled; retaining browser
+sessions is not a substitute. Existing HomeVault external-review limits remain unchanged.
 
 ## Reporting a vulnerability
 

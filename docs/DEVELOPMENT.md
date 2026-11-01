@@ -253,9 +253,9 @@ cd apps/homecloud-backend && npm test      # 44 tests
 cd apps/homemedia-backend && npm test      # 28 tests
 cd apps/homenotes-backend && npm test      # 24 tests
 cd apps/homesync-backend && npm test       # 20 tests
-cd apps/hometasks-backend && npm test      # 54 tests
+cd apps/hometasks-backend && npm test      # 69 tests
 cd apps/hometasks && npm test              # 7 tests — dates.js and repeat.js only, see below
-cd apps/homemonitor-backend && npm test    # 60 tests
+cd apps/homemonitor-backend && npm test    # 71 tests
 cd apps/homemonitor && npm test            # 13 tests — format.js and chart.js only, see below
 cd apps/homevault-backend && npm test      # 34 tests — includes Trash ownership/lifecycle and legacy schema upgrade
 cd apps/homevault && npm test              # 20 tests — crypto.js only, see below

@@ -220,6 +220,9 @@ jobs:
             -d '{"audience":"homemonitor","action":"monitor.alerts.read"}')
           [ "$code" = "403" ] || { echo "expected capability refusal 403, got $code"; exit 1; }
 
+          printf '{"ownerToken":"%s"}' "$token" | docker compose exec -T homecore \
+            node test-support/delegated-actions-smoke.cjs
+
           echo "--- that token works on a DIFFERENT service"
           # homecloud-backend has no user database of its own. It has to
           # ask HomeCore whether this token is valid, using the shared

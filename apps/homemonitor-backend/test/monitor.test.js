@@ -19,6 +19,8 @@ after(() => {
 
 beforeEach(() => {
   history.saveAlertState({});
+  db.prepare("DELETE FROM notification_outbox").run();
+  db.prepare("UPDATE monitor_identity SET evaluated_at = NULL").run();
   db.prepare("DELETE FROM samples").run();
 });
 
@@ -93,13 +95,75 @@ test("if HomeCore can't be told, nothing is lost: the alert is retried on the ne
   await monitor.tick(); // failing reading #1
   await monitor.tick(); // reading #2 opens the alert, but sending fails
   assert.equal(delivered.length, 0);
-  assert.deepEqual((await monitor.getStatus()).alerts, []); // state not saved yet
+  assert.equal((await monitor.getStatus()).alerts.length, 1); // evaluation commits before notification delivery
+  const incidentId = history.loadAlertFeed().conditions.find(c => c.key === "service:homecloud").incidentId;
+  assert.ok(incidentId);
+  assert.equal(history.pendingNotifications().length, 1);
   assert.equal((await monitor.getStatus()).notifyError, "HomeCore unreachable");
 
   await monitor.tick(); // worked out again and sent successfully
   assert.equal(delivered.length, 1);
   assert.equal((await monitor.getStatus()).alerts.length, 1);
   assert.equal((await monitor.getStatus()).notifyError, null);
+  assert.equal(history.pendingNotifications().length, 0);
+  assert.equal(history.loadAlertFeed().conditions.find(c => c.key === "service:homecloud").incidentId, incidentId);
+});
+
+test("incident identity survives severity, unknown readings and monitor restart, changing only after positive clear", async () => {
+  const { machine, monitor } = build();
+  machine.disk = 96; await monitor.tick(); await monitor.tick();
+  const first = history.loadAlertFeed();
+  const incident = first.conditions.find(c => c.key === "disk:data");
+  assert.equal(incident.state, "active"); assert.equal(incident.severity, "critical");
+  machine.disk = 85; machine.at += 1000; await monitor.tick();
+  assert.equal(history.loadAlertFeed().conditions.find(c => c.key === incident.key).incidentId, incident.incidentId);
+  // A new orchestrator reads durable identity/state, not process-local memory.
+  const restarted = createMonitor({ config: loadConfig({}), collector: { collect: async () => ({
+    at: new Date(machine.at + 1000).toISOString(), system: { cpuPercent: 0, memory: { percent: 0 } },
+    disks: [{ label: "data", error: "EIO" }], services: [], backups: { status: "unknown" }
+  }) }, history, notifier: async () => {}, now: () => machine.at + 1000 });
+  await restarted.tick();
+  const unknown = history.loadAlertFeed().conditions.find(c => c.key === incident.key);
+  assert.equal(unknown.state, "unknown"); assert.equal(unknown.incidentId, incident.incidentId);
+  assert.equal(history.loadAlertFeed().instanceId, first.instanceId);
+  machine.disk = 96; await monitor.tick();
+  assert.equal(history.loadAlertFeed().conditions.find(c => c.key === incident.key).incidentId, incident.incidentId);
+  machine.disk = 50; await monitor.tick();
+  assert.equal(history.loadAlertFeed().conditions.find(c => c.key === incident.key).state, "resolved");
+  machine.disk = 96; await monitor.tick(); await monitor.tick();
+  assert.notEqual(history.loadAlertFeed().conditions.find(c => c.key === incident.key).incidentId, incident.incidentId);
+});
+
+test("notification outage followed by resolution retains ordered durable retry intent across restart", async () => {
+  const { machine, monitor } = build({ notifier: async () => { throw new Error("offline fixture"); } });
+  machine.service = "down"; await monitor.tick(); await monitor.tick();
+  const first = history.loadAlertFeed();
+  machine.service = "up"; machine.at += 300000; await monitor.tick();
+  assert.deepEqual(history.pendingNotifications().map(n => n.payload.kind), ["opened", "resolved"]);
+  assert.equal(history.loadAlertFeed().evaluatedAt, new Date(machine.at).toISOString());
+  assert.equal(history.loadAlertFeed().conditions.find(c => c.key === "service:homecloud").state, "resolved");
+  const sent = [];
+  const restart = createMonitor({ config: loadConfig({}), collector: pretendMachine().collector,
+    history, notifier: async items => sent.push(...items), now: () => BASE });
+  await restart.tick();
+  assert.deepEqual(sent.map(n => n.kind), ["opened", "resolved"]);
+  assert.equal(history.pendingNotifications().length, 0);
+  assert.equal(history.loadAlertFeed().instanceId, first.instanceId);
+});
+
+test("evaluation failure rolls back state, freshness and notification intent together", async () => {
+  const { machine, monitor } = build();
+  await monitor.tick(); machine.service = "down"; await monitor.tick();
+  const before = history.loadAlertFeed();
+  const state = history.loadAlertState();
+  db.exec("CREATE TEMP TRIGGER refuse_notification BEFORE INSERT ON notification_outbox BEGIN SELECT RAISE(ABORT, 'fixture failure'); END");
+  try {
+    machine.at += 300000;
+    await assert.rejects(monitor.tick());
+    assert.deepEqual(history.loadAlertState(), state);
+    assert.deepEqual(history.loadAlertFeed(), before);
+    assert.equal(history.pendingNotifications().length, 0);
+  } finally { db.exec("DROP TRIGGER refuse_notification"); }
 });
 
 test("with alerts switched off, nothing is sent but the alert still shows on screen", async () => {
@@ -111,6 +175,24 @@ test("with alerts switched off, nothing is sent but the alert still shows on scr
   const status = await monitor.getStatus();
   assert.equal(status.alertsEnabled, false);
   assert.equal(status.alerts.length, 1);
+});
+
+test("a full notification queue fails evaluation closed but still drains and recovers next tick", async () => {
+  const { machine, monitor, sent } = build();
+  machine.service = "down"; await monitor.tick();
+  const before = history.loadAlertFeed();
+  const insert = db.prepare("INSERT INTO notification_outbox (payload_json) VALUES (?)");
+  db.transaction(() => {
+    for (let i = 0; i < 1000; i++) insert.run(JSON.stringify({ key: `fixture:${i}`, kind: "opened", severity: "warning", title: "Queued", body: "" }));
+  })();
+  machine.at += 1000;
+  await assert.rejects(monitor.tick(), /queue is full/);
+  assert.deepEqual(history.loadAlertFeed(), before);
+  assert.equal(sent.length, 100);
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM notification_outbox").get().n, 900);
+  await monitor.tick();
+  assert.equal(history.loadAlertFeed().conditions.find(c => c.key === "service:homecloud").state, "active");
+  assert.equal(history.loadAlertFeed().evaluatedAt, new Date(machine.at).toISOString());
 });
 
 test("history is saved every few minutes, not on every tick", async () => {

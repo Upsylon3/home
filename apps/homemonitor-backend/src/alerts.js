@@ -1,6 +1,6 @@
 // WHEN do we raise an alert, and when do we say it's resolved?
 //
-// Two pure functions (no database, no network), so every rule is testable:
+// No database or network here; incident IDs are random when an alert opens:
 //   buildConditions(snapshot, config)  -> the things we're watching, each
 //                                         marked failing or fine right now
 //   evaluateAlerts(conditions, previous, nowIso)
@@ -14,6 +14,7 @@
 //     reading in between. Disk alerts also have a margin: an alert at 80%
 //     only resolves below 77%, so a disk hovering around 80% doesn't flap.
 const { formatBytes } = require("./format");
+const { randomUUID } = require("node:crypto");
 
 const DISK_RESOLVE_MARGIN = 3; // percentage points below the threshold
 
@@ -41,10 +42,13 @@ function buildConditions(snapshot, config) {
       continue;
     }
     const percent = disk.usedPercent;
+    conditions.push({ key: `disk-read:${disk.label}`, failing: false, clear: true, minChecks: 2,
+      severity: "warning", title: `Can't read disk "${disk.label}"`, body: "" });
     conditions.push({
       key: `disk:${disk.label}`,
       failing: percent >= config.diskAlertPercent,
       clear: percent < config.diskAlertPercent - DISK_RESOLVE_MARGIN,
+      unknown: !Number.isFinite(percent),
       minChecks: 2,
       severity: percent >= 95 ? "critical" : "warning",
       title: `Disk "${disk.label}" is ${Math.round(percent)}% full`,
@@ -57,7 +61,8 @@ function buildConditions(snapshot, config) {
     conditions.push({
       key: `service:${service.slug}`,
       failing: down,
-      clear: !down,
+      clear: service.status === "up" || service.status === "degraded",
+      unknown: !["up", "degraded", "down"].includes(service.status),
       minChecks: config.serviceDownChecks,
       severity: "critical",
       title: `${service.name} is not responding`,
@@ -70,7 +75,8 @@ function buildConditions(snapshot, config) {
   conditions.push({
     key: "backup",
     failing: backupBad,
-    clear: !backupBad,
+    clear: backups.status === "ok",
+    unknown: !["ok", "stale", "none"].includes(backups.status),
     minChecks: config.backupAlertChecks,
     severity: "warning",
     title: backups.status === "none" ? "No backups found" : "Backups are out of date",
@@ -80,7 +86,7 @@ function buildConditions(snapshot, config) {
   return conditions;
 }
 
-// previous: { [key]: { active, checks, since, title, body, severity } }
+// previous: { [key]: { active, checks, since, incidentId, state, title, body, severity } }
 // Returns { next, notify }: the new state to save, and notifications to send.
 function evaluateAlerts(conditions, previous, nowIso) {
   const next = {};
@@ -89,10 +95,17 @@ function evaluateAlerts(conditions, previous, nowIso) {
   for (const condition of conditions) {
     const before = previous[condition.key] || { active: false, checks: 0, since: null };
     const shown = { title: condition.title, body: condition.body, severity: condition.severity };
+    const identity = { incidentId: before.incidentId || null, since: before.since };
+
+    if (condition.unknown) {
+      next[condition.key] = { ...before, ...identity, checks: before.active ? before.checks : 0, ...shown, state: "unknown" };
+      continue;
+    }
 
     if (before.active) {
       if (condition.clear) {
-        // It was an alert and is now definitely fine: say so, and forget it.
+        // Positive clear ends the incident. Keep its identity for the feed
+        // until this condition opens a genuinely new incident.
         notify.push({
           key: condition.key,
           kind: "resolved",
@@ -100,24 +113,31 @@ function evaluateAlerts(conditions, previous, nowIso) {
           title: `Resolved: ${before.title}`,
           body: "Back to normal."
         });
+        next[condition.key] = { active: false, checks: 0, ...identity, ...shown, state: "resolved" };
       } else {
         // Still active (or in the hysteresis zone): keep it, with fresh wording.
-        next[condition.key] = { active: true, checks: before.checks, since: before.since, ...shown };
+        next[condition.key] = { active: true, checks: before.checks, ...identity, ...shown, state: "active" };
       }
     } else if (condition.failing) {
       const checks = before.checks + 1;
       if (checks >= condition.minChecks) {
-        next[condition.key] = { active: true, checks, since: nowIso, ...shown };
+        next[condition.key] = { active: true, checks, since: nowIso, incidentId: randomUUID(), ...shown, state: "active" };
         notify.push({ key: condition.key, kind: "opened", ...shown });
       } else {
         // Failing, but not for long enough yet: count it, don't alert.
-        next[condition.key] = { active: false, checks, since: null, ...shown };
+        next[condition.key] = { active: false, checks, since: null, incidentId: null, ...shown, state: "pending" };
       }
     }
-    // else: fine and wasn't an alert, so there is nothing to remember.
+    else {
+      next[condition.key] = { active: false, checks: 0, ...identity, ...shown,
+        state: condition.clear ? "resolved" : "pending" };
+    }
   }
-  // Anything in `previous` with no matching condition now (an app removed from
-  // the registry, a disk no longer configured) is simply dropped.
+  // Missing evidence never proves recovery. Preserve open incidents through
+  // registry outages, removed targets and unreadable disks, with unknown state.
+  for (const [key, before] of Object.entries(previous)) {
+    if (!Object.hasOwn(next, key) && before.active) next[key] = { ...before, state: "unknown" };
+  }
 
   return { next, notify };
 }

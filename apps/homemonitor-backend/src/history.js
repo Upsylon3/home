@@ -71,7 +71,9 @@ function loadAlertState() {
       since: row.since,
       severity: row.severity,
       title: row.title,
-      body: row.body
+      body: row.body,
+      incidentId: row.incident_id,
+      state: row.state
     };
   }
   return state;
@@ -80,14 +82,47 @@ function loadAlertState() {
 // Replace the whole saved state with `state`, in one transaction.
 function saveAlertState(state) {
   const insert = db.prepare(
-    "INSERT INTO alert_state (key, active, checks, since, severity, title, body) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    "INSERT INTO alert_state (key, active, checks, since, severity, title, body, incident_id, state) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
   );
   db.transaction(() => {
     db.prepare("DELETE FROM alert_state").run();
     for (const [key, s] of Object.entries(state)) {
-      insert.run(key, s.active ? 1 : 0, s.checks, s.since, s.severity, s.title, s.body || "");
+      insert.run(key, s.active ? 1 : 0, s.checks, s.since, s.severity, s.title, s.body || "", s.incidentId || null, s.state || "unknown");
     }
   })();
 }
 
-module.exports = { recordSample, recordDiskDaily, prune, getSamples, getDiskGrowth, loadAlertState, saveAlertState };
+// State, freshness and notification intent commit together, before delivery.
+function commitEvaluation(state, evaluatedAt, notifications) {
+  if (!Number.isFinite(Date.parse(evaluatedAt))) throw new Error("Invalid alert evaluation time.");
+  db.transaction(() => {
+    const pending = db.prepare("SELECT COUNT(*) AS n FROM notification_outbox").get().n;
+    if (pending + notifications.length > 1000) throw new Error("Notification queue is full.");
+    saveAlertState(state);
+    db.prepare("UPDATE monitor_identity SET evaluated_at = ? WHERE id = 1").run(evaluatedAt);
+    const insert = db.prepare("INSERT INTO notification_outbox (payload_json) VALUES (?)");
+    for (const item of notifications) insert.run(JSON.stringify(item));
+  }).immediate();
+}
+function pendingNotifications() {
+  return db.prepare("SELECT id, payload_json FROM notification_outbox ORDER BY id LIMIT 100").all()
+    .map(row => ({ id: row.id, payload: JSON.parse(row.payload_json) }));
+}
+function acknowledgeNotifications(ids) {
+  const remove = db.prepare("DELETE FROM notification_outbox WHERE id = ?");
+  db.transaction(() => { for (const id of ids) remove.run(id); })();
+}
+function loadAlertFeed() {
+  return db.transaction(() => {
+    const identity = db.prepare("SELECT instance_id, evaluated_at FROM monitor_identity WHERE id = 1").get();
+    const rows = db.prepare("SELECT key, incident_id, state, severity, title, since FROM alert_state ORDER BY key LIMIT 257").all();
+    // Bound the projection without silently truncating away an incident.
+    if (rows.length > 256 || rows.some(row => row.key.length > 256)) throw new Error("Alert projection is too large.");
+    return { instanceId: identity.instance_id, evaluatedAt: identity.evaluated_at,
+      conditions: rows.map(row => ({ key: row.key, incidentId: row.incident_id, state: row.state,
+        severity: row.severity, title: row.title.replace(/[\x00-\x1f\x7f]/g, " ").slice(0, 200), openedAt: row.since })) };
+  })();
+}
+
+module.exports = { recordSample, recordDiskDaily, prune, getSamples, getDiskGrowth, loadAlertState, saveAlertState,
+  commitEvaluation, pendingNotifications, acknowledgeNotifications, loadAlertFeed };

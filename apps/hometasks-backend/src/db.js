@@ -99,4 +99,6 @@ addColumnIfMissing("tasks", "repeat_rule", "TEXT NOT NULL DEFAULT 'none'");
 addColumnIfMissing("tasks", "repeat_anchor", "TEXT");
 addColumnIfMissing("tasks", "spawned_task_id", "INTEGER");
 
+require("./automationStore").ensureAutomationSchema(db);
+
 module.exports = { db, DATA_DIR };

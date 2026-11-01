@@ -11,6 +11,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const http = require("http");
+const sharp = require("sharp");
 
 const homecoreTestApp = require("../../../../homecore/test/helpers/app");
 
@@ -67,9 +68,16 @@ async function stopTestApp() {
   } catch {
     // already closed, fine
   }
-  fs.rmSync(started.dataDir, { recursive: true, force: true });
-  await homecoreTestApp.stopTestApp();
-  started = null;
+  try {
+    // libvips may cache an uploaded GIF's file handle after thumbnailing.
+    // Windows cannot delete that file until the test process releases it.
+    sharp.cache(false);
+    fs.rmSync(started.dataDir, { recursive: true, force: true });
+  } finally {
+    started = null;
+    // A cleanup error must fail the test without leaking HomeCore's listener.
+    await homecoreTestApp.stopTestApp();
+  }
 }
 
 module.exports = { startTestApp, stopTestApp };

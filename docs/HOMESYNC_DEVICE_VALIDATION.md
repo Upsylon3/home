@@ -3,11 +3,13 @@
 Roadmap item 2 needs an actual Android runtime, not just a successful compile.
 The first reproducible target is a fresh API 34 Google APIs x86_64 Pixel 6
 emulator on a disposable GitHub Ubuntu runner. The instrumented journeys are in
-`BackupJourneyTest` and `PermissionDeniedJourneyTest`. The first
+`BackupJourneyTest`, `PermissionDeniedJourneyTest` and
+`SelectedPhotosJourneyTest`. The first
 UI/WorkManager/upload journey was exercised on
 2026-11-02; final workflow logs and evidence are linked from
 [PR #79](https://github.com/Upsylon3/home/pull/79). A successful Android workflow
-requires both instrumented tests and independent backend verification.
+requires the full-access journey, both permission-recovery invocations and
+the selected-photo journey, with independent backend verification.
 The denial/full-grant recovery evidence is linked from
 [PR #80](https://github.com/Upsylon3/home/pull/80).
 
@@ -47,13 +49,75 @@ produce an exact-byte/SHA-256 verified backup.
 
 The app rereads OS grants on resume, after permission responses and before
 manual/worker execution. Android 14 selected-only access remains usable with a
-persistent limited-coverage warning; its policy has JVM coverage, but the
-selected-photo picker itself is not exercised by this journey. Android app
-settings provides recovery when Android stops showing permission prompts.
+persistent limited-coverage warning; the selected-photo journey below exercises
+the real picker and restricted image access. Android app
+settings provides recovery when Android stops showing permission prompts;
+the separate permanent-denial invocation exercises that path.
 Disabling a blocked category allows other enabled categories to proceed.
 Permission failures during scanning/opening are terminal worker failures;
 permission revocation can also cause Android process termination, which this
 test does not establish recovery from.
+
+## Permanent denial and Android Settings recovery
+
+[PR #82](https://github.com/Upsylon3/home/pull/82) adds a separate fresh install
+and a third temporary account. `PermissionDeniedJourneyTest` runs again with
+`permissionRecovery=settings`, retaining the original one-denial prompt recovery.
+It denies the actual media dialogs twice, verifies rationale is no longer
+available, then requests again and checks that no denial dialog appears and
+backup remains disabled. Both the file and registered-device counts remain zero.
+
+The test taps HomeSync's Android app settings control and uses UI Automator to
+navigate Permissions > Photos and videos > Allow all in the actual system UI.
+It verifies the OS grant, navigates back to HomeSync, and requires the warning
+to disappear and Back Up Now to become enabled through the existing resume
+refresh. A real manual worker must then upload the exact synthetic PNG, checked
+independently at `/__fixture__/settings-verify`. No shell permission grant or
+permission-flag mutation substitutes for these user actions. CI saves the
+suppressed-request, Android Settings and recovered-app screenshots plus raw
+instrumentation output; `OK (1 test)` and backend verification are both required.
+
+This is API-34 emulator evidence for repeated-denial/settings recovery, not an
+OS/vendor matrix or recovery from process termination during permission revocation.
+
+## Selected-photo picker and exclusion boundary
+
+The fourth invocation runs `SelectedPhotosJourneyTest` after a fresh install
+without grants, using a fourth temporary account. Before installation,
+`scripts/android-seed-picker-media.py` seeds three distinct synthetic PNGs through
+the emulator shell and MediaScanner broadcast. It requires a disposable GitHub
+emulator, records distinct MediaStore IDs and owner_package_name values outside
+HomeSync, and verifies deterministic indexed file modification times. HomeSync never creates
+these photos: app-owned photos would remain readable independently of the grant
+and could not prove this boundary.
+
+UI Automator chooses Select photos and videos in the actual permission dialog,
+requires all three photo thumbnails, selects the newer brown image and confirms the
+picker. Full image/video grants must remain denied while
+READ_MEDIA_VISUAL_USER_SELECTED is granted. The real MediaScanner must return
+only the selected filename; directly opening the known unselected image URI must
+fail or return no stream. Enabling Photos must retain the limited-coverage notice
+while allowing Back Up Now. A charging-constrained manual worker and repeat run
+must store exactly the selected PNG with its SHA-256 and no duplicate or
+unselected upload. `/__fixture__/picker-verify` checks the real backend separately.
+
+After the original one-photo byte/hash verification, the test taps Review media
+access, reopens the actual system picker and adds the green photo while leaving
+the blue photo unselected. Full image/video grants remain denied. The scanner
+must now expose exactly brown and green, and the blue URI must remain unreadable.
+The limited-coverage notice and enabled manual-backup control persist. Backup
+must upload the newly accessible photo, retain the original, and deduplicate a
+repeat run. `/__fixture__/picker-reselection-verify` independently checks exactly
+the two expected byte sequences and hashes, two sync rows and one device. The
+original `/__fixture__/picker-verify` is required before expansion, preserving the
+one-photo proof. Selection changes alone do not trigger an upload in this test.
+
+CI retains initial and expanded picker/app screenshots, raw instrumentation/logcat, and shell seed
+ownership/ID evidence. The foreign seed files are confined to the disposable
+emulator and are removed when its AVD is destroyed. This covers an initial
+selected-image grant, user-initiated expansion and immediate manual backup, not
+selected videos, selection removal/replacement, grant expiration, process death
+or a device/vendor matrix.
 
 ## Isolation and reproduction
 
@@ -94,6 +158,12 @@ shell-owned temporary path before the emulator is destroyed (app teardown can
 remove app-owned files). Never point this protocol at a
 personal device, AVD or real HOME deployment.
 
+The disposable emulator has also exhibited a Pixel Launcher ANR covering a
+permission window. The test records that exact launcher dialog in a screenshot
+and diagnostic log, closes it, and still requires every HomeSync/system/backend
+assertion. This handling is restricted to the exact Pixel Launcher error;
+HomeSync errors are test failures.
+
 ## Evidence limits that remain after a pass
 
 One API 34 emulator is not a physical phone or a platform/device matrix.
@@ -101,7 +171,7 @@ The full-access journey uses explicit test grants; the separate denial/recovery
 journey uses real system dialogs. Activity recreation
 does not establish process-death or reboot recovery. No six-hour interval,
 Doze, vendor background restriction, Wi-Fi loss, large-video transfer,
-selected-photo picker, permanent-denial settings recovery, 2FA or
+selected videos, selection removal/replacement, grant expiration, 2FA or
 multiple-account journey is claimed by these tests. A physical
 phone and those scenarios remain follow-up validation even after this first
 emulator sign-in/backup journey passes.

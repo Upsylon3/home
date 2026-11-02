@@ -5,7 +5,7 @@
 # WHAT THIS DOES AND DOES NOT PROVE
 # A green run includes the build/JVM tests and a real API-34 emulator UI,
 # constrained WorkManager and byte-verified backup journey. It does NOT
-# establish physical-phone, selected-picker or long-duration behavior.
+# establish physical-phone, selected-video or long-duration behavior.
 # It also gives you a downloadable debug APK
 # (see the artifact at the bottom), which is the file you would sideload
 # onto an Android phone later.
@@ -30,6 +30,7 @@ on:
       - "package.json"
       - "package-lock.json"
       - ".github/workflows/android.yml"
+      - "scripts/android-seed-picker-media.py"
       - "scripts/android-gradle-version.py"
       - "scripts/test/test_android_gradle_version.py"
   pull_request:
@@ -42,6 +43,7 @@ on:
       - "package.json"
       - "package-lock.json"
       - ".github/workflows/android.yml"
+      - "scripts/android-seed-picker-media.py"
       - "scripts/android-gradle-version.py"
       - "scripts/test/test_android_gradle_version.py"
   workflow_dispatch:
@@ -159,10 +161,42 @@ jobs:
             adb install -t app/build/outputs/apk/debug/app-debug.apk
             adb install -t app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
             bash -o pipefail -c 'adb shell am instrument -w -e homeFixture disposable -e class com.homeecosystems.homesync.PermissionDeniedJourneyTest com.homeecosystems.homesync.test/androidx.test.runner.AndroidJUnitRunner | tee "$RUNNER_TEMP/homesync-proof/permission-instrumentation.txt"'
+            adb logcat -d -s System.out:I > "$RUNNER_TEMP/homesync-proof/permission-logcat.txt"
+            if adb shell test -f /data/local/tmp/homesync-launcher-anr.png; then adb pull /data/local/tmp/homesync-launcher-anr.png "$RUNNER_TEMP/homesync-proof/launcher-anr.png"; fi
+            adb pull /data/local/tmp/homesync-permission-missing.png "$RUNNER_TEMP/homesync-proof/permission-missing.png" || true
             grep -Eq '^OK \(1 test\)' "$RUNNER_TEMP/homesync-proof/permission-instrumentation.txt"
             curl -fsS http://127.0.0.1:18083/__fixture__/denied-verify
             adb pull /data/local/tmp/homesync-permission-denied.png "$RUNNER_TEMP/homesync-proof/permission-denied.png"
             adb pull /data/local/tmp/homesync-permission-recovered.png "$RUNNER_TEMP/homesync-proof/permission-recovered.png"
+            # Keep prompt recovery above and exercise permanent denial separately.
+            adb uninstall com.homeecosystems.homesync.test
+            adb uninstall com.homeecosystems.homesync
+            adb install -t app/build/outputs/apk/debug/app-debug.apk
+            adb install -t app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+            bash -o pipefail -c 'adb shell am instrument -w -e homeFixture disposable -e permissionRecovery settings -e class com.homeecosystems.homesync.PermissionDeniedJourneyTest com.homeecosystems.homesync.test/androidx.test.runner.AndroidJUnitRunner | tee "$RUNNER_TEMP/homesync-proof/settings-instrumentation.txt"'
+            adb logcat -d -s System.out:I > "$RUNNER_TEMP/homesync-proof/settings-logcat.txt"
+            if adb shell test -f /data/local/tmp/homesync-launcher-anr.png; then adb pull /data/local/tmp/homesync-launcher-anr.png "$RUNNER_TEMP/homesync-proof/launcher-anr.png"; fi
+            grep -Eq '^OK \(1 test\)' "$RUNNER_TEMP/homesync-proof/settings-instrumentation.txt"
+            curl -fsS http://127.0.0.1:18083/__fixture__/settings-verify
+            adb pull /data/local/tmp/homesync-settings-suppressed.png "$RUNNER_TEMP/homesync-proof/settings-suppressed.png"
+            adb pull /data/local/tmp/homesync-settings-permissions.png "$RUNNER_TEMP/homesync-proof/settings-permissions.png"
+            adb pull /data/local/tmp/homesync-settings-recovered.png "$RUNNER_TEMP/homesync-proof/settings-recovered.png"
+            adb uninstall com.homeecosystems.homesync.test
+            adb uninstall com.homeecosystems.homesync
+            python3 ../../scripts/android-seed-picker-media.py > "$RUNNER_TEMP/homesync-proof/picker-seed.txt"
+            adb shell dumpsys battery unplug
+            adb shell dumpsys battery set status 3
+            adb install -t app/build/outputs/apk/debug/app-debug.apk
+            adb install -t app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+            bash -o pipefail -c 'adb shell am instrument -w -e homeFixture disposable -e unselectedMediaId "$(cat "$RUNNER_TEMP/homesync-proof/picker-unselected-id.txt")" -e class com.homeecosystems.homesync.SelectedPhotosJourneyTest com.homeecosystems.homesync.test/androidx.test.runner.AndroidJUnitRunner | tee "$RUNNER_TEMP/homesync-proof/picker-instrumentation.txt"'
+            adb logcat -d -s System.out:I > "$RUNNER_TEMP/homesync-proof/picker-logcat.txt"
+            if adb shell test -f /data/local/tmp/homesync-picker-failure.png; then adb pull /data/local/tmp/homesync-picker-failure.png "$RUNNER_TEMP/homesync-proof/picker-failure.png"; fi
+            grep -Eq '^OK \(1 test\)' "$RUNNER_TEMP/homesync-proof/picker-instrumentation.txt"
+            curl -fsS http://127.0.0.1:18083/__fixture__/picker-reselection-verify
+            adb pull /data/local/tmp/homesync-picker-selection.png "$RUNNER_TEMP/homesync-proof/picker-selection.png"
+            adb pull /data/local/tmp/homesync-picker-backup.png "$RUNNER_TEMP/homesync-proof/picker-backup.png"
+            adb pull /data/local/tmp/homesync-picker-reselection.png "$RUNNER_TEMP/homesync-proof/picker-reselection.png"
+            adb pull /data/local/tmp/homesync-picker-reselection-backup.png "$RUNNER_TEMP/homesync-proof/picker-reselection-backup.png"
 
       - name: Save emulator evidence
         if: always()

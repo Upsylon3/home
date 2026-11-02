@@ -13,6 +13,7 @@ import androidx.core.content.ContextCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
+import androidx.test.uiautomator.Until
 import androidx.test.uiautomator.UiDevice
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
@@ -36,6 +37,8 @@ class PermissionDeniedJourneyTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
     private val device get() = UiDevice.getInstance(instrumentation)
+    private val settingsRecovery get() = InstrumentationRegistry.getArguments().getString("permissionRecovery") == "settings"
+    private val proofName get() = if (settingsRecovery) "settings" else "permission"
 
     @Test fun denialBlocksWorkAndGrantRestoresBackup() {
         check(InstrumentationRegistry.getArguments().getString("homeFixture") == "disposable")
@@ -47,15 +50,19 @@ class PermissionDeniedJourneyTest {
         fun enter(label: String, value: String) = compose.onNode(hasSetTextAction() and hasText(label)).performTextReplacement(value)
         waitFor { compose.onAllNodesWithText("Server address").fetchSemanticsNodes().isNotEmpty() }
         enter("Server address", "127.0.0.1:18083")
-        enter("Username", "emulator_denied")
+        enter("Username", if (settingsRecovery) "emulator_settings" else "emulator_denied")
         enter("Password", "DisposableEmulator123!")
         compose.onNodeWithText("Sign in").performClick()
-        answerPrompts("permission_deny_button")
+        // Network completion is external to Compose. Finish sign-in before
+        // UI Automator starts waiting for a stable separate system window.
+        waitFor { (context.applicationContext as HomeSyncApplication).sessionManager.isSignedIn() }
+        compose.waitForIdle()
+        answerPrompts("permission_deny(_and_dont_ask_again)?_button")
         assertEquals(PackageManager.PERMISSION_DENIED, ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES))
         compose.onNodeWithContentDescription("Photos").performScrollTo().performClick()
         compose.waitUntil(10_000) { compose.onAllNodesWithText("Media access is blocked", substring = true).fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Back Up Now").assertIsNotEnabled()
-        shell("screencap -p /data/local/tmp/homesync-permission-denied.png")
+        shell("screencap -p /data/local/tmp/homesync-$proofName-denied.png")
         wm.cancelAllWork().result.get(5, TimeUnit.SECONDS)
 
         // A previously queued worker must enforce the same boundary even when
@@ -69,7 +76,30 @@ class PermissionDeniedJourneyTest {
         assertEquals(0, status().getInt("files")); assertEquals(0, status().getInt("devices"))
 
         compose.onNodeWithText("Review media access").performScrollTo().performClick()
-        answerPrompts("permission_allow(_all)?_button")
+        if (settingsRecovery) {
+            answerPrompts("permission_deny(_and_dont_ask_again)?_button")
+            compose.waitUntil(10_000) { !compose.activity.shouldShowRequestPermissionRationale(Manifest.permission.READ_MEDIA_IMAGES) }
+            assertEquals(PackageManager.PERMISSION_DENIED, ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES))
+            // A third request must not produce another dialog after two actual
+            // denials. Keep advancing Compose while Android returns its result.
+            compose.onNodeWithText("Review media access").performScrollTo().performClick()
+            val deny = By.res(Pattern.compile(".*:id/permission_deny(_and_dont_ask_again)?_button"))
+            try { compose.waitUntil(3_000) { dismissLauncherAnr(); device.hasObject(deny) } }
+            catch (_: ComposeTimeoutException) { /* Expected: Android suppresses the request. */ }
+            assertFalse("A permanently denied request must not prompt again", device.hasObject(deny))
+            compose.onNodeWithText("Back Up Now").assertIsNotEnabled()
+            assertEquals(0, status().getInt("files")); assertEquals(0, status().getInt("devices"))
+            shell("screencap -p /data/local/tmp/homesync-settings-suppressed.png")
+            compose.onNodeWithText("Android app settings").performScrollTo().performClick()
+            clickSystemText("Permissions")
+            clickSystemText("Photos and videos")
+            clickSystemText("(?i)(always )?allow all.*")
+            assertEquals(PackageManager.PERMISSION_GRANTED, ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES))
+            shell("screencap -p /data/local/tmp/homesync-settings-permissions.png")
+            repeat(3) { device.pressBack(); device.waitForIdle() }
+        } else {
+            answerPrompts("permission_allow(_all)?_button")
+        }
         waitFor { ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED }
         waitFor { compose.onAllNodesWithText("Media access is blocked", substring = true).fetchSemanticsNodes().isEmpty() }
         compose.onNodeWithText("Back Up Now").assertIsEnabled()
@@ -86,7 +116,7 @@ class PermissionDeniedJourneyTest {
             waitFor { wm.getWorkInfosForUniqueWork("${BackupWorker.WORK_NAME}_manual").get(5, TimeUnit.SECONDS).any { it.state == WorkInfo.State.SUCCEEDED } }
             val proof = status()
             assertEquals(1, proof.getInt("files")); assertTrue(proof.getBoolean("bytesMatch")); assertTrue(proof.getBoolean("hashMatches"))
-            shell("screencap -p /data/local/tmp/homesync-permission-recovered.png")
+            shell("screencap -p /data/local/tmp/homesync-$proofName-recovered.png")
         } finally { wm.cancelAllWork().result.get(5, TimeUnit.SECONDS); context.contentResolver.delete(uri, null, null) }
     }
 
@@ -97,7 +127,7 @@ class PermissionDeniedJourneyTest {
             // Keep Compose's virtual clock advancing while asynchronous login
             // and its LaunchedEffect open a separate Android system window.
             try {
-                compose.waitUntil(if (answered == 0) 20_000 else 2_000) { device.hasObject(selector) }
+                compose.waitUntil(if (answered == 0) 20_000 else 2_000) { dismissLauncherAnr(); device.hasObject(selector) }
             } catch (_: ComposeTimeoutException) { /* A later optional prompt may be absent. */ }
             val button = device.findObject(selector)
             if (button != null) { button.click(); answered++ }
@@ -111,8 +141,30 @@ class PermissionDeniedJourneyTest {
         }
         assertTrue("Expected a real Android permission dialog", answered > 0)
     }
+    private fun dismissLauncherAnr() {
+        // The disposable runner's launcher can ANR behind HomeSync and cover
+        // the real permission window. Record and close only that exact error.
+        if (device.hasObject(By.text("Pixel Launcher isn't responding"))) {
+            shell("screencap -p /data/local/tmp/homesync-launcher-anr.png")
+            println("EMULATOR_INFRA: closing observed Pixel Launcher ANR; all HomeSync assertions remain required")
+            checkNotNull(device.findObject(By.text("Close app"))).click()
+        }
+    }
+
+    private fun clickSystemText(text: String) {
+        dismissLauncherAnr()
+        val node = device.wait(Until.findObject(By.text(Pattern.compile(text))), 10_000)
+        if (node == null) {
+            val hierarchy = java.io.ByteArrayOutputStream()
+            device.dumpWindowHierarchy(hierarchy)
+            println("SETTINGS_UI_HIERARCHY " + hierarchy.toString("UTF-8"))
+        }
+        checkNotNull(node) { "Missing Android Settings control: $text" }.click()
+    }
+
     private fun status(): JSONObject {
-        val c = URL("http://127.0.0.1:18083/__fixture__/denied-status").openConnection() as HttpURLConnection
+        val route = if (settingsRecovery) "settings-status" else "denied-status"
+        val c = URL("http://127.0.0.1:18083/__fixture__/$route").openConnection() as HttpURLConnection
         c.connectTimeout = 5_000; c.readTimeout = 5_000
         return try { JSONObject(c.inputStream.bufferedReader().use { it.readText() }) } finally { c.disconnect() }
     }

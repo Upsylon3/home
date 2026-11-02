@@ -58,7 +58,7 @@ Do not turn the speculative brainstorm into a commitment just because it sounds 
 Some roadmap items require evidence an LLM cannot manufacture:
 
 - HomeVault still requires an independent security/cryptography review before real secrets are stored. An AI static review, self-review or passing test suite does **not** satisfy that independent review.
-- HomeSync's first API-34 emulator UI sign-in, constrained manual WorkManager execution, byte-verified backup and real permission denial/full-grant recovery are covered in Android CI. This does not establish physical-phone behavior, selected-media picker/settings recovery, Doze/reboot or six-hour delivery; keep those validation limits explicit (docs/HOMESYNC_DEVICE_VALIDATION.md).
+- HomeSync's first API-34 emulator UI sign-in, constrained manual WorkManager execution, byte-verified backup and real permission denial/full-grant and permanent-denial Settings recovery plus selected-photo expansion/foreign-media exclusion are covered in Android CI. This does not establish physical-phone behavior, selected videos/selection removal, Doze/reboot or six-hour delivery; keep those validation limits explicit (docs/HOMESYNC_DEVICE_VALIDATION.md).
 - Hardware-specific Argon2id performance claims require measurement on representative minimum hardware.
 
 Agents may improve tests, prepare review material and remove code defects around these items, but must leave the external validation visibly open until it actually occurs. Do not let one unavailable physical-world check prevent unrelated repository work.

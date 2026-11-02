@@ -109,6 +109,12 @@ remain follow-ups; per-database consistency does not establish those guarantees.
    the changelog and compatibility notes. Be especially careful with
    native modules such as `better-sqlite3`: a major bump was tried and
    reverted during the 1.1.4 work (see the changelog).
+   The test-only UI Automator 2.4.0 update is reviewed in
+   [PR #81](https://github.com/Upsylon3/home/pull/81): published Android/toolchain
+   minima fit the current baseline, existing UiDevice/By APIs remain in use, and
+   the current full-access, denial, Settings and selected-photo expansion
+   journeys are required. This closes that update, not recurring triage.
+
 
 9. **Done: migrate the ecosystem runtime from Node 22 to Node 26 LTS.**
    Node 26 entered Active LTS on 2026-10-28 and is supported through

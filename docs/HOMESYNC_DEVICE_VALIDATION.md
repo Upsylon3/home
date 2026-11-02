@@ -129,10 +129,28 @@ the fresh emulator to that loopback service. The HTTP proxy preserves API paths;
 it is not a real nginx/TLS deployment. Fixture rate limits are disabled.
 
 The new test dependencies are Android-test-only Compose UI test support and
-AndroidX permission rules and UI Automator 2.3.0, using the app's existing
+AndroidX permission rules and UI Automator 2.4.0, using the app's existing
 Compose BOM. The emulator
 action is pinned to a reviewed v2 commit. KVM permissions change only on the
 ephemeral GitHub runner, never the developer's machine.
+
+The UI Automator 2.4.0 update is reviewed in
+[PR #81](https://github.com/Upsylon3/home/pull/81), roadmap item 8. The
+[stable release notes](https://developer.android.com/jetpack/androidx/releases/test-uiautomator)
+introduce optional Kotlin/window APIs and accessibility/gesture fixes; these
+journeys retain their existing UiDevice/By API and assertions. Published Google
+Maven AAR metadata for UI Automator and its Android shell helper require minimum
+API 23, compile SDK 34 and AGP 8.1.1, below HOME's 26/37/9.1.1 baseline. The
+[POM](https://dl.google.com/dl/android/maven2/androidx/test/uiautomator/uiautomator/2.4.0/uiautomator-2.4.0.pom)
+adds the matching 2.4.0 shell helper, Kotlin 2.1.20, AndroidX Test Core 1.7.0 and
+JSpecify 1.0.0; all remain in the instrumentation-test dependency graph. The
+shell helper declares INTERNET for its local socket transport and UI Automator
+declares an optional XR system library. Application dependencies, SDKs and
+permissions are unchanged. A prior green run of the bot branch predates the
+current Settings/picker journeys; all four current journeys must pass again
+before accepting this update. Keeping new DSL adoption separate avoids changing
+the test behavior at the same time as its dependency.
+
 
 Run the Android workflow for a relevant PR or main commit. For a disposable,
 already provisioned emulator and the fixture running on its host:

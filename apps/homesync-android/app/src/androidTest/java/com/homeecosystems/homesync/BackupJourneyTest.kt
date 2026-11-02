@@ -3,6 +3,7 @@ package com.homeecosystems.homesync
 import android.Manifest
 import android.content.ContentValues
 import android.os.Build
+import android.os.BatteryManager
 import android.os.ParcelFileDescriptor
 import android.provider.MediaStore
 import android.util.Base64
@@ -43,7 +44,7 @@ class BackupJourneyTest {
         val wm = WorkManager.getInstance(context)
         fun work(name: String) = wm.getWorkInfosForUniqueWork(name).get(5, TimeUnit.SECONDS)
         fun waitFor(condition: () -> Boolean) = compose.waitUntil(120_000, condition)
-        fun toggle(label: String) = compose.onNode(isToggleable() and hasAnySibling(hasText(label)))
+        fun toggle(label: String) = compose.onNodeWithContentDescription(label)
             .performScrollTo().performClick()
         fun enter(label: String, value: String) = compose.onNode(hasSetTextAction() and hasText(label)).performTextReplacement(value)
 
@@ -85,6 +86,8 @@ class BackupJourneyTest {
             val manualName = "${BackupWorker.WORK_NAME}_manual"
             waitFor { work(manualName).isNotEmpty() }
             Thread.sleep(2_000)
+            assertFalse(context.getSystemService(BatteryManager::class.java).isCharging)
+            assertTrue(work(manualName).single().constraints.requiresCharging())
             assertEquals(WorkInfo.State.ENQUEUED, work(manualName).single().state)
             assertEquals(0, status().getInt("files"))
             shell("dumpsys battery set ac 1")

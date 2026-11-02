@@ -64,7 +64,7 @@ class SelectedPhotosJourneyTest {
             }
             device.findObject(id("permission_allow_selected_button")).click()
             // The shell seed records owner_package_name and distinct IDs, with
-            // the expected selected photo newest by date_taken. Both must show.
+            // the expected selected photo newest by indexed timestamp. Both must show.
             waitFor { device.findObjects(id("icon_thumbnail")).size == 2 }
             val photos = device.findObjects(id("icon_thumbnail")).sortedWith(compareBy({ it.visibleBounds.top }, { it.visibleBounds.left }))
             photos.first().click()

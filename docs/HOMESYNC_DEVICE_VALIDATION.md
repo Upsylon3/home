@@ -87,7 +87,7 @@ without grants, using a fourth temporary account. Before installation,
 `scripts/android-seed-picker-media.py` seeds two distinct synthetic PNGs through
 the emulator shell and MediaScanner broadcast. It requires a disposable GitHub
 emulator, records distinct MediaStore IDs and owner_package_name values outside
-HomeSync, and sets deterministic date_taken ordering. HomeSync never creates
+HomeSync, and verifies deterministic indexed file modification times. HomeSync never creates
 these photos: app-owned photos would remain readable independently of the grant
 and could not prove this boundary.
 

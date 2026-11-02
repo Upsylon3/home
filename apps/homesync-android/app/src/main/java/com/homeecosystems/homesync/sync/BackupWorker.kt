@@ -2,6 +2,7 @@ package com.homeecosystems.homesync.sync
 
 import android.content.Context
 import android.os.Build
+import androidx.work.workDataOf
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.homeecosystems.homesync.data.SessionManager
@@ -43,13 +44,22 @@ class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker
     private val mediaScanner = MediaScanner(applicationContext)
     private val db = AppDatabase.getInstance(applicationContext)
 
-    override suspend fun doWork(): Result {
+    override suspend fun doWork(): Result = try {
+        backup()
+    } catch (e: SecurityException) {
+        permissionFailure()
+    }
+
+    private fun permissionFailure() = Result.failure(workDataOf("reason" to "media-permission-required"))
+
+    private suspend fun backup(): Result {
         sessionManager.initialize()
         if (!sessionManager.isSignedIn()) return Result.failure()
 
         val settings = settingsStore.current()
         val categories = settings.enabledCategories()
         if (categories.isEmpty()) return Result.success()
+        if (MediaAccess.current(applicationContext).blockedCategories(categories).isNotEmpty()) return permissionFailure()
 
         val api = apiClient.getApi()
         val deviceId = ensureDeviceId(api) ?: return Result.retry()
@@ -65,8 +75,10 @@ class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         val hashed = candidates.mapNotNull { candidate ->
             try {
                 mediaScanner.openStream(candidate.localId)?.use { stream -> HashedFile(candidate, FileHasher.sha256(stream)) }
+            } catch (e: SecurityException) {
+                throw e
             } catch (e: Exception) {
-                null // unreadable right now (permission revoked mid-scan, file deleted) — try again next run
+                null // File deleted or temporarily unreadable; try again next run.
             }
         }
         if (hashed.isEmpty()) return Result.success()
@@ -92,7 +104,9 @@ class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker
 
         var anyFailed = false
         for (file in plan.toUpload) {
-            val uploaded = runCatching { uploadOne(api, deviceId, file) }.getOrDefault(false)
+            val uploaded = try { uploadOne(api, deviceId, file) }
+            catch (e: SecurityException) { throw e }
+            catch (e: Exception) { false }
             if (uploaded) {
                 dao.insert(file.toEntity())
             } else {

@@ -2,11 +2,14 @@
 
 Roadmap item 2 needs an actual Android runtime, not just a successful compile.
 The first reproducible target is a fresh API 34 Google APIs x86_64 Pixel 6
-emulator on a disposable GitHub Ubuntu runner. The instrumented journey is in
-`BackupJourneyTest`. The first UI/WorkManager/upload journey was exercised on
+emulator on a disposable GitHub Ubuntu runner. The instrumented journeys are in
+`BackupJourneyTest` and `PermissionDeniedJourneyTest`. The first
+UI/WorkManager/upload journey was exercised on
 2026-11-02; final workflow logs and evidence are linked from
 [PR #79](https://github.com/Upsylon3/home/pull/79). A successful Android workflow
-requires both the instrumented test and independent backend verification.
+requires both instrumented tests and independent backend verification.
+The denial/full-grant recovery evidence is linked from
+[PR #80](https://github.com/Upsylon3/home/pull/80).
 
 ## Journey and assertions
 
@@ -30,6 +33,28 @@ requires both the instrumented test and independent backend verification.
 - Recreate the Activity and verify the signed-in server-backed one-file summary.
   Save a screenshot and instrumentation reports as CI artifacts.
 
+## Permission denial and recovery
+
+The second journey installs the already-built app and test APKs using `adb
+install -t` without `-g`, making the permission flags explicit.
+It asserts media access starts denied, signs in as a separate temporary account
+and uses UI Automator to deny the actual Android dialogs. Enabling Photos must
+show a persistent blocked-access notice and disable Back Up Now. A directly
+queued real worker must fail with `reason=media-permission-required` before
+registering a device or uploading a file. Review media access must open the
+system permission prompt; granting full access must restore the button and
+produce an exact-byte/SHA-256 verified backup.
+
+The app rereads OS grants on resume, after permission responses and before
+manual/worker execution. Android 14 selected-only access remains usable with a
+persistent limited-coverage warning; its policy has JVM coverage, but the
+selected-photo picker itself is not exercised by this journey. Android app
+settings provides recovery when Android stops showing permission prompts.
+Disabling a blocked category allows other enabled categories to proceed.
+Permission failures during scanning/opening are terminal worker failures;
+permission revocation can also cause Android process termination, which this
+test does not establish recovery from.
+
 ## Isolation and reproduction
 
 The workflow boots Core, Cloud and Sync using existing integration helpers,
@@ -40,7 +65,8 @@ the fresh emulator to that loopback service. The HTTP proxy preserves API paths;
 it is not a real nginx/TLS deployment. Fixture rate limits are disabled.
 
 The new test dependencies are Android-test-only Compose UI test support and
-AndroidX permission rules, using the app's existing Compose BOM. The emulator
+AndroidX permission rules and UI Automator 2.3.0, using the app's existing
+Compose BOM. The emulator
 action is pinned to a reviewed v2 commit. KVM permissions change only on the
 ephemeral GitHub runner, never the developer's machine.
 
@@ -50,9 +76,14 @@ already provisioned emulator and the fixture running on its host:
 ```bash
 adb reverse tcp:18083 tcp:18083
 cd apps/homesync-android
-gradle --no-daemon --console=plain :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.homeFixture=disposable
+gradle --no-daemon --console=plain :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.homeFixture=disposable -Pandroid.testInstrumentationRunnerArguments.class=com.homeecosystems.homesync.BackupJourneyTest
 curl -fsS http://127.0.0.1:18083/__fixture__/verify
 ```
+
+For the separate denial journey, follow the fresh APK installation and
+`am instrument` invocation in `.github/workflows/android.yml`; it checks the
+runner's `OK (1 test)` output because `am instrument` can exit zero on a failed
+JUnit test. `/__fixture__/denied-verify` independently checks its stored file.
 
 Start the fixture from the repository root with Node 26:
 `node apps/homesync-backend/test-support/android-fixture.cjs`.
@@ -66,9 +97,11 @@ personal device, AVD or real HOME deployment.
 ## Evidence limits that remain after a pass
 
 One API 34 emulator is not a physical phone or a platform/device matrix.
-Permission dialogs are bypassed with explicit test grants. Activity recreation
+The full-access journey uses explicit test grants; the separate denial/recovery
+journey uses real system dialogs. Activity recreation
 does not establish process-death or reboot recovery. No six-hour interval,
-Doze, vendor background restriction, Wi-Fi loss, large-video transfer, denied
-permission, 2FA or multiple-account journey is claimed by this test. A physical
+Doze, vendor background restriction, Wi-Fi loss, large-video transfer,
+selected-photo picker, permanent-denial settings recovery, 2FA or
+multiple-account journey is claimed by these tests. A physical
 phone and those scenarios remain follow-up validation even after this first
 emulator sign-in/backup journey passes.

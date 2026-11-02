@@ -12,23 +12,24 @@ const PHOTO = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAACXBIW
 async function main() {
   const ctx = await startTestApp();
   const owner = await registerUser(ctx.homecore.baseUrl, { username: "emulator_owner", password: "DisposableEmulator123!" });
-  function status() {
-    const synced = ctx.db.prepare("SELECT * FROM synced_files WHERE user_id = ?").all(owner.user.id);
-    const files = ctx.homecloudBackend.db.prepare("SELECT * FROM files WHERE user_id = ?").all(owner.user.id);
-    const devices = ctx.db.prepare("SELECT id FROM devices WHERE user_id = ?").all(owner.user.id);
-    const bytesMatch = files.length === 1 && fs.readFileSync(path.join(ctx.homecloudBackend.dataDir, "uploads", String(owner.user.id), files[0].stored_name)).equals(PHOTO);
+  const denied = await registerUser(ctx.homecore.baseUrl, { username: "emulator_denied", password: "DisposableEmulator123!" });
+  function status(userId = owner.user.id) {
+    const synced = ctx.db.prepare("SELECT * FROM synced_files WHERE user_id = ?").all(userId);
+    const files = ctx.homecloudBackend.db.prepare("SELECT * FROM files WHERE user_id = ?").all(userId);
+    const devices = ctx.db.prepare("SELECT id FROM devices WHERE user_id = ?").all(userId);
+    const bytesMatch = files.length === 1 && fs.readFileSync(path.join(ctx.homecloudBackend.dataDir, "uploads", String(userId), files[0].stored_name)).equals(PHOTO);
     return { files: files.length, synced: synced.length, devices: devices.length, bytesMatch,
       hashMatches: synced.length === 1 && synced[0].content_hash === crypto.createHash("sha256").update(PHOTO).digest("hex") };
   }
   let stopping = false;
   const server = http.createServer((req, res) => {
-    if (req.url === "/__fixture__/status" && req.method === "GET") {
-      try { const result = status(); res.writeHead(200, { "Content-Type": "application/json" }); res.end(JSON.stringify(result)); }
+    if (["/__fixture__/status", "/__fixture__/denied-status"].includes(req.url) && req.method === "GET") {
+      try { const result = status(req.url.includes("denied") ? denied.user.id : owner.user.id); res.writeHead(200, { "Content-Type": "application/json" }); res.end(JSON.stringify(result)); }
       catch { res.writeHead(500, { "Content-Type": "application/json" }); res.end(JSON.stringify({ error: "Fixture verification failed." })); }
       return;
     }
-    if (req.url === "/__fixture__/verify" && req.method === "GET") {
-      try { assert.deepEqual(status(), { files: 1, synced: 1, devices: 1, bytesMatch: true, hashMatches: true });
+    if (["/__fixture__/verify", "/__fixture__/denied-verify"].includes(req.url) && req.method === "GET") {
+      try { assert.deepEqual(status(req.url.includes("denied") ? denied.user.id : owner.user.id), { files: 1, synced: 1, devices: 1, bytesMatch: true, hashMatches: true });
         res.writeHead(200); res.end("ok emulator upload bytes, SHA-256, single file/device and dedup\n"); }
       catch { res.writeHead(500); res.end("Emulator backup proof incomplete.\n"); }
       return;

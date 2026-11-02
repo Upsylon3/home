@@ -33,6 +33,7 @@ class BackupJourneyTest {
     private val compose = createAndroidComposeRule<MainActivity>()
     @get:Rule val rules: RuleChain = RuleChain.outerRule(GrantPermissionRule.grant(
         Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO,
+        Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
         Manifest.permission.POST_NOTIFICATIONS
     )).around(compose)
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()

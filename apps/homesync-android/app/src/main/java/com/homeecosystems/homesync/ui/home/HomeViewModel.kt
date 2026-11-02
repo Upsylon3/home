@@ -9,6 +9,7 @@ import com.homeecosystems.homesync.data.SettingsStore
 import com.homeecosystems.homesync.data.api.ApiClient
 import com.homeecosystems.homesync.data.api.HistorySummary
 import com.homeecosystems.homesync.data.local.SyncedMediaDao
+import com.homeecosystems.homesync.sync.MediaAccess
 import com.homeecosystems.homesync.sync.BackupCategory
 import com.homeecosystems.homesync.sync.BackupScheduler
 import kotlinx.coroutines.delay
@@ -103,6 +104,11 @@ class HomeViewModel(
         val settings = _uiState.value.settings
         if (settings.enabledCategories().isEmpty()) {
             _uiState.update { it.copy(message = "Turn on at least one of Photos, Videos, Screenshots, or Downloads first.") }
+            return
+        }
+        val access = MediaAccess.current(appContext)
+        if (access.blockedCategories(settings.enabledCategories()).isNotEmpty()) {
+            _uiState.update { it.copy(message = access.notice(settings.enabledCategories())) }
             return
         }
         BackupScheduler.backupNow(appContext, settings.wifiOnly, settings.chargingOnly)

@@ -5,7 +5,7 @@
 # WHAT THIS DOES AND DOES NOT PROVE
 # A green run includes the build/JVM tests and a real API-34 emulator UI,
 # constrained WorkManager and byte-verified backup journey. It does NOT
-# establish physical-phone, denied-permission or long-duration behavior.
+# establish physical-phone, selected-picker or long-duration behavior.
 # It also gives you a downloadable debug APK
 # (see the artifact at the bottom), which is the file you would sideload
 # onto an Android phone later.
@@ -149,10 +149,20 @@ jobs:
             adb shell dumpsys battery unplug
             adb shell dumpsys battery set status 3
             adb shell dumpsys battery set level 100
-            gradle --no-daemon --console=plain :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.homeFixture=disposable
+            gradle --no-daemon --console=plain :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.homeFixture=disposable -Pandroid.testInstrumentationRunnerArguments.class=com.homeecosystems.homesync.BackupJourneyTest
             curl -fsS http://127.0.0.1:18083/__fixture__/verify
             mkdir -p "$RUNNER_TEMP/homesync-proof"
             adb pull /data/local/tmp/homesync-backup-proof.png "$RUNNER_TEMP/homesync-proof/backup.png"
+            cp -R app/build/reports/androidTests "$RUNNER_TEMP/homesync-proof/full-access-reports"
+            # UTP removes its APKs after the first run. Install without -g so
+            # the second journey must answer real runtime permission dialogs.
+            adb install -t app/build/outputs/apk/debug/app-debug.apk
+            adb install -t app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+            bash -o pipefail -c 'adb shell am instrument -w -e homeFixture disposable -e class com.homeecosystems.homesync.PermissionDeniedJourneyTest com.homeecosystems.homesync.test/androidx.test.runner.AndroidJUnitRunner | tee "$RUNNER_TEMP/homesync-proof/permission-instrumentation.txt"'
+            grep -Eq '^OK \(1 test\)' "$RUNNER_TEMP/homesync-proof/permission-instrumentation.txt"
+            curl -fsS http://127.0.0.1:18083/__fixture__/denied-verify
+            adb pull /data/local/tmp/homesync-permission-denied.png "$RUNNER_TEMP/homesync-proof/permission-denied.png"
+            adb pull /data/local/tmp/homesync-permission-recovered.png "$RUNNER_TEMP/homesync-proof/permission-recovered.png"
 
       - name: Save emulator evidence
         if: always()

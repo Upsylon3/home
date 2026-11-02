@@ -49,7 +49,10 @@ remain follow-ups; per-database consistency does not establish those guarantees.
    charging, exact uploaded bytes/SHA-256, repeat-backup deduplication and Activity
    recreation. Periodic schedule creation is observed; six-hour delivery is not.
    See [device validation](HOMESYNC_DEVICE_VALIDATION.md) and the Android workflow
-   evidence linked from PR #79. Physical phones, permission dialogs/denials,
+   evidence linked from PR #79. [PR #80](https://github.com/Upsylon3/home/pull/80)
+   adds real permission denial, worker
+   refusal before registration, and full-grant exact-byte backup recovery.
+   Physical phones, selected-media picker/settings recovery,
    Doze/reboot and long-duration/background behavior remain validation follow-ups.
 3. **HomeVault follow-ups deferred out of v0**: benchmarking Argon2id's
    parameters against real

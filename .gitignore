@@ -33,6 +33,8 @@ backups/*
 !backups/.gitkeep
 
 *.log
+# Python CI helper bytecode (not source or test evidence).
+scripts/**/__pycache__/
 .DS_Store
 
 # Android (apps/homesync-android/) — standard Gradle/Android Studio build

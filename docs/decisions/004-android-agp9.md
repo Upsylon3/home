@@ -57,3 +57,6 @@ silence compiler/SDK compatibility checks just to pass a build.
 Even a green debug build leaves sign-in, permission prompts, WorkManager timing
 and a complete backup on a real device/emulator unverified. Roadmap item 2 stays
 open. A future target-SDK change and library refresh are separate tasks.
+
+Follow-up: [decision 005](005-android-ci-toolchain-selection.md) removes the
+duplicated CI Gradle pin and requires coordinated AGP/Gradle minor/major review.

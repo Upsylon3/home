@@ -56,19 +56,20 @@ updates:
           - "org.jetbrains.kotlin*"
           - "com.google.devtools.ksp"
     ignore:
-      # These majors can't be taken one PR at a time, because each depends
+      # These toolchain updates can't be taken one PR at a time: each depends
       # on the others being moved with it. A single Dependabot PR would
       # leave the build half-migrated, so do them together, by hand:
-      #  - Future AGP/Gradle majors need a coordinated compatibility pass.
-      #    AGP 9's built-in Kotlin migration is complete; keep AGP 10 and
-      #    Gradle 10 blocked until deliberately assessed together.
+      #  - AGP/Gradle minor or major updates need a coordinated compatibility
+      #    pass with Kotlin/Compose, not two independently green PRs. AGP
+      #    9.5 needs newer Gradle; wrapper-only updates previously escaped
+      #    validation because CI used a hardcoded version (decision 005).
       #  - Retrofit and OkHttp majors must match each other: the Gson
       #    converter and the logging interceptor have to be the same
       #    generation as the Retrofit/OkHttp core they sit on.
       - dependency-name: "com.android.application"
-        update-types: ["version-update:semver-major"]
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
       - dependency-name: "gradle-wrapper"
-        update-types: ["version-update:semver-major"]
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
       - dependency-name: "com.squareup.retrofit2:*"
         update-types: ["version-update:semver-major"]
       - dependency-name: "com.squareup.okhttp3:*"

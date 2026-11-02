@@ -3,16 +3,17 @@
 # find out "does it still compile?".
 #
 # WHAT THIS DOES AND DOES NOT PROVE
-# A green run means: the Gradle build succeeds, the Kotlin compiles, and the
-# JUnit tests pass. It does NOT mean the app works on a real phone (that
-# needs a device or emulator). It does give you a downloadable debug APK
+# A green run includes the build/JVM tests and a real API-34 emulator UI,
+# constrained WorkManager and byte-verified backup journey. It does NOT
+# establish physical-phone, denied-permission or long-duration behavior.
+# It also gives you a downloadable debug APK
 # (see the artifact at the bottom), which is the file you would sideload
 # onto an Android phone later.
 #
 # WHY IT'S A SEPARATE FILE FROM ci.yml
 # It takes several minutes and only matters when the Android project
-# changes, so it runs for the Android project and its CI version-selection
-# helper/tests (including Dependabot's Gradle PRs). "Run workflow" in the Actions
+# changes, so it runs for the Android project, its real upstream services,
+# fixture dependencies and CI helpers. "Run workflow" in the Actions
 # tab runs it on demand, which is how you get the first result.
 
 name: Android
@@ -22,12 +23,24 @@ on:
     branches: [main]
     paths:
       - "apps/homesync-android/**"
+      - "apps/homesync-backend/**"
+      - "apps/homecloud-backend/**"
+      - "homecore/**"
+      - "packages/homecore-client/**"
+      - "package.json"
+      - "package-lock.json"
       - ".github/workflows/android.yml"
       - "scripts/android-gradle-version.py"
       - "scripts/test/test_android_gradle_version.py"
   pull_request:
     paths:
       - "apps/homesync-android/**"
+      - "apps/homesync-backend/**"
+      - "apps/homecloud-backend/**"
+      - "homecore/**"
+      - "packages/homecore-client/**"
+      - "package.json"
+      - "package-lock.json"
       - ".github/workflows/android.yml"
       - "scripts/android-gradle-version.py"
       - "scripts/test/test_android_gradle_version.py"
@@ -93,7 +106,70 @@ jobs:
       # testDebugUnitTest = the JUnit tests (SyncLogicTest.kt, which covers
       #                     the hashing/dedup logic).
       - name: Build and test
-        run: gradle --no-daemon --console=plain :app:assembleDebug :app:testDebugUnitTest
+        run: gradle --no-daemon --console=plain :app:assembleDebug :app:testDebugUnitTest :app:assembleDebugAndroidTest
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: npm
+
+      - name: Install fixture dependencies
+        working-directory: .
+        run: npm ci
+
+      - name: Start disposable Core, Cloud and Sync
+        working-directory: .
+        run: |
+          node apps/homesync-backend/test-support/android-fixture.cjs > "$RUNNER_TEMP/homesync-fixture.log" 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:18083/__fixture__/status; then exit 0; fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/homesync-fixture.log"
+          exit 1
+
+      # Changes only the disposable GitHub runner, never a developer's host.
+      - name: Enable emulator KVM access
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run real Android backup journey
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          emulator-boot-timeout: 300
+          working-directory: apps/homesync-android
+          script: |
+            adb reverse tcp:18083 tcp:18083
+            adb shell dumpsys battery unplug
+            adb shell dumpsys battery set status 3
+            adb shell dumpsys battery set level 100
+            gradle --no-daemon --console=plain :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.homeFixture=disposable
+            curl -fsS http://127.0.0.1:18083/__fixture__/verify
+            mkdir -p "$RUNNER_TEMP/homesync-proof"
+            adb pull /data/local/tmp/homesync-backup-proof.png "$RUNNER_TEMP/homesync-proof/backup.png"
+
+      - name: Save emulator evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: homesync-emulator-evidence
+          path: |
+            apps/homesync-android/app/build/reports/androidTests/
+            apps/homesync-android/app/build/outputs/androidTest-results/
+            ${{ runner.temp }}/homesync-proof/
+            ${{ runner.temp }}/homesync-fixture.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Stop disposable fixture
+        if: always()
+        run: curl --max-time 10 -fsS -X POST http://127.0.0.1:18083/__fixture__/stop || true
 
       # Keeps the APK for 14 days so you can download it from the run's page.
       # Debug-signed, contains no secrets, not suitable for publishing.

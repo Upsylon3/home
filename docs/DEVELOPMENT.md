@@ -370,11 +370,13 @@ dependency (1.1.4), the `kotlinOptions { jvmTarget }` block that Kotlin 2.3
 turned into an error, and Room 2.6.1 crashing KSP2 at `kspDebugKotlin`
 (fixed by moving to Room 2.8.5). All three are in `CHANGELOG.md`.
 
-What has **not** been done is run the app: it has never been installed on a
-device or emulator, so sign-in, the WorkManager scheduling, and an actual
-backup are unverified. **A real device/emulator run should be the first
-thing anyone picking this up does.** The debug APK that `android.yml`
-saves is what to sideload.
+The first API-34 emulator journey now exercises actual UI sign-in, WorkManager
+charging constraints/manual execution and a byte-verified upload into real
+Core/Sync/Cloud services. Android CI runs it on a fresh disposable emulator and
+saves reports plus a screenshot. See [device validation](HOMESYNC_DEVICE_VALIDATION.md)
+for the exact protocol and limits. Permissions are test-granted, periodic work
+is observed then canceled, and Activity recreation is not process death. Physical
+phones, denied permissions, Doze/reboot and six-hour delivery remain unverified.
 
 To try it: open `apps/homesync-android/` in Android Studio, let Gradle
 sync, connect a device or start an emulator, and hit Run. On the login

@@ -329,7 +329,7 @@ Vault's own database. No sibling Tier 1 dependency or Core database access is ad
 | HomeMedia | Built |
 | HomeNotes | Built |
 | HomeSync backend | Built and tested |
-| HomeSync Android app | Written; builds and passes its unit tests in CI (`android.yml`), never run on a device — see `docs/DEVELOPMENT.md` |
+| HomeSync Android app | Built; JVM tests plus a real API-34 emulator UI/WorkManager/byte-verified backup journey in CI. Physical-phone, denied-permission and long-duration validation remain — see `docs/HOMESYNC_DEVICE_VALIDATION.md` |
 | HomeVault | **v0 built** — core loop (create/unlock/recover a vault, add/view/edit/delete items) implemented and tested; **self-reviewed twice, not independently reviewed** — see `docs/SECURITY.md`'s "HomeVault v0" section before trusting it with anything real |
 | HomeTasks | **Built**: backend and web app (Today / Upcoming / All / Done, projects, due dates, priorities, search, repeating tasks), tested; the web app was driven end to end in a headless browser. Reminders and assignment are deliberately not built yet, see `docs/ROADMAP.md` |
 | HomeMonitor | **v0 built**: admin-only dashboard for CPU, memory, disk, each app's health, backup freshness and disk growth (with a rough "full in N days" forecast), plus alerts delivered as HomeCore notifications. Tier 1: it reads the app registry and posts notifications through two small new HomeCore endpoints, `GET /internal/apps` and `POST /internal/notifications` (shared-secret, machine to machine). No Docker socket, by design. Tested; the web app was driven in a headless browser against a real HomeCore, measuring the real machine |

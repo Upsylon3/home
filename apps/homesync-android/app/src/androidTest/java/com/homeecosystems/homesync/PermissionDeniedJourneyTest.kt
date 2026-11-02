@@ -97,6 +97,13 @@ class PermissionDeniedJourneyTest {
             val button = device.wait(Until.findObject(By.res(Pattern.compile(".*:id/$buttonId"))), if (answered == 0) 20_000 else 2_000)
             if (button != null) { button.click(); answered++ }
         }
+        if (answered == 0) {
+            val hierarchy = java.io.ByteArrayOutputStream()
+            device.dumpWindowHierarchy(hierarchy)
+            println("PERMISSION_UI_HIERARCHY " + hierarchy.toString("UTF-8"))
+            println("COMPOSE_UI " + compose.onRoot().printToString())
+            shell("screencap -p /data/local/tmp/homesync-permission-missing.png")
+        }
         assertTrue("Expected a real Android permission dialog", answered > 0)
     }
     private fun status(): JSONObject {

@@ -53,6 +53,10 @@ class PermissionDeniedJourneyTest {
         enter("Username", if (settingsRecovery) "emulator_settings" else "emulator_denied")
         enter("Password", "DisposableEmulator123!")
         compose.onNodeWithText("Sign in").performClick()
+        // Network completion is external to Compose. Finish sign-in before
+        // UI Automator starts waiting for a stable separate system window.
+        waitFor { (context.applicationContext as HomeSyncApplication).sessionManager.isSignedIn() }
+        compose.waitForIdle()
         answerPrompts("permission_deny_button")
         assertEquals(PackageManager.PERMISSION_DENIED, ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES))
         compose.onNodeWithContentDescription("Photos").performScrollTo().performClick()

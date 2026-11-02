@@ -3,8 +3,10 @@
 Roadmap item 2 needs an actual Android runtime, not just a successful compile.
 The first reproducible target is a fresh API 34 Google APIs x86_64 Pixel 6
 emulator on a disposable GitHub Ubuntu runner. The instrumented journey is in
-`BackupJourneyTest`; its result must come from the Android workflow. Until it
-passes, this document is a protocol, not proof that the app ran successfully.
+`BackupJourneyTest`. The first UI/WorkManager/upload journey was exercised on
+2026-11-02; final workflow logs and evidence are linked from
+[PR #79](https://github.com/Upsylon3/home/pull/79). A successful Android workflow
+requires both the instrumented test and independent backend verification.
 
 ## Journey and assertions
 
@@ -56,7 +58,9 @@ Start the fixture from the repository root with Node 26:
 `node apps/homesync-backend/test-support/android-fixture.cjs`.
 Stop with Ctrl+C or POST `/__fixture__/stop`. Helpers remove only their owned
 temporary directories. The test cancels its work, removes its synthetic media
-and resets its emulator battery simulation. Never point this protocol at a
+and resets its emulator battery simulation. The screenshot is copied from a
+shell-owned temporary path before the emulator is destroyed (app teardown can
+remove app-owned files). Never point this protocol at a
 personal device, AVD or real HOME deployment.
 
 ## Evidence limits that remain after a pass

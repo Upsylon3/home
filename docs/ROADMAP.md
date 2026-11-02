@@ -9,9 +9,8 @@ verified, and do not treat the brainstorm as committed scope.
 
 **Runtime maintenance status:** the coordinated Node 22 → Node 26 LTS
 migration is complete (backlog item 9). The next agents should re-check the
-remaining feasible backlog against the current source and open PRs, finish
-the bounded Android adaptive-icon work where assets and build tooling allow,
-and then continue the decided HomeBridge build order. Hardware/device and
+remaining feasible backlog against the current source and open PRs, preserve the completed adaptive icon, HomeBridge milestone and first emulator
+journey, then select the next concrete follow-up below. Hardware/device and
 independent security-review items remain explicitly open until the required
 real-world validation is available.
 
@@ -43,15 +42,15 @@ remain follow-ups; per-database consistency does not establish those guarantees.
    [The review handoff](HOMEVAULT_REVIEW.md) is prepared with source map,
    disposable reproduction and explicit open questions. Its post-unlock
    rewrap fix and automated/browser evidence do not close this review item.
-2. **HomeSync Android: run it on a real device.** The app now builds
-   and passes its unit tests in CI (`android.yml`), after three rounds of
-   fixes for problems the 1.1.4 upgrades had hidden (see `CHANGELOG.md`).
-   What has never happened is running it: install the debug APK that the
-   workflow saves on a phone or emulator, sign in, and do one backup. That
-   is the first test of the parts CI can't reach, the sign-in flow, the
-   WorkManager scheduling and the actual upload — see `DEVELOPMENT.md`. Not a blocker for
-   anything else — other apps can proceed in parallel while this is
-   pending.
+2. **First HomeSync emulator journey verified; physical-phone follow-ups remain.**
+   A fresh API-34 Google APIs x86_64 Pixel 6 emulator now runs the real app's
+   sign-in and charging-constrained manual backup against disposable real
+   Core/Sync/Cloud services. The instrumented test verifies blocked work before
+   charging, exact uploaded bytes/SHA-256, repeat-backup deduplication and Activity
+   recreation. Periodic schedule creation is observed; six-hour delivery is not.
+   See [device validation](HOMESYNC_DEVICE_VALIDATION.md) and the Android workflow
+   evidence linked from PR #79. Physical phones, permission dialogs/denials,
+   Doze/reboot and long-duration/background behavior remain validation follow-ups.
 3. **HomeVault follow-ups deferred out of v0**: benchmarking Argon2id's
    parameters against real
    minimum self-hosting hardware (v0 ships OWASP's default, untested
@@ -144,7 +143,7 @@ remain follow-ups; per-database consistency does not establish those guarantees.
    minor/major updates still require coordinated review. CI reads the committed
    wrapper version directly ([decision 005](decisions/005-android-ci-toolchain-selection.md)). See [decision 004](decisions/004-android-agp9.md)
    for sources, verification gates and rollback. Build success does not close
-   real-device sign-in/scheduling/backup validation (item 2).
+   the physical-device and long-duration follow-ups in item 2.
 
 **Settled, not open questions anymore** (kept here so the reasoning
 isn't lost): TLS approach (private overlay, not public certs —

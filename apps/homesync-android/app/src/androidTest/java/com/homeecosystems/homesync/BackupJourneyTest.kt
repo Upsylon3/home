@@ -18,7 +18,6 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.homeecosystems.homesync.sync.BackupWorker
 import com.homeecosystems.homesync.ui.MainActivity
-import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.TimeUnit
@@ -111,11 +110,10 @@ class BackupJourneyTest {
             assertEquals(1, status().getInt("files"))
             compose.activityRule.scenario.recreate()
             waitFor { compose.onAllNodesWithText("1 files", substring = true).fetchSemanticsNodes().isNotEmpty() }
-            val screenshot = checkNotNull(instrumentation.uiAutomation.takeScreenshot())
-            File(checkNotNull(context.getExternalFilesDir("proof")), "backup.png").outputStream().use {
-                screenshot.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
-            }
-            screenshot.recycle()
+            // UTP can uninstall the app after a connected test, removing its
+            // external-files directory. Keep this disposable screenshot in a
+            // shell-owned location until the workflow pulls the evidence.
+            shell("screencap -p /data/local/tmp/homesync-backup-proof.png")
         } finally {
             wm.cancelAllWork().result.get(5, TimeUnit.SECONDS)
             context.contentResolver.delete(uri, null, null)

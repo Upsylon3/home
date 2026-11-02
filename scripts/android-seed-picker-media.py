@@ -33,7 +33,7 @@ for kind, stamp, modified in [("unselected", "202601020000.00", 1767312000), ("s
     shell("am", "broadcast", "-a", "android.intent.action.MEDIA_SCANNER_SCAN_FILE", "-d", f"file://{path}")
     for attempt in range(30):
         row = shell("content", "query", "--uri", collection, "--projection", "_id:_display_name:owner_package_name:date_modified", "--where", f"_display_name='{name}'")
-        if "_id=" in row:
+        if "_id=" in row and f"date_modified={modified}" in row:
             break
         time.sleep(1)
     assert name in row and "owner_package_name=" in row, row

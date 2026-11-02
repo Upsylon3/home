@@ -4,19 +4,18 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
 }
 
 android {
     namespace = "com.homeecosystems.homesync"
-    // Raised from 34 alongside the compose-bom bump below (newer Compose
-    // releases assume a newer compileSdk to compile cleanly against).
+    // AGP 9.1.1 supports API 37; unblock newer AndroidX compilation without
+    // changing library versions as part of this toolchain migration.
     // targetSdk deliberately left at 34 — that's a runtime behavior
     // commitment (edge-to-edge enforcement, etc.) worth its own deliberate
     // pass with a real device, not a side effect of a dependency refresh.
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.homeecosystems.homesync"

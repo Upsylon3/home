@@ -345,6 +345,18 @@ each container's last log lines on failure.
 
 ## HomeSync Android
 
+The build uses AGP 9.1.1, Gradle 9.3.1 and JDK 17 with compileSdk 37
+(`platforms;android-37.0`, Build Tools 36.0.0). Install that Gradle version
+locally or let Android Studio supply it; this checkout does not include a
+wrapper script/jar. CI's Gradle version matches the wrapper properties.
+Kotlin is built into AGP; the root compiler classpath and Compose plugin both
+stay on Kotlin 2.4.21. Keep them aligned when updating. Target SDK stays 34 and
+minimum SDK 26. See [migration assessment](decisions/004-android-agp9.md).
+
+```bash
+gradle --no-daemon --console=plain :app:assembleDebug :app:testDebugUnitTest
+```
+
 `apps/homesync-android/` now builds and passes its unit tests on every
 relevant change: `android.yml` (above) runs the Gradle build and the JUnit
 tests on GitHub's machines, with no local Android SDK needed. Getting it

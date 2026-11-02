@@ -13,6 +13,8 @@ async function main() {
   const ctx = await startTestApp();
   const owner = await registerUser(ctx.homecore.baseUrl, { username: "emulator_owner", password: "DisposableEmulator123!" });
   const denied = await registerUser(ctx.homecore.baseUrl, { username: "emulator_denied", password: "DisposableEmulator123!" });
+  const settings = await registerUser(ctx.homecore.baseUrl, { username: "emulator_settings", password: "DisposableEmulator123!" });
+  const fixtureUser = url => url.includes("settings") ? settings.user.id : url.includes("denied") ? denied.user.id : owner.user.id;
   function status(userId = owner.user.id) {
     const synced = ctx.db.prepare("SELECT * FROM synced_files WHERE user_id = ?").all(userId);
     const files = ctx.homecloudBackend.db.prepare("SELECT * FROM files WHERE user_id = ?").all(userId);
@@ -23,13 +25,13 @@ async function main() {
   }
   let stopping = false;
   const server = http.createServer((req, res) => {
-    if (["/__fixture__/status", "/__fixture__/denied-status"].includes(req.url) && req.method === "GET") {
-      try { const result = status(req.url.includes("denied") ? denied.user.id : owner.user.id); res.writeHead(200, { "Content-Type": "application/json" }); res.end(JSON.stringify(result)); }
+    if (["/__fixture__/status", "/__fixture__/denied-status", "/__fixture__/settings-status"].includes(req.url) && req.method === "GET") {
+      try { const result = status(fixtureUser(req.url)); res.writeHead(200, { "Content-Type": "application/json" }); res.end(JSON.stringify(result)); }
       catch { res.writeHead(500, { "Content-Type": "application/json" }); res.end(JSON.stringify({ error: "Fixture verification failed." })); }
       return;
     }
-    if (["/__fixture__/verify", "/__fixture__/denied-verify"].includes(req.url) && req.method === "GET") {
-      try { assert.deepEqual(status(req.url.includes("denied") ? denied.user.id : owner.user.id), { files: 1, synced: 1, devices: 1, bytesMatch: true, hashMatches: true });
+    if (["/__fixture__/verify", "/__fixture__/denied-verify", "/__fixture__/settings-verify"].includes(req.url) && req.method === "GET") {
+      try { assert.deepEqual(status(fixtureUser(req.url)), { files: 1, synced: 1, devices: 1, bytesMatch: true, hashMatches: true });
         res.writeHead(200); res.end("ok emulator upload bytes, SHA-256, single file/device and dedup\n"); }
       catch { res.writeHead(500); res.end("Emulator backup proof incomplete.\n"); }
       return;

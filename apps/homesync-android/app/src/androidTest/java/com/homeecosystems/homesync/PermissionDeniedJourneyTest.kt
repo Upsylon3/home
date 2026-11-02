@@ -51,6 +51,9 @@ class PermissionDeniedJourneyTest {
         enter("Username", "emulator_denied")
         enter("Password", "DisposableEmulator123!")
         compose.onNodeWithText("Sign in").performClick()
+        // Advance Compose frames through the asynchronous sign-in transition
+        // before handing control to UI Automator for the system dialog.
+        waitFor { compose.onAllNodesWithText("Back Up Now").fetchSemanticsNodes().isNotEmpty() }
         answerPrompts("permission_deny_button")
         assertEquals(PackageManager.PERMISSION_DENIED, ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES))
         compose.onNodeWithContentDescription("Photos").performScrollTo().performClick()

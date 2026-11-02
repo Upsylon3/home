@@ -57,7 +57,7 @@ class PermissionDeniedJourneyTest {
         // UI Automator starts waiting for a stable separate system window.
         waitFor { (context.applicationContext as HomeSyncApplication).sessionManager.isSignedIn() }
         compose.waitForIdle()
-        answerPrompts("permission_deny_button")
+        answerPrompts("permission_deny(_and_dont_ask_again)?_button")
         assertEquals(PackageManager.PERMISSION_DENIED, ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES))
         compose.onNodeWithContentDescription("Photos").performScrollTo().performClick()
         compose.waitUntil(10_000) { compose.onAllNodesWithText("Media access is blocked", substring = true).fetchSemanticsNodes().isNotEmpty() }
@@ -77,13 +77,13 @@ class PermissionDeniedJourneyTest {
 
         compose.onNodeWithText("Review media access").performScrollTo().performClick()
         if (settingsRecovery) {
-            answerPrompts("permission_deny_button")
+            answerPrompts("permission_deny(_and_dont_ask_again)?_button")
             compose.waitUntil(10_000) { !compose.activity.shouldShowRequestPermissionRationale(Manifest.permission.READ_MEDIA_IMAGES) }
             assertEquals(PackageManager.PERMISSION_DENIED, ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES))
             // A third request must not produce another dialog after two actual
             // denials. Keep advancing Compose while Android returns its result.
             compose.onNodeWithText("Review media access").performScrollTo().performClick()
-            val deny = By.res(Pattern.compile(".*:id/permission_deny_button"))
+            val deny = By.res(Pattern.compile(".*:id/permission_deny(_and_dont_ask_again)?_button"))
             try { compose.waitUntil(3_000) { device.hasObject(deny) } }
             catch (_: ComposeTimeoutException) { /* Expected: Android suppresses the request. */ }
             assertFalse("A permanently denied request must not prompt again", device.hasObject(deny))

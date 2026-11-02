@@ -27,6 +27,7 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 - Add 28 shared-client regression and integration checks, including real HomeCore account disabling/logout, upstream errors, stalled responses, malformed identities, cache expiry/capacity and concurrent requests. Document the existing five-second delegated-revocation window accurately.
 
 ### Changed
+- Update `express-rate-limit` to 8.7.2 in Core and the Cloud backend, retaining existing rate-limit settings and shared attempt budgets. The upstream patch fixes skipped-response bookkeeping across window resets; HOME does not enable those skip options.
 - Migrate HomeSync Android to AGP 9.1.1 / Gradle 9.3.1 and compileSdk 37 using built-in Kotlin with the existing Kotlin/Compose 2.4.21 compiler. Synchronize CI/toolchain settings and unblock API-37 AndroidX updates while keeping target SDK, Room/KSP and app behavior unchanged. Real-device validation remains open.
 - Correct the SemVer timeline: consolidate the Atari visual-refresh phases into one release and normalize subsequent product milestones.
 - Reconcile the legacy Git refs without rewriting the public commit graph.

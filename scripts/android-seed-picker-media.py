@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Seed two foreign-owned photos on the disposable GitHub emulator only."""
+"""Seed three foreign-owned photos on the disposable GitHub emulator only."""
 import json
 import os
 from pathlib import Path
@@ -23,7 +23,7 @@ assert shell("getprop", "ro.kernel.qemu") == "1", "An emulator is required"
 shell("mkdir", "-p", "/sdcard/DCIM/HomeSyncPicker")
 collection = "content://media/external/images/media"
 ids = {}
-for kind, stamp, modified in [("unselected", "202601020000.00", 1767312000), ("selected", "202601020001.00", 1767312060)]:
+for kind, stamp, modified in [("unselected", "202601020000.00", 1767312000), ("reselected", "202601020001.00", 1767312060), ("selected", "202601020002.00", 1767312120)]:
     name = f"homesync-picker-{kind}.png"
     with urllib.request.urlopen(f"http://127.0.0.1:18083/__fixture__/picker-{kind}.png", timeout=10) as response:
         (proof / name).write_bytes(response.read())
@@ -43,5 +43,5 @@ for kind, stamp, modified in [("unselected", "202601020000.00", 1767312000), ("s
     print(row)
     (proof / f"picker-{kind}-id.txt").write_text(str(ids[kind]))
 (proof / "picker-seed.json").write_text(json.dumps(ids))
-assert len(set(ids.values())) == 2, ids
-print("Seeded two distinct photos outside HomeSync ownership; selected is newest by indexed file modification time.")
+assert len(set(ids.values())) == 3, ids
+print("Seeded three distinct photos outside HomeSync ownership; selected is newest by indexed file modification time.")

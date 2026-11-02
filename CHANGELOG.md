@@ -8,6 +8,7 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 ## [Unreleased]
 
 ### Added
+- Extend HomeSync selected-photo validation through the real Review media access picker: add a newly allowed foreign-owned photo, keep a third photo unreadable and unbacked, and require exact two-photo bytes/hashes and repeat-backup deduplication. Preserve the original one-photo proof; selection removal, grant expiration, selected videos and physical-device checks remain open.
 - Add a HomeSync API-34 selected-photo journey with two shell-seeded foreign-owned images, real picker selection, denied full grants, scanner/direct-URI exclusion, a persistent limited-coverage notice and exact-byte backup/dedup verification. Selected videos, reselection, grant expiration and physical-device validation remain open.
 - Add an independent HomeSync API-34 emulator case for repeated media denial, suppressed permission requests and recovery through the real Android Settings UI. Require a fresh installation, separate disposable account, grant refresh on return and exact-byte backup verification; selected-picker and physical-device validation remain open.
 - Add a disposable API-34 Android emulator journey for HomeSync UI sign-in, charging-constrained WorkManager backup, real Core/Sync/Cloud upload verification, repeat-backup deduplication and Activity recreation. Give native backup switches their visible accessibility labels. Preserve explicit physical-device, permission-dialog and long-duration scheduling validation limits.

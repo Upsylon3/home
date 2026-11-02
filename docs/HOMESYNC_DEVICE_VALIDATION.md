@@ -3,12 +3,13 @@
 Roadmap item 2 needs an actual Android runtime, not just a successful compile.
 The first reproducible target is a fresh API 34 Google APIs x86_64 Pixel 6
 emulator on a disposable GitHub Ubuntu runner. The instrumented journeys are in
-`BackupJourneyTest` and `PermissionDeniedJourneyTest`. The first
+`BackupJourneyTest`, `PermissionDeniedJourneyTest` and
+`SelectedPhotosJourneyTest`. The first
 UI/WorkManager/upload journey was exercised on
 2026-11-02; final workflow logs and evidence are linked from
 [PR #79](https://github.com/Upsylon3/home/pull/79). A successful Android workflow
-requires the full-access journey plus both permission-recovery invocations
-and independent backend verification.
+requires the full-access journey, both permission-recovery invocations and
+the selected-photo journey, with independent backend verification.
 The denial/full-grant recovery evidence is linked from
 [PR #80](https://github.com/Upsylon3/home/pull/80).
 
@@ -48,8 +49,8 @@ produce an exact-byte/SHA-256 verified backup.
 
 The app rereads OS grants on resume, after permission responses and before
 manual/worker execution. Android 14 selected-only access remains usable with a
-persistent limited-coverage warning; its policy has JVM coverage, but the
-selected-photo picker itself is not exercised by this journey. Android app
+persistent limited-coverage warning; the selected-photo journey below exercises
+the real picker and restricted image access. Android app
 settings provides recovery when Android stops showing permission prompts;
 the separate permanent-denial invocation exercises that path.
 Disabling a blocked category allows other enabled categories to proceed.
@@ -78,6 +79,33 @@ instrumentation output; `OK (1 test)` and backend verification are both required
 
 This is API-34 emulator evidence for repeated-denial/settings recovery, not an
 OS/vendor matrix or recovery from process termination during permission revocation.
+
+## Selected-photo picker and exclusion boundary
+
+The fourth invocation runs `SelectedPhotosJourneyTest` after a fresh install
+without grants, using a fourth temporary account. Before installation,
+`scripts/android-seed-picker-media.py` seeds two distinct synthetic PNGs through
+the emulator shell and MediaScanner broadcast. It requires a disposable GitHub
+emulator, records distinct MediaStore IDs and owner_package_name values outside
+HomeSync, and verifies deterministic indexed file modification times. HomeSync never creates
+these photos: app-owned photos would remain readable independently of the grant
+and could not prove this boundary.
+
+UI Automator chooses Select photos and videos in the actual permission dialog,
+requires both photo thumbnails, selects the newer brown image and confirms the
+picker. Full image/video grants must remain denied while
+READ_MEDIA_VISUAL_USER_SELECTED is granted. The real MediaScanner must return
+only the selected filename; directly opening the known unselected image URI must
+fail or return no stream. Enabling Photos must retain the limited-coverage notice
+while allowing Back Up Now. A charging-constrained manual worker and repeat run
+must store exactly the selected PNG with its SHA-256 and no duplicate or
+unselected upload. `/__fixture__/picker-verify` checks the real backend separately.
+
+CI retains picker/app screenshots, raw instrumentation/logcat, and shell seed
+ownership/ID evidence. The foreign seed files are confined to the disposable
+emulator and are removed when its AVD is destroyed. This covers an initial
+selected-image grant and immediate manual backup, not selected videos,
+reselection, grant expiration, process death or a device/vendor matrix.
 
 ## Isolation and reproduction
 
@@ -131,7 +159,7 @@ The full-access journey uses explicit test grants; the separate denial/recovery
 journey uses real system dialogs. Activity recreation
 does not establish process-death or reboot recovery. No six-hour interval,
 Doze, vendor background restriction, Wi-Fi loss, large-video transfer,
-selected-photo picker, 2FA or
+selected videos/reselection, grant expiration, 2FA or
 multiple-account journey is claimed by these tests. A physical
 phone and those scenarios remain follow-up validation even after this first
 emulator sign-in/backup journey passes.

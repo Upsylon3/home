@@ -54,7 +54,9 @@ remain follow-ups; per-database consistency does not establish those guarantees.
    refusal before registration, and full-grant exact-byte backup recovery.
    [PR #82](https://github.com/Upsylon3/home/pull/82) covers repeated denial,
    suppressed requests and recovery through the real Android Settings UI.
-   Physical phones, selected-media picker,
+   The selected-photo journey additionally verifies a real restricted grant,
+   foreign-media exclusion and byte-verified backup. Physical phones,
+   selected videos/reselection,
    Doze/reboot and long-duration/background behavior remain validation follow-ups.
 3. **HomeVault follow-ups deferred out of v0**: benchmarking Argon2id's
    parameters against real

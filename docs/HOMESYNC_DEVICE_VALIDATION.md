@@ -84,7 +84,7 @@ OS/vendor matrix or recovery from process termination during permission revocati
 
 The fourth invocation runs `SelectedPhotosJourneyTest` after a fresh install
 without grants, using a fourth temporary account. Before installation,
-`scripts/android-seed-picker-media.py` seeds two distinct synthetic PNGs through
+`scripts/android-seed-picker-media.py` seeds three distinct synthetic PNGs through
 the emulator shell and MediaScanner broadcast. It requires a disposable GitHub
 emulator, records distinct MediaStore IDs and owner_package_name values outside
 HomeSync, and verifies deterministic indexed file modification times. HomeSync never creates
@@ -92,7 +92,7 @@ these photos: app-owned photos would remain readable independently of the grant
 and could not prove this boundary.
 
 UI Automator chooses Select photos and videos in the actual permission dialog,
-requires both photo thumbnails, selects the newer brown image and confirms the
+requires all three photo thumbnails, selects the newer brown image and confirms the
 picker. Full image/video grants must remain denied while
 READ_MEDIA_VISUAL_USER_SELECTED is granted. The real MediaScanner must return
 only the selected filename; directly opening the known unselected image URI must
@@ -101,11 +101,23 @@ while allowing Back Up Now. A charging-constrained manual worker and repeat run
 must store exactly the selected PNG with its SHA-256 and no duplicate or
 unselected upload. `/__fixture__/picker-verify` checks the real backend separately.
 
-CI retains picker/app screenshots, raw instrumentation/logcat, and shell seed
+After the original one-photo byte/hash verification, the test taps Review media
+access, reopens the actual system picker and adds the green photo while leaving
+the blue photo unselected. Full image/video grants remain denied. The scanner
+must now expose exactly brown and green, and the blue URI must remain unreadable.
+The limited-coverage notice and enabled manual-backup control persist. Backup
+must upload the newly accessible photo, retain the original, and deduplicate a
+repeat run. `/__fixture__/picker-reselection-verify` independently checks exactly
+the two expected byte sequences and hashes, two sync rows and one device. The
+original `/__fixture__/picker-verify` is required before expansion, preserving the
+one-photo proof. Selection changes alone do not trigger an upload in this test.
+
+CI retains initial and expanded picker/app screenshots, raw instrumentation/logcat, and shell seed
 ownership/ID evidence. The foreign seed files are confined to the disposable
 emulator and are removed when its AVD is destroyed. This covers an initial
-selected-image grant and immediate manual backup, not selected videos,
-reselection, grant expiration, process death or a device/vendor matrix.
+selected-image grant, user-initiated expansion and immediate manual backup, not
+selected videos, selection removal/replacement, grant expiration, process death
+or a device/vendor matrix.
 
 ## Isolation and reproduction
 
@@ -159,7 +171,7 @@ The full-access journey uses explicit test grants; the separate denial/recovery
 journey uses real system dialogs. Activity recreation
 does not establish process-death or reboot recovery. No six-hour interval,
 Doze, vendor background restriction, Wi-Fi loss, large-video transfer,
-selected videos/reselection, grant expiration, 2FA or
+selected videos, selection removal/replacement, grant expiration, 2FA or
 multiple-account journey is claimed by these tests. A physical
 phone and those scenarios remain follow-up validation even after this first
 emulator sign-in/backup journey passes.

@@ -64,8 +64,8 @@ class SelectedPhotosJourneyTest {
             }
             device.findObject(id("permission_allow_selected_button")).click()
             // The shell seed records owner_package_name and distinct IDs, with
-            // the expected selected photo newest by indexed timestamp. Both must show.
-            waitFor { device.findObjects(id("icon_thumbnail")).size == 2 }
+            // the expected selected photo newest by indexed timestamp. All three must show.
+            waitFor { device.findObjects(id("icon_thumbnail")).size == 3 }
             val photos = device.findObjects(id("icon_thumbnail")).sortedWith(compareBy({ it.visibleBounds.top }, { it.visibleBounds.left }))
             photos.first().click()
             shell("screencap -p /data/local/tmp/homesync-picker-selection.png")
@@ -104,6 +104,40 @@ class SelectedPhotosJourneyTest {
             waitFor { work().let { it.id != firstId && it.state == WorkInfo.State.SUCCEEDED } }
             assertEquals(1, status().getInt("files"))
             shell("screencap -p /data/local/tmp/homesync-picker-backup.png")
+            verify("picker-verify") // Preserve independent one-photo proof before expanding access.
+
+            compose.onNodeWithText("Review media access").performScrollTo().performClick()
+            waitFor {
+                dismissLauncherAnr()
+                device.hasObject(id("permission_allow_selected_button")) || device.findObjects(id("icon_thumbnail")).isNotEmpty()
+            }
+            device.findObject(id("permission_allow_selected_button"))?.click()
+            // Android may omit the already-allowed brown photo from an add-more
+            // picker. The green photo is newest among the remaining photos.
+            waitFor { device.findObjects(id("icon_thumbnail")).size in 2..3 }
+            val more = device.findObjects(id("icon_thumbnail")).sortedWith(compareBy({ it.visibleBounds.top }, { it.visibleBounds.left }))
+            more[if (more.size == 3) 1 else 0].click()
+            shell("screencap -p /data/local/tmp/homesync-picker-reselection.png")
+            device.findObject(id("button_add")).click()
+            waitFor { scanner.scan(setOf(BackupCategory.PHOTOS)).map { it.displayName }.toSet() == setOf("homesync-picker-selected.png", "homesync-picker-reselected.png") }
+            assertEquals(PackageManager.PERMISSION_DENIED, permission(Manifest.permission.READ_MEDIA_IMAGES))
+            assertEquals(PackageManager.PERMISSION_DENIED, permission(Manifest.permission.READ_MEDIA_VIDEO))
+            assertEquals(PackageManager.PERMISSION_GRANTED, permission(Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED))
+            val stillExcluded = runCatching { context.contentResolver.openInputStream(excluded)?.use { it.read() } }
+            assertTrue("Blue photo must stay unreadable after reselection", stillExcluded.isFailure || stillExcluded.getOrNull() == null)
+            compose.onNodeWithText("Only selected photos or videos", substring = true).assertExists()
+            compose.onNodeWithText("Back Up Now").assertIsEnabled()
+            assertEquals(1, status().getInt("files"))
+            val beforeReselection = work().id
+            compose.onNodeWithText("Back Up Now").performScrollTo().performClick()
+            waitFor { work().let { it.id != beforeReselection && it.state == WorkInfo.State.SUCCEEDED } }
+            val expanded = status("picker-reselection-status")
+            assertEquals(2, expanded.getInt("files")); assertTrue(expanded.getBoolean("bytesMatch")); assertTrue(expanded.getBoolean("hashMatches"))
+            val expandedId = work().id
+            compose.onNodeWithText("Back Up Now").performScrollTo().performClick()
+            waitFor { work().let { it.id != expandedId && it.state == WorkInfo.State.SUCCEEDED } }
+            assertEquals(2, status("picker-reselection-status").getInt("files"))
+            shell("screencap -p /data/local/tmp/homesync-picker-reselection-backup.png")
         } catch (failure: Throwable) {
             val hierarchy = java.io.ByteArrayOutputStream()
             device.dumpWindowHierarchy(hierarchy)
@@ -131,10 +165,17 @@ class SelectedPhotosJourneyTest {
         }
     }
 
-    private fun status(): JSONObject {
-        val connection = URL("http://127.0.0.1:18083/__fixture__/picker-status").openConnection() as HttpURLConnection
+    private fun status(route: String = "picker-status"): JSONObject {
+        val connection = URL("http://127.0.0.1:18083/__fixture__/$route").openConnection() as HttpURLConnection
         connection.connectTimeout = 5_000; connection.readTimeout = 5_000
         return try { JSONObject(connection.inputStream.bufferedReader().use { it.readText() }) }
+        finally { connection.disconnect() }
+    }
+
+    private fun verify(route: String) {
+        val connection = URL("http://127.0.0.1:18083/__fixture__/$route").openConnection() as HttpURLConnection
+        connection.connectTimeout = 5_000; connection.readTimeout = 5_000
+        try { assertEquals(200, connection.responseCode); connection.inputStream.use { it.readBytes() } }
         finally { connection.disconnect() }
     }
 

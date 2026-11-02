@@ -141,7 +141,8 @@ remain follow-ups; per-database consistency does not establish those guarantees.
    CI uses JDK 17 and explicitly installs the SDK. Target SDK remains 34, minimum
    SDK 26, and Room/KSP/application libraries stay unchanged. AndroidX update
    restrictions tied to the old API-36 ceiling are lifted; future AGP/Gradle
-   majors still require deliberate migration. See [decision 004](decisions/004-android-agp9.md)
+   minor/major updates still require coordinated review. CI reads the committed
+   wrapper version directly ([decision 005](decisions/005-android-ci-toolchain-selection.md)). See [decision 004](decisions/004-android-agp9.md)
    for sources, verification gates and rollback. Build success does not close
    real-device sign-in/scheduling/backup validation (item 2).
 

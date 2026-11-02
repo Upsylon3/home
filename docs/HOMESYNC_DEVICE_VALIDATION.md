@@ -118,6 +118,12 @@ shell-owned temporary path before the emulator is destroyed (app teardown can
 remove app-owned files). Never point this protocol at a
 personal device, AVD or real HOME deployment.
 
+The disposable emulator has also exhibited a Pixel Launcher ANR covering a
+permission window. The test records that exact launcher dialog in a screenshot
+and diagnostic log, closes it, and still requires every HomeSync/system/backend
+assertion. This handling is restricted to the exact Pixel Launcher error;
+HomeSync errors are test failures.
+
 ## Evidence limits that remain after a pass
 
 One API 34 emulator is not a physical phone or a platform/device matrix.

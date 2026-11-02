@@ -84,7 +84,7 @@ class PermissionDeniedJourneyTest {
             // denials. Keep advancing Compose while Android returns its result.
             compose.onNodeWithText("Review media access").performScrollTo().performClick()
             val deny = By.res(Pattern.compile(".*:id/permission_deny(_and_dont_ask_again)?_button"))
-            try { compose.waitUntil(3_000) { device.hasObject(deny) } }
+            try { compose.waitUntil(3_000) { dismissLauncherAnr(); device.hasObject(deny) } }
             catch (_: ComposeTimeoutException) { /* Expected: Android suppresses the request. */ }
             assertFalse("A permanently denied request must not prompt again", device.hasObject(deny))
             compose.onNodeWithText("Back Up Now").assertIsNotEnabled()
@@ -127,7 +127,7 @@ class PermissionDeniedJourneyTest {
             // Keep Compose's virtual clock advancing while asynchronous login
             // and its LaunchedEffect open a separate Android system window.
             try {
-                compose.waitUntil(if (answered == 0) 20_000 else 2_000) { device.hasObject(selector) }
+                compose.waitUntil(if (answered == 0) 20_000 else 2_000) { dismissLauncherAnr(); device.hasObject(selector) }
             } catch (_: ComposeTimeoutException) { /* A later optional prompt may be absent. */ }
             val button = device.findObject(selector)
             if (button != null) { button.click(); answered++ }
@@ -141,7 +141,18 @@ class PermissionDeniedJourneyTest {
         }
         assertTrue("Expected a real Android permission dialog", answered > 0)
     }
+    private fun dismissLauncherAnr() {
+        // The disposable runner's launcher can ANR behind HomeSync and cover
+        // the real permission window. Record and close only that exact error.
+        if (device.hasObject(By.text("Pixel Launcher isn't responding"))) {
+            shell("screencap -p /data/local/tmp/homesync-launcher-anr.png")
+            println("EMULATOR_INFRA: closing observed Pixel Launcher ANR; all HomeSync assertions remain required")
+            checkNotNull(device.findObject(By.text("Close app"))).click()
+        }
+    }
+
     private fun clickSystemText(text: String) {
+        dismissLauncherAnr()
         val node = device.wait(Until.findObject(By.text(Pattern.compile(text))), 10_000)
         if (node == null) {
             val hierarchy = java.io.ByteArrayOutputStream()

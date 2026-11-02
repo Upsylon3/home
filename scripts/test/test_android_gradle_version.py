@@ -21,7 +21,8 @@ class GradleVersionTest(unittest.TestCase):
 
     def test_missing_and_duplicate_properties_fail(self):
         url = "distributionUrl=https://services.gradle.org/distributions/gradle-9.3.1-bin.zip"
-        for text in ["", "# " + url, url + "\n" + url]:
+        for text in ["", "# " + url, url + "\n" + url,
+                     url + "\ndistributionUrl = other", url + "\ndistributionUrl:other"]:
             with self.subTest(text=text), self.assertRaises(ValueError):
                 module.read_version(text)
 

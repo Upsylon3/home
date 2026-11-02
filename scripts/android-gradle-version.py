@@ -4,14 +4,16 @@ import re
 
 
 def read_version(properties):
-    urls = [line.split("=", 1)[1].strip().replace(r"\:", ":")
-            for line in properties.splitlines()
-            if line.strip().startswith("distributionUrl=")]
-    if len(urls) != 1:
+    declarations = [line.strip() for line in properties.splitlines()
+                    if re.match(r"\s*distributionUrl(?:\s|[=:]|$)", line)]
+    if len(declarations) != 1:
         raise ValueError("Expected exactly one distributionUrl in wrapper properties.")
+    if not declarations[0].startswith("distributionUrl="):
+        raise ValueError("Use the canonical distributionUrl= declaration.")
+    url = declarations[0].split("=", 1)[1].strip().replace(r"\:", ":")
     match = re.fullmatch(
         r"https://services\.gradle\.org/distributions/gradle-([1-9]\d*\.\d+(?:\.\d+)?)-(?:bin|all)\.zip",
-        urls[0],
+        url,
     )
     if not match:
         raise ValueError("Expected an official stable Gradle distribution URL; review other formats explicitly.")

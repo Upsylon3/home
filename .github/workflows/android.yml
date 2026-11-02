@@ -145,6 +145,9 @@ jobs:
           working-directory: apps/homesync-android
           script: |
             adb reverse tcp:18083 tcp:18083
+            adb shell dumpsys battery unplug
+            adb shell dumpsys battery set status 3
+            adb shell dumpsys battery set level 100
             gradle --no-daemon --console=plain :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.homeFixture=disposable
             curl -fsS http://127.0.0.1:18083/__fixture__/verify
             mkdir -p "$RUNNER_TEMP/homesync-proof"

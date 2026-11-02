@@ -88,7 +88,7 @@ class BackupJourneyTest {
             Thread.sleep(2_000)
             assertFalse(context.getSystemService(BatteryManager::class.java).isCharging)
             assertTrue(work(manualName).single().constraints.requiresCharging())
-            assertEquals(WorkInfo.State.ENQUEUED, work(manualName).single().state)
+            assertEquals("Discharging manual work; backend=${status()}", WorkInfo.State.ENQUEUED, work(manualName).single().state)
             assertEquals(0, status().getInt("files"))
             shell("dumpsys battery set ac 1")
             shell("dumpsys battery set status 2")

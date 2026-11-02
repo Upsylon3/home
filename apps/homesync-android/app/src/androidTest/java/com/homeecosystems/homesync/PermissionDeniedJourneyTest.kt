@@ -14,7 +14,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
-import androidx.test.uiautomator.Until
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
@@ -51,9 +50,6 @@ class PermissionDeniedJourneyTest {
         enter("Username", "emulator_denied")
         enter("Password", "DisposableEmulator123!")
         compose.onNodeWithText("Sign in").performClick()
-        // Advance Compose frames through the asynchronous sign-in transition
-        // before handing control to UI Automator for the system dialog.
-        waitFor { compose.onAllNodesWithText("Back Up Now").fetchSemanticsNodes().isNotEmpty() }
         answerPrompts("permission_deny_button")
         assertEquals(PackageManager.PERMISSION_DENIED, ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES))
         compose.onNodeWithContentDescription("Photos").performScrollTo().performClick()
@@ -97,14 +93,20 @@ class PermissionDeniedJourneyTest {
     private fun answerPrompts(buttonId: String) {
         var answered = 0
         repeat(3) {
-            val button = device.wait(Until.findObject(By.res(Pattern.compile(".*:id/$buttonId"))), if (answered == 0) 20_000 else 2_000)
+            val selector = By.res(Pattern.compile(".*:id/$buttonId"))
+            // Keep Compose's virtual clock advancing while asynchronous login
+            // and its LaunchedEffect open a separate Android system window.
+            try {
+                compose.waitUntil(if (answered == 0) 20_000 else 2_000) { device.hasObject(selector) }
+            } catch (_: ComposeTimeoutException) { /* A later optional prompt may be absent. */ }
+            val button = device.findObject(selector)
             if (button != null) { button.click(); answered++ }
         }
         if (answered == 0) {
             val hierarchy = java.io.ByteArrayOutputStream()
             device.dumpWindowHierarchy(hierarchy)
             println("PERMISSION_UI_HIERARCHY " + hierarchy.toString("UTF-8"))
-            println("COMPOSE_UI " + compose.onRoot().printToString())
+            println("COMPOSE_UI " + runCatching { compose.onRoot().printToString() }.getOrNull())
             shell("screencap -p /data/local/tmp/homesync-permission-missing.png")
         }
         assertTrue("Expected a real Android permission dialog", answered > 0)

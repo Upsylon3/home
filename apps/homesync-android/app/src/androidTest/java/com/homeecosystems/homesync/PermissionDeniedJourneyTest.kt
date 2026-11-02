@@ -42,6 +42,7 @@ class PermissionDeniedJourneyTest {
         check(InstrumentationRegistry.getArguments().getString("homeFixture") == "disposable")
         check(Build.MODEL.contains("sdk") || Build.FINGERPRINT.contains("generic"))
         val context = instrumentation.targetContext
+        assertEquals("Fresh install must start without media access", PackageManager.PERMISSION_DENIED, ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES))
         val wm = WorkManager.getInstance(context)
         fun waitFor(condition: () -> Boolean) = compose.waitUntil(120_000, condition)
         fun enter(label: String, value: String) = compose.onNode(hasSetTextAction() and hasText(label)).performTextReplacement(value)

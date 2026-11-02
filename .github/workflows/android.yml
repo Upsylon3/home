@@ -154,8 +154,12 @@ jobs:
             mkdir -p "$RUNNER_TEMP/homesync-proof"
             adb pull /data/local/tmp/homesync-backup-proof.png "$RUNNER_TEMP/homesync-proof/backup.png"
             cp -R app/build/reports/androidTests "$RUNNER_TEMP/homesync-proof/full-access-reports"
-            adb shell pm clear com.homeecosystems.homesync || true
-            gradle --no-daemon --console=plain :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.homeFixture=disposable -Pandroid.testInstrumentationRunnerArguments.class=com.homeecosystems.homesync.PermissionDeniedJourneyTest
+            # UTP removes its APKs after the first run. Install without -g so
+            # the second journey must answer real runtime permission dialogs.
+            adb install -t app/build/outputs/apk/debug/app-debug.apk
+            adb install -t app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+            bash -o pipefail -c 'adb shell am instrument -w -e homeFixture disposable -e class com.homeecosystems.homesync.PermissionDeniedJourneyTest com.homeecosystems.homesync.test/androidx.test.runner.AndroidJUnitRunner | tee "$RUNNER_TEMP/homesync-proof/permission-instrumentation.txt"'
+            grep -Eq '^OK \(1 test\)' "$RUNNER_TEMP/homesync-proof/permission-instrumentation.txt"
             curl -fsS http://127.0.0.1:18083/__fixture__/denied-verify
             adb pull /data/local/tmp/homesync-permission-denied.png "$RUNNER_TEMP/homesync-proof/permission-denied.png"
             adb pull /data/local/tmp/homesync-permission-recovered.png "$RUNNER_TEMP/homesync-proof/permission-recovered.png"

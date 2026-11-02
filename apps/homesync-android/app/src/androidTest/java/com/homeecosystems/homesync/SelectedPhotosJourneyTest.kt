@@ -39,7 +39,7 @@ class SelectedPhotosJourneyTest {
     private fun id(name: String) = By.res(Pattern.compile(".*:id/$name"))
     private fun waitFor(condition: () -> Boolean) = compose.waitUntil(120_000, condition)
 
-    @Test fun onlySelectedForeignPhotoIsBackedUp() {
+    @Test fun selectedPhotoExpansionPreservesExclusion() {
         check(InstrumentationRegistry.getArguments().getString("homeFixture") == "disposable")
         check(Build.MODEL.contains("sdk") || Build.FINGERPRINT.contains("generic"))
         val context = instrumentation.targetContext
@@ -71,10 +71,7 @@ class SelectedPhotosJourneyTest {
             shell("screencap -p /data/local/tmp/homesync-picker-selection.png")
             waitFor { device.hasObject(id("button_add")) }
             device.findObject(id("button_add")).click()
-            repeat(3) {
-                try { compose.waitUntil(2_000) { dismissLauncherAnr(); dismissNotificationPrompt() } }
-                catch (_: ComposeTimeoutException) { /* Notification consent may already be answered. */ }
-            }
+            finishNotificationPrompts()
             waitFor { permission(Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED) == PackageManager.PERMISSION_GRANTED }
             assertEquals(PackageManager.PERMISSION_DENIED, permission(Manifest.permission.READ_MEDIA_IMAGES))
             assertEquals(PackageManager.PERMISSION_DENIED, permission(Manifest.permission.READ_MEDIA_VIDEO))
@@ -109,6 +106,7 @@ class SelectedPhotosJourneyTest {
             compose.onNodeWithText("Review media access").performScrollTo().performClick()
             waitFor {
                 dismissLauncherAnr()
+                dismissNotificationPrompt()
                 device.hasObject(id("permission_allow_selected_button")) || device.findObjects(id("icon_thumbnail")).isNotEmpty()
             }
             device.findObject(id("permission_allow_selected_button"))?.click()
@@ -119,6 +117,7 @@ class SelectedPhotosJourneyTest {
             more[if (more.size == 3) 1 else 0].click()
             shell("screencap -p /data/local/tmp/homesync-picker-reselection.png")
             device.findObject(id("button_add")).click()
+            finishNotificationPrompts()
             waitFor { scanner.scan(setOf(BackupCategory.PHOTOS)).map { it.displayName }.toSet() == setOf("homesync-picker-selected.png", "homesync-picker-reselected.png") }
             assertEquals(PackageManager.PERMISSION_DENIED, permission(Manifest.permission.READ_MEDIA_IMAGES))
             assertEquals(PackageManager.PERMISSION_DENIED, permission(Manifest.permission.READ_MEDIA_VIDEO))
@@ -147,6 +146,13 @@ class SelectedPhotosJourneyTest {
         } finally {
             wm.cancelAllWork().result.get(5, TimeUnit.SECONDS)
             shell("dumpsys battery reset")
+        }
+    }
+
+    private fun finishNotificationPrompts() {
+        repeat(3) {
+            try { compose.waitUntil(2_000) { dismissLauncherAnr(); dismissNotificationPrompt() } }
+            catch (_: ComposeTimeoutException) { /* Notification consent may already be answered. */ }
         }
     }
 

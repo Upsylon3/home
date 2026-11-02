@@ -5,7 +5,7 @@
 # WHAT THIS DOES AND DOES NOT PROVE
 # A green run includes the build/JVM tests and a real API-34 emulator UI,
 # constrained WorkManager and byte-verified backup journey. It does NOT
-# establish physical-phone, denied-permission or long-duration behavior.
+# establish physical-phone, selected-picker or long-duration behavior.
 # It also gives you a downloadable debug APK
 # (see the artifact at the bottom), which is the file you would sideload
 # onto an Android phone later.

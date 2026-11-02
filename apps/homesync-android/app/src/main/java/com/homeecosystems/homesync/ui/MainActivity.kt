@@ -1,5 +1,8 @@
 package com.homeecosystems.homesync.ui
 
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import android.Manifest
 import android.os.Build
 import android.os.Bundle
@@ -14,6 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.homeecosystems.homesync.HomeSyncApplication
 import com.homeecosystems.homesync.data.local.AppDatabase
+import com.homeecosystems.homesync.sync.MediaAccess
 import com.homeecosystems.homesync.ui.home.HomeScreen
 import com.homeecosystems.homesync.ui.home.HomeViewModel
 import com.homeecosystems.homesync.ui.login.LoginScreen
@@ -21,6 +25,12 @@ import com.homeecosystems.homesync.ui.login.LoginViewModel
 import com.homeecosystems.homesync.ui.theme.HomeSyncTheme
 
 class MainActivity : ComponentActivity() {
+    private var mediaAccess by mutableStateOf(MediaAccess())
+
+    override fun onResume() {
+        super.onResume()
+        mediaAccess = MediaAccess.current(this)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,7 +52,7 @@ class MainActivity : ComponentActivity() {
 
                 val permissionLauncher = rememberLauncherForActivityResult(
                     ActivityResultContracts.RequestMultiplePermissions()
-                ) { /* Backup silently finds nothing to do if these are denied — see MediaScanner — rather than the app needing to branch on the result here. */ }
+                ) { mediaAccess = MediaAccess.current(this) }
 
                 LaunchedEffect(isSignedIn) {
                     if (isSignedIn == true) {
@@ -57,6 +67,9 @@ class MainActivity : ComponentActivity() {
                         onLoggedIn = { isSignedIn = true }
                     )
                     true -> HomeScreen(
+                        mediaAccess = mediaAccess,
+                        onReviewMediaAccess = { permissionLauncher.launch(requiredPermissions()) },
+                        onOpenSettings = { startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName"))) },
                         viewModelFactory = HomeViewModel.Factory(
                             applicationContext,
                             app.settingsStore,
@@ -74,6 +87,7 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             add(Manifest.permission.READ_MEDIA_IMAGES)
             add(Manifest.permission.READ_MEDIA_VIDEO)
+            if (Build.VERSION.SDK_INT >= 34) add(Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
             add(Manifest.permission.POST_NOTIFICATIONS)
         } else {
             add(Manifest.permission.READ_EXTERNAL_STORAGE)

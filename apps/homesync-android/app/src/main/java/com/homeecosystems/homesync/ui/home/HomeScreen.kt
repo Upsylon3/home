@@ -22,6 +22,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.homeecosystems.homesync.sync.MediaAccess
 import com.homeecosystems.homesync.sync.BackupCategory
 import kotlinx.coroutines.delay
 import java.time.LocalDateTime
@@ -31,9 +32,16 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
 @Composable
-fun HomeScreen(viewModelFactory: HomeViewModel.Factory) {
+fun HomeScreen(
+    viewModelFactory: HomeViewModel.Factory,
+    mediaAccess: MediaAccess,
+    onReviewMediaAccess: () -> Unit,
+    onOpenSettings: () -> Unit
+) {
     val viewModel: HomeViewModel = viewModel(factory = viewModelFactory)
     val state by viewModel.uiState.collectAsState()
+    val categories = state.settings.enabledCategories()
+    val blocked = mediaAccess.blockedCategories(categories).isNotEmpty()
 
     LaunchedEffect(state.message) {
         // A real app would surface this via a Snackbar (needs a
@@ -66,8 +74,19 @@ fun HomeScreen(viewModelFactory: HomeViewModel.Factory) {
             Text(it, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 12.dp))
         }
 
+        mediaAccess.notice(categories)?.let { notice ->
+            Card(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(notice)
+                    Button(onClick = onReviewMediaAccess) { Text("Review media access") }
+                    Button(onClick = onOpenSettings) { Text("Android app settings") }
+                }
+            }
+        }
+
         Button(
             onClick = viewModel::backUpNow,
+            enabled = !blocked,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 16.dp, bottom = 24.dp)

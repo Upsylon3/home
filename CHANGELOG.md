@@ -8,6 +8,7 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 ## [Unreleased]
 
 ### Added
+- Add a disposable API-34 Android emulator journey for HomeSync UI sign-in, charging-constrained WorkManager backup, real Core/Sync/Cloud upload verification, repeat-backup deduplication and Activity recreation. Preserve explicit physical-device, permission-dialog and long-duration scheduling validation limits.
 - Home Settings administrator Vault reset with live Core authorization, explicit account confirmation, replacement-vault protection and transactional local auditing. Reset cannot recover secrets or erase backups/unlocked copies.
 - Add canonical `/api/core/auth` and `/api/core/admin` routes plus an explicit `/api/core/activity/homecloud` view. Preserve top-level compatibility routes, existing activity audiences/shapes and shared rate-limit budgets without redirects or session/data migrations. Add cross-prefix registration, 2FA, revocation, ownership and gateway/Docker coverage.
 - Add opt-in Monitor follow-up automation in Home Settings: explicit owner consent/renewal, encrypted operational state, fresh-incident qualification, durable create-once retries and independent Core revocation. Keep search-only operation as the default; require a separate state volume and external read-only key for automation. Add capability-only surrender for restart-safe Disable, shared worker leases, restore maintenance, real-service/race tests and responsive keyboard/browser validation.

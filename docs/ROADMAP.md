@@ -52,7 +52,9 @@ remain follow-ups; per-database consistency does not establish those guarantees.
    evidence linked from PR #79. [PR #80](https://github.com/Upsylon3/home/pull/80)
    adds real permission denial, worker
    refusal before registration, and full-grant exact-byte backup recovery.
-   Physical phones, selected-media picker/settings recovery,
+   [PR #82](https://github.com/Upsylon3/home/pull/82) covers repeated denial,
+   suppressed requests and recovery through the real Android Settings UI.
+   Physical phones, selected-media picker,
    Doze/reboot and long-duration/background behavior remain validation follow-ups.
 3. **HomeVault follow-ups deferred out of v0**: benchmarking Argon2id's
    parameters against real

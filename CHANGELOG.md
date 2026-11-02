@@ -8,6 +8,7 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 ## [Unreleased]
 
 ### Added
+- Add an independent HomeSync API-34 emulator case for repeated media denial, suppressed permission requests and recovery through the real Android Settings UI. Require a fresh installation, separate disposable account, grant refresh on return and exact-byte backup verification; selected-picker and physical-device validation remain open.
 - Add a disposable API-34 Android emulator journey for HomeSync UI sign-in, charging-constrained WorkManager backup, real Core/Sync/Cloud upload verification, repeat-backup deduplication and Activity recreation. Give native backup switches their visible accessibility labels. Preserve explicit physical-device, permission-dialog and long-duration scheduling validation limits.
 - Home Settings administrator Vault reset with live Core authorization, explicit account confirmation, replacement-vault protection and transactional local auditing. Reset cannot recover secrets or erase backups/unlocked copies.
 - Add canonical `/api/core/auth` and `/api/core/admin` routes plus an explicit `/api/core/activity/homecloud` view. Preserve top-level compatibility routes, existing activity audiences/shapes and shared rate-limit budgets without redirects or session/data migrations. Add cross-prefix registration, 2FA, revocation, ownership and gateway/Docker coverage.

@@ -23,7 +23,7 @@ assert shell("getprop", "ro.kernel.qemu") == "1", "An emulator is required"
 shell("mkdir", "-p", "/sdcard/DCIM/HomeSyncPicker")
 collection = "content://media/external/images/media"
 ids = {}
-for kind, taken in [("unselected", 1767225600000), ("selected", 1767312000000)]:
+for kind, taken in [("unselected", 1767312000000), ("selected", 1767312060000)]:
     name = f"homesync-picker-{kind}.png"
     with urllib.request.urlopen(f"http://127.0.0.1:18083/__fixture__/picker-{kind}.png", timeout=10) as response:
         (proof / name).write_bytes(response.read())
@@ -38,8 +38,9 @@ for kind, taken in [("unselected", 1767225600000), ("selected", 1767312000000)]:
     assert name in row and "owner_package_name=" in row, row
     assert "owner_package_name=com.homeecosystems.homesync" not in row, row
     ids[kind] = int(re.search(r"_id=(\d+)", row).group(1))
-    updated = shell("content", "update", "--uri", f"{collection}/{ids[kind]}", "--bind", f"datetaken:l:{taken}")
-    assert re.search(r"Updated\s+1\s+rows?", updated), updated
+    shell("content", "update", "--uri", f"{collection}/{ids[kind]}", "--bind", f"datetaken:l:{taken}")
+    row = shell("content", "query", "--uri", f"{collection}/{ids[kind]}", "--projection", "_id:_display_name:owner_package_name:datetaken")
+    assert f"datetaken={taken}" in row, row
     print(row)
     (proof / f"picker-{kind}-id.txt").write_text(str(ids[kind]))
 (proof / "picker-seed.json").write_text(json.dumps(ids))

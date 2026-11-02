@@ -135,21 +135,15 @@ remain follow-ups; per-database consistency does not establish those guarantees.
    restarts an app and confirms recovery without restarting the gateway.
    This still does not replace a real browser or physical-device test.
 
-11. **Migrate HomeSync Android to AGP 9 (when ready).** The app is
-   deliberately held on Android Gradle Plugin 8.13 because AGP 9 bundles
-   its own Kotlin support, which conflicts with the separately-applied
-   `org.jetbrains.kotlin.android` plugin and needs KSP and the Compose
-   plugin checked against it (see the comment in
-   `apps/homesync-android/build.gradle.kts`). The cost of staying is that
-   the AndroidX libraries are moving on without it: AGP 8.13 caps at
-   compileSdk 36, and the current Compose BOM, Navigation (2.10) and
-   Lifecycle (2.11) require AGP 9.1+ and compileSdk 37, so those updates
-   fail CI and Dependabot is told to skip them. More AndroidX libraries
-   will join that list over time, so this gets harder to postpone. Do it
-   in one deliberate change: AGP and Gradle 9, remove the Kotlin plugin
-   line, raise `compileSdk`, then lift the `ignore` rules in
-   `.github/dependabot.yml`. Not urgent while the app has never been run
-   on a device, but worth doing before it has users.
+11. **AGP 9 build migration implemented; device validation remains open.**
+   HomeSync now uses AGP 9.1.1, Gradle 9.3.1 and compileSdk 37, with built-in
+   Kotlin and an explicit Kotlin 2.4.21 compiler classpath aligned with Compose.
+   CI uses JDK 17 and explicitly installs the SDK. Target SDK remains 34, minimum
+   SDK 26, and Room/KSP/application libraries stay unchanged. AndroidX update
+   restrictions tied to the old API-36 ceiling are lifted; future AGP/Gradle
+   majors still require deliberate migration. See [decision 004](decisions/004-android-agp9.md)
+   for sources, verification gates and rollback. Build success does not close
+   real-device sign-in/scheduling/backup validation (item 2).
 
 **Settled, not open questions anymore** (kept here so the reasoning
 isn't lost): TLS approach (private overlay, not public certs —

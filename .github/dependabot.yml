@@ -44,7 +44,7 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 10
-    # The Kotlin compiler plugin, the Compose compiler plugin and KSP have
+    # The Kotlin compiler classpath, Compose compiler plugin and KSP have
     # to move together: the Compose plugin must match the Kotlin version
     # exactly (see apps/homesync-android/build.gradle.kts), and KSP must
     # support that Kotlin version. Dependabot otherwise opens one PR per
@@ -59,9 +59,9 @@ updates:
       # These majors can't be taken one PR at a time, because each depends
       # on the others being moved with it. A single Dependabot PR would
       # leave the build half-migrated, so do them together, by hand:
-      #  - Android Gradle Plugin 9 and Gradle 9 go as a pair, and AGP 9
-      #    bundles its own Kotlin support, which conflicts with the
-      #    separately-applied Kotlin plugin here (CHANGELOG.md [1.1.4]).
+      #  - Future AGP/Gradle majors need a coordinated compatibility pass.
+      #    AGP 9's built-in Kotlin migration is complete; keep AGP 10 and
+      #    Gradle 10 blocked until deliberately assessed together.
       #  - Retrofit and OkHttp majors must match each other: the Gson
       #    converter and the logging interceptor have to be the same
       #    generation as the Retrofit/OkHttp core they sit on.
@@ -73,27 +73,8 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "com.squareup.okhttp3:*"
         update-types: ["version-update:semver-major"]
-      # Newer AndroidX Compose/Navigation/Lifecycle releases require
-      # Android Gradle Plugin 9.1+ and compileSdk 37, and this project is
-      # held on AGP 8.13 (see apps/homesync-android/build.gradle.kts), which
-      # caps at compileSdk 36. A PR for any of these fails the build with
-      # "requires Android Gradle plugin 9.1.0 or higher" (seen on the
-      # Compose BOM 2026.09.00 PR). So only patch updates are offered, until
-      # the AGP 9 migration (docs/ROADMAP.md item 11) is done deliberately.
-      # If another AndroidX PR fails with that same message, add it here.
-      - dependency-name: "androidx.compose:compose-bom"
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]
-      - dependency-name: "androidx.navigation:*"
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]
-      - dependency-name: "androidx.lifecycle:*"
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]
-      # core-ktx is different: 1.19.0 is where it starts requiring AGP 9.1 /
-      # compileSdk 37, but earlier releases are fine, so block only that
-      # line and keep accepting 1.14 to 1.18.x. (Reported by other projects
-      # on AGP 8; it has not been tried on this one, so if a 1.18.x PR
-      # fails the build the same way, tighten this.)
-      - dependency-name: "androidx.core:core-ktx"
-        versions: [">=1.19.0"]
+      # API-37 AndroidX restrictions were lifted after the AGP 9.1.1 /
+      # compileSdk 37 migration. Future library updates still need Android CI.
 
   # --- Dockerfiles: homecore + every app under apps/ (node:26-slim, and
   # nginx:1.31-alpine for the 7 frontends) ---

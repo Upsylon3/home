@@ -1,22 +1,19 @@
-// Top-level build file — plugin versions declared here, applied per-module
-// (just :app for now) below. Versions chosen are stable, well-established
-// releases as of this writing; bump them freely, nothing here pins to an
-// exact patch version for a reason that would break by updating.
-//
-// Deliberately held at the last AGP 8.x release (8.13) rather than AGP 9.x:
-// AGP 9.0+ bundles its own built-in Kotlin support and conflicts with the
-// separately-applied org.jetbrains.kotlin.android plugin below (a real,
-// actively-reported breakage for exactly this plugin combination as of
-// this writing). Revisit this once ecosystem plugins have caught up.
-//
-// Kotlin 2.0+ moved the Jetpack Compose compiler out of AGP and into its
-// own Gradle plugin, versioned in lockstep with Kotlin itself — see the
-// org.jetbrains.kotlin.plugin.compose line below and app/build.gradle.kts,
-// where composeOptions { kotlinCompilerExtensionVersion = ... } has been
-// removed accordingly (that mechanism no longer applies from Kotlin 2.0 on).
+// AGP 9 owns Kotlin compilation; do not apply kotlin-android alongside it.
+// Override AGP's older default KGP so the compiler and Compose plugin stay
+// on the same version. Keep this classpath and the Compose plugin aligned.
+// https://developer.android.com/build/releases/agp-9-0-0-release-notes#runtime-dependency-on-kotlin-gradle-plugin
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.4.21")
+    }
+}
+
 plugins {
-    id("com.android.application") version "8.13.2" apply false
-    id("org.jetbrains.kotlin.android") version "2.4.21" apply false
+    id("com.android.application") version "9.1.1" apply false
     id("org.jetbrains.kotlin.plugin.compose") version "2.4.21" apply false
     id("com.google.devtools.ksp") version "2.3.12" apply false
 }

@@ -2,6 +2,8 @@ package com.homeecosystems.homesync
 
 import android.Manifest
 import android.content.ContentValues
+import android.content.Intent
+import android.content.IntentFilter
 import android.os.Build
 import android.os.BatteryManager
 import android.os.ParcelFileDescriptor
@@ -74,6 +76,13 @@ class BackupJourneyTest {
             context.contentResolver.update(uri, ContentValues().apply { put(MediaStore.Images.Media.IS_PENDING, 0) }, null, null)
             shell("dumpsys battery unplug")
             shell("dumpsys battery set status 3")
+            // WorkManager initializes charging from the sticky broadcast,
+            // not BatteryManager's direct binder value. Wait for both views.
+            waitFor {
+                val battery = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+                battery != null && battery.getIntExtra(BatteryManager.EXTRA_STATUS, -1) == BatteryManager.BATTERY_STATUS_DISCHARGING &&
+                    battery.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1) == 0
+            }
             toggle("Only while charging")
             toggle("Photos")
             waitFor { work(BackupWorker.WORK_NAME).isNotEmpty() }

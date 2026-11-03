@@ -414,13 +414,9 @@ container restart/replay are proved separately in Docker CI.
 
 ## Proportionate verification
 
-Use focused checks during implementation. The main CI workflow skips its five
-Node/stack jobs for changes limited to Markdown, the Android app/workflow and
-its dedicated Gradle/media-seeding scripts. The lightweight scope job and
-repository conventions still run, and Android's own workflow remains active.
-Skipped job names remain present for required-check compatibility. Unknown,
-mixed or Node/stack paths run the normal gate; manual CI dispatch always runs
-it. A failed/missing scope output falls back to running the gate.
+Use focused checks during implementation; see [CI_POLICY.md](CI_POLICY.md). Pull requests run affected workspace suites/builds and only relevant stack, dependency and Android jobs. Demo-only changes skip Docker and Android. Frontend-only checks skip native dependency installation. Android resources build/JVM-test without starting an emulator; runtime/backup/permission changes and actual fixture runtime dependency updates retain the full journey. Root dev-tool changes do not trigger Android.
+
+The commit hook only checks commit-message conventions. Full regressions are available through manual workflow dispatch and run weekly. Merges do not repeat PR tests. Pages deployment reuses the checked artifact, verifying its source tree against the merged source before publishing; it does not run npm, builds, browser checks or Android again. Unknown paths and changes to the selector fail closed to full validation.
 
 The Android emulator uses an explicit 2048 MB userdata partition. Its tiny
 synthetic fixtures do not need the Pixel profile's default >7 GB allocation,

@@ -3,9 +3,10 @@
 # find out "does it still compile?".
 #
 # WHAT THIS DOES AND DOES NOT PROVE
-# A green run includes the build/JVM tests and a real API-34 emulator UI,
+# A runtime/full run includes the build/JVM tests and a real API-34 emulator UI,
 # constrained WorkManager and byte-verified backup journey. It does NOT
 # establish physical-phone, selected-video or long-duration behavior.
+# Resource-only edits run build/JVM tests without starting the emulator.
 # It also gives you a downloadable debug APK
 # (see the artifact at the bottom), which is the file you would sideload
 # onto an Android phone later.
@@ -19,34 +20,10 @@
 name: Android
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "apps/homesync-android/**"
-      - "apps/homesync-backend/**"
-      - "apps/homecloud-backend/**"
-      - "homecore/**"
-      - "packages/homecore-client/**"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/workflows/android.yml"
-      - "scripts/android-seed-picker-media.py"
-      - "scripts/android-gradle-version.py"
-      - "scripts/test/test_android_gradle_version.py"
   pull_request:
-    paths:
-      - "apps/homesync-android/**"
-      - "apps/homesync-backend/**"
-      - "apps/homecloud-backend/**"
-      - "homecore/**"
-      - "packages/homecore-client/**"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/workflows/android.yml"
-      - "scripts/android-seed-picker-media.py"
-      - "scripts/android-gradle-version.py"
-      - "scripts/test/test_android_gradle_version.py"
   workflow_dispatch:
+  schedule:
+    - cron: '31 3 * * 0'
 
 concurrency:
   group: android-${{ github.ref }}
@@ -56,8 +33,28 @@ permissions:
   contents: read
 
 jobs:
+  scope:
+    name: Select Android checks
+    runs-on: ubuntu-latest
+    outputs:
+      android: ${{ steps.scope.outputs.android }}
+      emulator: ${{ steps.scope.outputs.emulator }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          python3 -m unittest discover -s scripts/test -p 'test_ci_*.py'
+          python3 scripts/ci-scope.py
   build:
     name: Build debug APK and run unit tests
+    needs: scope
+    if: ${{ !cancelled() && needs.scope.outputs.android != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -108,18 +105,21 @@ jobs:
       # testDebugUnitTest = the JUnit tests (SyncLogicTest.kt, which covers
       #                     the hashing/dedup logic).
       - name: Build and test
-        run: gradle --no-daemon --console=plain :app:assembleDebug :app:testDebugUnitTest :app:assembleDebugAndroidTest
+        run: gradle --no-daemon --console=plain :app:assembleDebug :app:testDebugUnitTest ${{ needs.scope.outputs.emulator != 'false' && ':app:assembleDebugAndroidTest' || '' }}
 
       - uses: actions/setup-node@v7
+        if: needs.scope.outputs.emulator != 'false'
         with:
           node-version: 26
           cache: npm
 
       - name: Install fixture dependencies
+        if: needs.scope.outputs.emulator != 'false'
         working-directory: .
         run: npm ci
 
       - name: Start disposable Core, Cloud and Sync
+        if: needs.scope.outputs.emulator != 'false'
         working-directory: .
         run: |
           node apps/homesync-backend/test-support/android-fixture.cjs > "$RUNNER_TEMP/homesync-fixture.log" 2>&1 &
@@ -132,12 +132,14 @@ jobs:
 
       # Changes only the disposable GitHub runner, never a developer's host.
       - name: Enable emulator KVM access
+        if: needs.scope.outputs.emulator != 'false'
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
       - name: Run real Android backup journey
+        if: needs.scope.outputs.emulator != 'false'
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
         with:
           api-level: 34
@@ -202,7 +204,7 @@ jobs:
             adb pull /data/local/tmp/homesync-picker-reselection-backup.png "$RUNNER_TEMP/homesync-proof/picker-reselection-backup.png"
 
       - name: Save emulator evidence
-        if: always()
+        if: always() && needs.scope.outputs.emulator != 'false'
         uses: actions/upload-artifact@v7
         with:
           name: homesync-emulator-evidence
@@ -215,7 +217,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Stop disposable fixture
-        if: always()
+        if: always() && needs.scope.outputs.emulator != 'false'
         run: curl --max-time 10 -fsS -X POST http://127.0.0.1:18083/__fixture__/stop || true
 
       # Keeps the APK for 14 days so you can download it from the run's page.

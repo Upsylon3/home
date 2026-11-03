@@ -106,7 +106,9 @@ For npm 11 lifecycle scripts, inspect the exact package/version and its install 
 
 ## 5. Verify proportionately
 
-Run the smallest meaningful proof for the changed behavior. Reuse existing coverage and remove redundant cases instead of adding a test for every implementation detail. Do not repeat full workspace/build/Docker runs for Android-only or documentation-only edits. The CI scope job skips the five Node/stack jobs for those edits; Android and conventions workflows still apply. Node, dependency, gateway and deployment changes retain the full Node/stack gate. Manual CI dispatch explicitly runs that full gate.
+Run the smallest meaningful proof for the changed behavior. Use the selection policy in [CI_POLICY.md](CI_POLICY.md) and `scripts/ci-scope.py`: changed frontend suites/builds, backend ownership/dependants, and independently relevant gateway/Docker/Windows/audit/Android checks. Demo-only work must not trigger a server stack or emulator. Root lockfile changes are evaluated against the actual Android fixture dependency graph. Unknown paths and changes to the selection policy run full checks.
+
+GitHub runs these checks on pull requests, not again after every merge. Full Node/stack and Android regressions remain available with manual dispatch and run weekly. A scope-selected skipped job is intentional proof of irrelevance, not a reason to run it manually. During implementation, rerun checks only when new code, failures or unresolved concerns justify it.
 
 For a Node/stack change, the full local baseline is:
 
@@ -168,7 +170,7 @@ Create a short-lived branch using the naming rules in `CONTRIBUTING.md`. Use Con
 - exact tests and CI evidence;
 - known limitations and follow-up work.
 
-Do not call a PR ready while its checks are pending. Applicable required checks are below. The scope job skips the Node/stack jobs for Android/documentation-only changes; a skipped job does not require a manual rerun:
+Do not call a PR ready while applicable checks are pending. The tested scope policy selects relevant jobs; an intentionally skipped job does not require a manual rerun:
 
 - Repository conventions — commit, PR title and branch validation;
 - CI — tests and frontend builds;
@@ -181,7 +183,7 @@ If a check fails, inspect its logs, reproduce the failure when practical, fix th
 
 After all applicable checks succeed, perform one final diff review and squash-merge your PR if GitHub permits it. Do not wait for an owner review that the project has explicitly chosen not to require, but never bypass a required human approval or branch rule. If a permission or rule blocks the merge, leave the PR verified and ready, record the blocker, and continue with independent work.
 
-After merge, verify that `main` contains the intended squash commit and that its CI has completed successfully. Clean up only your own obsolete branch when safe.
+After merge, verify that `main` contains the intended squash commit and that any applicable deployment completed. Do not start duplicate full CI simply because the commit was squash-merged. Pages deploys the already verified artifact only when its tested source tree matches the merged tree. For release candidates, run the documented full manual gate. Clean up only your own obsolete branch when safe.
 
 ## 8. Releases and changelog
 

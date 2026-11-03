@@ -8,7 +8,7 @@ release. The version authority and increment rules are in
 
 1. Merge release-bound pull requests into `main`. Do not release from
    an unreviewed feature branch.
-2. Wait for the `CI` workflow to pass on the exact commit you intend
+2. Manually dispatch the full `CI` workflow on main (ordinary merges do not repeat PR checks). Wait for it to pass on the exact commit you intend
    to tag. If `apps/homesync-android/` changed, also wait for the
    corresponding `Android` workflow to pass.
 3. Update the version in the **root** `package.json` only.

@@ -8,7 +8,7 @@
 # npm ci, npm test" by hand. Now each PR shows a green tick or a red cross
 # and you only have to read the ones that matter.
 #
-# Five independent jobs, so one failure never hides another:
+# One lightweight scope check selects the five independent Node/stack jobs:
 #   test    - all automated tests + a production build of every frontend
 #   audit   - `npm audit`, kept separate so a NEW advisory doesn't turn the
 #             tests red (a new advisory isn't the PR's fault, but you still
@@ -43,8 +43,38 @@ permissions:
   contents: read
 
 jobs:
+  scope:
+    name: Select relevant checks
+    runs-on: ubuntu-latest
+    outputs:
+      node: ${{ steps.scope.outputs.node }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          python3 - <<'PY'
+          import os, subprocess
+          base = os.environ.get("BASE_SHA", "")
+          relevant = True
+          if os.environ["EVENT_NAME"] != "workflow_dispatch" and base and set(base) != {"0"}:
+              paths = subprocess.check_output(["git", "diff", "--name-only", "-z", base, os.environ["HEAD_SHA"]]).decode().split("\0")
+              android_only = {".github/workflows/android.yml", "scripts/android-gradle-version.py", "scripts/android-seed-picker-media.py", "scripts/test/test_android_gradle_version.py"}
+              relevant = any(p and not (p.endswith(".md") or p.startswith("apps/homesync-android/") or p in android_only) for p in paths)
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"node={str(relevant).lower()}\n")
+          print("Node/Docker checks required" if relevant else "Android/documentation only: Node/Docker checks skipped")
+          PY
+
   test:
     name: Tests and frontend builds
+    needs: scope
+    if: ${{ !cancelled() && needs.scope.outputs.node != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -63,7 +93,7 @@ jobs:
       # what catches a Dependabot PR that edited one but not the other.
       - run: npm ci
 
-      # Runs every workspace's own test suite (362 tests at time of writing).
+      # The full Node suite is for Node/stack changes, not Android-only edits.
       - run: npm test
 
       # Exercise the real backup script, including archive restore and
@@ -77,6 +107,8 @@ jobs:
 
   windows:
     name: Windows install and native SQLite smoke test
+    needs: scope
+    if: ${{ !cancelled() && needs.scope.outputs.node != 'false' }}
     runs-on: windows-latest
     timeout-minutes: 15
     steps:
@@ -117,6 +149,8 @@ jobs:
   # "one app is down" is checked on every push without needing Docker.
   gateway:
     name: Gateway config (real nginx)
+    needs: scope
+    if: ${{ !cancelled() && needs.scope.outputs.node != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -128,6 +162,8 @@ jobs:
 
   audit:
     name: Dependency audit
+    needs: scope
+    if: ${{ !cancelled() && needs.scope.outputs.node != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -145,6 +181,8 @@ jobs:
 
   docker:
     name: Docker build and smoke test
+    needs: scope
+    if: ${{ !cancelled() && needs.scope.outputs.node != 'false' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

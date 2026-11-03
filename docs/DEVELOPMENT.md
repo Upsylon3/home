@@ -411,3 +411,17 @@ loopback URL and creates only disposable test services/accounts. Sign in as
 `POST /__review__/stop` shuts down and removes the fixture's own databases.
 These controls do not exist in production. Actual wall-clock scheduling and
 container restart/replay are proved separately in Docker CI.
+
+## Proportionate verification
+
+Use focused checks during implementation. The main CI workflow skips its five
+Node/stack jobs for changes limited to Markdown, the Android app/workflow and
+its dedicated Gradle/media-seeding scripts. The lightweight scope job and
+repository conventions still run, and Android's own workflow remains active.
+Skipped job names remain present for required-check compatibility. Unknown,
+mixed or Node/stack paths run the normal gate; manual CI dispatch always runs
+it. A failed/missing scope output falls back to running the gate.
+
+The Android emulator uses an explicit 2048 MB userdata partition. Its tiny
+synthetic fixtures do not need the Pixel profile's default >7 GB allocation,
+which can exceed hosted-runner free disk after SDK/Gradle installation.

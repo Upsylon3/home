@@ -104,11 +104,11 @@ Do not silently introduce network calls, telemetry, third-party services, analyt
 
 For npm 11 lifecycle scripts, inspect the exact package/version and its install command before approving it in the root `package.json` `allowScripts` map. Prefer version-pinned approvals and the smallest allowlist possible; never use `npm approve-scripts --all` or `--dangerously-allow-all-scripts` as a blanket workaround. Re-run `npm ci` and a platform-appropriate native smoke test after changing this policy.
 
-## 5. Verify proportionately, then run the full gate
+## 5. Verify proportionately
 
-During development, run the narrowest relevant test suite after each meaningful change. Before opening a PR, run the full checks the environment supports.
+Run the smallest meaningful proof for the changed behavior. Reuse existing coverage and remove redundant cases instead of adding a test for every implementation detail. Do not repeat full workspace/build/Docker runs for Android-only or documentation-only edits. The CI scope job skips the five Node/stack jobs for those edits; Android and conventions workflows still apply. Node, dependency, gateway and deployment changes retain the full Node/stack gate. Manual CI dispatch explicitly runs that full gate.
 
-The standard local baseline is:
+For a Node/stack change, the full local baseline is:
 
 ```bash
 npm ci
@@ -168,7 +168,7 @@ Create a short-lived branch using the naming rules in `CONTRIBUTING.md`. Use Con
 - exact tests and CI evidence;
 - known limitations and follow-up work.
 
-Do not call a PR ready while its checks are pending. Applicable required checks are:
+Do not call a PR ready while its checks are pending. Applicable required checks are below. The scope job skips the Node/stack jobs for Android/documentation-only changes; a skipped job does not require a manual rerun:
 
 - Repository conventions — commit, PR title and branch validation;
 - CI — tests and frontend builds;

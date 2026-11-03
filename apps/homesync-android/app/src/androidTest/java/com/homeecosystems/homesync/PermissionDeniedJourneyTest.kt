@@ -94,6 +94,11 @@ class PermissionDeniedJourneyTest {
             clickSystemText("Permissions")
             clickSystemText("Photos and videos")
             clickSystemText("(?i)(always )?allow all.*")
+            // Settings applies the grant asynchronously after the injected tap.
+            // Require the real OS state before asserting or leaving this screen.
+            compose.waitUntil(10_000) {
+                ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED
+            }
             assertEquals(PackageManager.PERMISSION_GRANTED, ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES))
             shell("screencap -p /data/local/tmp/homesync-settings-permissions.png")
             repeat(3) { device.pressBack(); device.waitForIdle() }

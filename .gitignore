@@ -47,3 +47,7 @@ apps/homesync-android/local.properties
 apps/homesync-android/.idea/
 apps/homesync-android/*.iml
 apps/homesync-android/app/*.iml
+
+# Browser-only demo builds and verification screenshots.
+demo-dist/
+demo-*.png

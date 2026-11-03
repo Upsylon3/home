@@ -32,6 +32,10 @@
   "//version-policy": "One version number for the whole ecosystem, bumped on every meaningful release across any service — simplest thing that works for a project this size. Individual package.json files under apps/ and packages/ have their own version fields for npm/Docker tooling's sake, but this root version is the one that matters for release notes (see CHANGELOG.md).",
 
   "scripts": {
+    "build:demo": "node demo/build.mjs",
+    "preview:demo": "node demo/serve.mjs",
+    "test:demo": "node --test demo/api.test.mjs",
+    "test:demo:browser": "node demo/browser-test.mjs",
     "//test": "Runs every workspace's own `test` script, one at a time, stopping at the first failure — homecore, the six backends under apps/ (homecloud, homemedia, homenotes, homesync, homevault), and the two frontends that have tests (apps/homenotes, apps/homevault).",
     "test": "npm run test --workspaces --if-present",
     "test:backup": "node --test services/backup/test/*.test.cjs",
@@ -46,5 +50,8 @@
 
     "//dev:home": "Windows-only convenience launcher — see docs/DEVELOPMENT.md's Windows section. Opens a small picker UI, then starts each chosen service in its own terminal with dev-mode env vars already set. Not needed on macOS/Linux; use the manual per-service commands in docs/DEVELOPMENT.md instead.",
     "dev:home": "cmd /c scripts\\dev-home.bat"
+  },
+  "devDependencies": {
+    "playwright": "1.58.2"
   }
 }

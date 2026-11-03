@@ -8,6 +8,7 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 ## [Unreleased]
 
 ### Added
+- Add a serverless browser demo built from all seven existing web interfaces, with IndexedDB files/notes/tasks/media, real client-side Vault encryption, sample data, reset controls and GitHub Pages deployment. Demo sign-in and server monitoring are simulated; no cross-device sync or real account security is implied.
 - Add opt-in personal HomeTasks reminders: choose one local date/time per occurrence and receive an owner-scoped Core notification with a task link. Use a separate external producer key, additive schedules/receipts, outage retries and replay protection. Completing clears the reminder; repeated copies start without one. Home refreshes its notification bell while visible. No email/web push or assignment in this release.
 - Extend HomeSync selected-photo validation through the real Review media access picker: add a newly allowed foreign-owned photo, keep a third photo unreadable and unbacked, and require exact two-photo bytes/hashes and repeat-backup deduplication. Preserve the original one-photo proof; selection removal, grant expiration, selected videos and physical-device checks remain open.
 - Add a HomeSync API-34 selected-photo journey with two shell-seeded foreign-owned images, real picker selection, denied full grants, scanner/direct-URI exclusion, a persistent limited-coverage notice and exact-byte backup/dedup verification. Selected videos, reselection, grant expiration and physical-device validation remain open.

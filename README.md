@@ -29,6 +29,10 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how these fit
 together, and [docs/SECURITY.md](docs/SECURITY.md) for what's protecting
 them today and what isn't yet.
 
+## Browser-only demo
+
+Explore HOME without a server: the browser demo stores test data only in your current browser and includes the existing Vault encryption flow. See [demo access, details and limitations](docs/BROWSER_DEMO.md).
+
 ## Quick start (Docker)
 
 Requires [Docker](https://www.docker.com/) with Compose.

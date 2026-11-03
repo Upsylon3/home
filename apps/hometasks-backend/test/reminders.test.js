@@ -148,6 +148,23 @@ test("credential failures back off; disabled users and disabled app are suppress
   finally { ctx.homecore.db.prepare("UPDATE hc_applications SET enabled = 1 WHERE slug = 'hometasks'").run(); }
 });
 
+test("a startup Core outage persists backoff across worker restart and delivers on a later tick", async () => {
+  const http = require("node:http");
+  const closed = http.createServer();
+  await new Promise(resolve => closed.listen(0, "127.0.0.1", resolve));
+  const port = closed.address().port;
+  await new Promise(resolve => closed.close(resolve));
+  const owner = await register(), task = await taskFor(owner);
+  await schedule(owner, task); due(task);
+  const now = Date.now();
+  assert.equal((await worker({ coreUrl: `http://127.0.0.1:${port}`, now: () => now + 100 }).tick()).retried, 1);
+  // On real interval boundaries, the retry can fall just after the 60s tick.
+  assert.equal((await worker({ now: () => now + 30000 }).tick()).delivered, 0);
+  assert.equal((await worker({ now: () => now + 60000 }).tick()).delivered, 0);
+  assert.equal((await worker({ now: () => now + 90000 }).tick()).delivered, 1);
+  assert.equal(notices(owner.user).length, 1);
+});
+
 test("Core producer credential is isolated, payload fixed, replay binding retained and quota enforced", async () => {
   const owner = await register();
   const payload = { deliveryId: randomUUID(), userId: owner.user.id, taskId: 123456, taskTitle: "Fixed notice" };

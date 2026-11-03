@@ -35,7 +35,10 @@ async function main() {
     task = list.tasks.find(t => t.title === "CI personal reminder");
     assert.ok(task, "task survives container restart");
   }
-  for (let attempt = 0; attempt < 45; attempt++) {
+  // A simultaneous restart may briefly refuse delivery before Core listens.
+  // Allow its persisted one-minute backoff plus the next 30-second tick.
+  const deadlineSeconds = verify ? 120 : 45;
+  for (let attempt = 0; attempt < deadlineSeconds; attempt++) {
     const current = (await call(`/api/hometasks/tasks/${task.id}`, owner.token)).task;
     const list = (await call("/api/core/notifications", owner.token)).notifications;
     if (current.reminderState === "sent") {
@@ -48,6 +51,6 @@ async function main() {
     }
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
-  throw new Error("Reminder did not arrive within 45 seconds");
+  throw new Error(`Reminder did not arrive within ${deadlineSeconds} seconds`);
 }
 main().catch(error => { console.error(error.message); process.exitCode = 1; });

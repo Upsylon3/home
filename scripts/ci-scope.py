@@ -99,6 +99,8 @@ def select(paths, before=None, after=None, event='pull_request'):
                     result['docker'] = True
             elif '/test/' in path:
                 tests.add(workspace)
+                if workspace in {'apps/homecloud-backend', 'apps/homemedia-backend'}:
+                    result['windows'] = True
             elif '/test-support/' in path and not path.endswith('android-fixture.cjs'):
                 tests.add(workspace); result['docker'] = True
             else:

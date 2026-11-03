@@ -26,8 +26,26 @@ concurrency:
   group: browser-demo-pages
   cancel-in-progress: true
 jobs:
-  deploy:
+  scope:
+    name: Select changed demo deployment
     if: ${{ (github.event_name == 'pull_request_target' && github.event.pull_request.merged == true) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') }}
+    runs-on: ubuntu-latest
+    outputs:
+      demo: ${{ steps.scope.outputs.demo }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+          fetch-depth: 0
+      - id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name == 'pull_request_target' && 'pull_request' || github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python3 scripts/ci-scope.py
+  deploy:
+    needs: scope
+    if: ${{ !cancelled() && needs.scope.outputs.demo == 'true' && ((github.event_name == 'pull_request_target' && github.event.pull_request.merged == true) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

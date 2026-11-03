@@ -45,7 +45,7 @@ class ScopeTests(unittest.TestCase):
         self.assertTrue(resource['android']); self.assertFalse(resource['emulator']); self.assertTrue(worker['emulator']); self.assertFalse(worker['node'])
     def test_test_only_changes_do_not_start_stack_or_emulator(self):
         selected = scope.select(['apps/homecloud-backend/test/files.test.js'])
-        self.assertEqual(selected['tests'], ['apps/homecloud-backend']); self.assertFalse(selected['docker']); self.assertFalse(selected['android'])
+        self.assertEqual(selected['tests'], ['apps/homecloud-backend']); self.assertFalse(selected['docker']); self.assertFalse(selected['android']); self.assertTrue(selected['windows'])
         frontend = scope.select(['apps/homevault/test/crypto.test.js'])
         self.assertEqual(frontend['tests'], ['apps/homevault']); self.assertEqual(frontend['builds'], []); self.assertFalse(frontend['demo'])
     def test_android_network_resources_and_design_images_keep_their_proof(self):

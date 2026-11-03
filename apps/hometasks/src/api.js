@@ -54,6 +54,8 @@ export const api = {
   verify2fa: (pendingToken, code) => request("/auth/2fa/verify", { method: "POST", body: json({ pendingToken, code }) }),
   me: () => request("/auth/me"),
 
+  reminderStatus: () => request("/hometasks/reminders/status"),
+
   summary: (today) => request(`/hometasks/summary${qs({ today })}`),
 
   projects: {

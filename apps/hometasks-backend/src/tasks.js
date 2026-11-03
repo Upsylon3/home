@@ -8,12 +8,15 @@
 // REPEATING TASKS: ticking one off keeps it in Done and creates the next copy
 // with the next due date (the date maths lives in src/recurrence.js).
 //
-// NOT BUILT YET (on purpose, see docs/ROADMAP.md): reminders / notifications,
+// Reminders use Core notifications via a dedicated producer credential.
+// NOT BUILT YET (see docs/ROADMAP.md):
 // assigning a task to another family member, and
 // emitting events like "hometasks.task.completed" to the shared event bus.
 // Assignment in particular needs the multi-user sharing model HomeCloud
 // doesn't have yet, so it waits for that rather than being faked here.
 const express = require("express");
+const { randomUUID } = require("node:crypto");
+const { readKey, validateReminder } = require("./reminders");
 const { db } = require("./db");
 const { nextDueDate } = require("./recurrence");
 const { asyncHandler } = require("./asyncHandler");
@@ -30,6 +33,7 @@ const {
 } = require("./validation");
 
 const router = express.Router();
+router.get("/reminders/status", (req, res) => res.json({ available: Boolean(readKey()) }));
 
 // Database row -> the JSON shape the API promises (see projects.js for why
 // this lives in one function).
@@ -39,6 +43,9 @@ function serializeTask(row) {
     title: row.title,
     notes: row.notes,
     priority: priorityToName(row.priority),
+    reminderAt: row.reminder_at,
+    reminderSentAt: row.reminder_sent_at,
+    reminderState: !row.reminder_at ? null : row.reminder_sent_at ? "sent" : row.reminder_error ? "suppressed" : "scheduled",
     dueDate: row.due_date, // "YYYY-MM-DD" or null
     repeat: row.repeat_rule, // "none", "daily", "weekdays", "weekly", "monthly" or "yearly"
     projectId: row.project_id, // number or null
@@ -266,6 +273,15 @@ router.patch(
       }
     }
 
+    let reminderChange = null;
+    if (has("reminderAt") && body.reminderAt !== task.reminder_at) {
+      const reminder = validateReminder(body.reminderAt);
+      if (reminder.error) return res.status(400).json({ error: reminder.error });
+      if (reminder.value && task.completed_at) return res.status(409).json({ error: "Reopen the task before adding a reminder." });
+      if (reminder.value && !readKey()) return res.status(503).json({ error: "Reminders need administrator setup." });
+      reminderChange = reminder;
+    }
+
     // These two rules are checked on the FINAL values, so they hold whichever
     // field the client changed: you can't clear the due date of a repeating
     // task, and you can't make a task repeat while it has no due date.
@@ -278,12 +294,16 @@ router.patch(
       anchor = repeat !== "none" ? dueDate : null;
     }
 
-    db.prepare(
-      `UPDATE tasks
-          SET title = ?, notes = ?, priority = ?, due_date = ?, project_id = ?,
-              repeat_rule = ?, repeat_anchor = ?, updated_at = datetime('now')
-        WHERE id = ? AND user_id = ?`
-    ).run(title, notes, priority, dueDate, projectId, repeat, anchor, task.id, req.user.id);
+    db.transaction(() => {
+      db.prepare(
+        `UPDATE tasks
+            SET title = ?, notes = ?, priority = ?, due_date = ?, project_id = ?,
+                repeat_rule = ?, repeat_anchor = ?, updated_at = datetime('now')
+          WHERE id = ? AND user_id = ?`
+      ).run(title, notes, priority, dueDate, projectId, repeat, anchor, task.id, req.user.id);
+      if (reminderChange) db.prepare("UPDATE tasks SET reminder_at = ?, reminder_key = ?, reminder_sent_at = NULL, reminder_error = NULL, reminder_retry_at = NULL WHERE id = ? AND user_id = ?")
+        .run(reminderChange.value, reminderChange.value ? randomUUID() : null, task.id, req.user.id);
+    })();
 
     res.json({ task: serializeTask(findOwnTask(task.id, req.user.id)) });
   })
@@ -313,7 +333,7 @@ router.post(
       // fail TOGETHER, so a crash in between can't leave a repeating task
       // finished with nothing coming after it.
       const completeTask = db.transaction(() => {
-        db.prepare("UPDATE tasks SET completed_at = datetime('now'), updated_at = datetime('now') WHERE id = ? AND user_id = ?").run(
+        db.prepare("UPDATE tasks SET completed_at = datetime('now'), reminder_at = NULL, reminder_key = NULL, reminder_sent_at = NULL, reminder_error = NULL, reminder_retry_at = NULL, updated_at = datetime('now') WHERE id = ? AND user_id = ?").run(
           task.id,
           req.user.id
         );

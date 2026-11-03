@@ -1,12 +1,7 @@
 // /api/core/notifications/* — HOME_MASTER_SPECIFICATION.md §7.7 / §31.
 //
-// The table and read/mark-read API are functional and tested in this
-// milestone. What's NOT included in v0: nothing produces a notification
-// yet — no HomeCloud action (share created, quota near limit, etc.) calls
-// into this. §31 describes that as an application-level concern
-// ("Applications create notifications; Home decides how to display/deliver
-// them"), so wiring an actual producer belongs with a specific feature
-// decision later, not fabricated here just to have sample data.
+// HomeMonitor's admin alerts and opt-in HomeTasks reminders use Core's
+// producer endpoints. Reading and marking notices always remain user-scoped.
 const express = require("express");
 const { db } = require("../db");
 const { errorBody } = require("./errors");

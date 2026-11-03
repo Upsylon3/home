@@ -1,4 +1,5 @@
-// The ONE place that decides whether an /internal/... request is allowed.
+// Shared-secret authorization for the general internal service APIs.
+// Task reminders and delegated authority have separate scoped credentials.
 //
 // /internal/... routes are machine-to-machine: one trusted Home service
 // calling HomeCore as itself, not as a signed-in person. They are protected

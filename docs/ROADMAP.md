@@ -17,13 +17,20 @@ real-world validation is available.
 **Build order, decided:** HomeVault → HomeTasks → HomeBridge →
 HomeMonitor → HomeAI. HomeVault first because it's security-critical and
 already had a full threat model (`SECURITY.md`) — **v0 is now built**
-(see `ARCHITECTURE.md`'s status table), so HomeTasks came next (**built: backend, web app and repeating tasks; reminders and assignment are the follow-ups**): the
+(see `ARCHITECTURE.md`'s status table), so HomeTasks came next (**built: backend, web app, repeating tasks and opt-in personal reminders; assignment is the next HomeTasks follow-up**): the
 highest everyday-value, most conventional build (CRUD app, no new
 architectural pattern needed). HomeBridge after that, once there are
 enough real apps for its cross-app ideas (`ROADMAP.md`'s brainstorm
 below) to actually matter. HomeMonitor (**v0 built**, see `ARCHITECTURE.md`)
 and HomeAI last — lower urgency, and HomeAI specifically benefits from permission enforcement landing
 first (see below).
+
+**HomeTasks reminders v1:** one explicit time per task occurrence, delivered
+through Core's in-app notification bell, is implemented with an optional
+dedicated key, persistent retries and receipt-based replay protection. See
+[decision 006](decisions/006-hometasks-reminders.md) for scope and limits.
+Assignment is still unbuilt; email/web push and inherited repeating reminders
+are outside this first release.
 
 ## Near-term backlog
 

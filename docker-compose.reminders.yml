@@ -1,0 +1,22 @@
+# Optional personal task reminders. Use the same external 32-byte key for Core and Tasks.
+services:
+  homecore:
+    environment:
+      HOMETASKS_REMINDER_KEY_FILE: /run/secrets/hometasks-reminders
+    volumes:
+      - type: bind
+        source: ${HOMETASKS_REMINDER_KEY_PATH:?Set an absolute external 32-byte key file path}
+        target: /run/secrets/hometasks-reminders
+        read_only: true
+        bind:
+          create_host_path: false
+  hometasks-backend:
+    environment:
+      HOMETASKS_REMINDER_KEY_FILE: /run/secrets/hometasks-reminders
+    volumes:
+      - type: bind
+        source: ${HOMETASKS_REMINDER_KEY_PATH:?Set an absolute external 32-byte key file path}
+        target: /run/secrets/hometasks-reminders
+        read_only: true
+        bind:
+          create_host_path: false

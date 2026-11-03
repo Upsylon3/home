@@ -59,7 +59,7 @@ other Tier 1 app currently has a hard dependency on (see §4).
 **Database tables** (prefixed `hc_`): `hc_applications`,
 `hc_permissions`, `hc_application_permissions`, `hc_activity_events`,
 `hc_notifications`, `hc_sessions`, `hc_delegation_grants`,
-`hc_delegation_credentials`.
+`hc_delegation_credentials`, `hc_task_reminder_deliveries`.
 
 Seven applications are registered today: `homecloud`, `homemedia`,
 `homesync`, `homenotes`, `hometasks`, `homemonitor`, `homevault` — pre-seeded by HomeCore's own
@@ -331,7 +331,7 @@ Vault's own database. No sibling Tier 1 dependency or Core database access is ad
 | HomeSync backend | Built and tested |
 | HomeSync Android app | Built; JVM tests plus a real API-34 emulator UI/WorkManager/byte-verified backup journey in CI. Physical-phone, denied-permission and long-duration validation remain — see `docs/HOMESYNC_DEVICE_VALIDATION.md` |
 | HomeVault | **v0 built** — core loop (create/unlock/recover a vault, add/view/edit/delete items) implemented and tested; **self-reviewed twice, not independently reviewed** — see `docs/SECURITY.md`'s "HomeVault v0" section before trusting it with anything real |
-| HomeTasks | **Built**: backend and web app (Today / Upcoming / All / Done, projects, due dates, priorities, search, repeating tasks), tested; the web app was driven end to end in a headless browser. Reminders and assignment are deliberately not built yet, see `docs/ROADMAP.md` |
+| HomeTasks | **Built**: backend and web app (Today / Upcoming / All / Done, projects, due dates, priorities, search, repeating tasks), tested; the web app was driven end to end in a headless browser. Opt-in personal reminders use a Tasks-owned UTC schedule and Core notification receipts (decision 006), with a separate fixed-purpose producer credential; Home refreshes the bell and links back to the owner-scoped task. Assignment remains unbuilt, see `docs/ROADMAP.md` |
 | HomeMonitor | **v0 built**: admin-only dashboard for CPU, memory, disk, each app's health, backup freshness and disk growth (with a rough "full in N days" forecast), plus alerts delivered as HomeCore notifications. Tier 1: it reads the app registry and posts notifications through two small new HomeCore endpoints, `GET /internal/apps` and `POST /internal/notifications` (shared-secret, machine to machine). No Docker socket, by design. Tested; the web app was driven in a headless browser against a real HomeCore, measuring the real machine |
 | HomeBridge | **Built**: optional stateless Notes/Tasks search plus separately configured Monitor follow-up automation, encrypted operational state, owner consent/disable and direct Core revocation |
 | HomeAI | Not started |

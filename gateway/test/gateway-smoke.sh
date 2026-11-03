@@ -164,6 +164,8 @@ req POST /internal/delegations -H 'Content-Type: application/json' -d '{"integra
 expect_status "delegation issuance is not exposed by the public gateway" 404
 req POST /internal/delegations/example/renew -H 'Content-Type: application/json' -d '{"consent":true}'
 expect_status "delegation renewal is not exposed by the public gateway" 404
+req POST /internal/hometasks/reminders -H 'Content-Type: application/json' -d '{}'
+expect_status "task reminder producer is not exposed by the public gateway" 404
 req GET /sync/
 expect_body   "/sync/ reaches homesync-backend as /" '"path": "/"'
 req POST /api/hometasks/tasks -H 'Content-Type: application/json' -d '{"title":"x"}'

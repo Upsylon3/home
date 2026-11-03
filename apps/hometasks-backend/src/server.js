@@ -3,6 +3,13 @@
 require("dotenv").config(); // reads a local .env file into process.env, if there is one
 
 const { app, db } = require("./app");
+const { createReminderWorker } = require("./reminders");
+const { HOMECORE_URL } = require("@home/homecore-client");
+const reminders = createReminderWorker({ db, coreUrl: HOMECORE_URL });
+const tickReminders = () => reminders.tick().catch(() => console.error("[hometasks] reminder tick failed"));
+const reminderTimer = setInterval(tickReminders, 30000);
+reminderTimer.unref();
+tickReminders();
 
 // A promise that failed with nobody handling it is a bug. Log loudly.
 process.on("unhandledRejection", (reason) => {
@@ -29,7 +36,9 @@ const server = app.listen(PORT, () => {
 // something never finishes.
 function shutdown(signal) {
   console.log(`[hometasks] Received ${signal}, shutting down gracefully...`);
-  server.close(() => {
+  clearInterval(reminderTimer);
+  server.close(async () => {
+    await reminders.drain();
     db.close();
     console.log("[hometasks] Shutdown complete.");
     process.exit(0);

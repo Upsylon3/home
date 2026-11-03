@@ -53,6 +53,9 @@ persistent limited-coverage warning; the selected-photo journey below exercises
 the real picker and restricted image access. Android app
 settings provides recovery when Android stops showing permission prompts;
 the separate permanent-denial invocation exercises that path.
+After tapping Allow all in Settings, the test waits up to ten seconds for the
+actual OS grant before asserting it, capturing evidence and returning to the app.
+The grant, resumed UI and byte-verified backup assertions remain required.
 Disabling a blocked category allows other enabled categories to proceed.
 Permission failures during scanning/opening are terminal worker failures;
 permission revocation can also cause Android process termination, which this

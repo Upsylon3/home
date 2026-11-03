@@ -17,6 +17,7 @@ jobs:
     timeout-minutes: 15
     env:
       DEMO_BASE: /${{ github.event.repository.name }}/
+      DEMO_BROWSER_CHANNEL: chrome
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -26,7 +27,6 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm run test:demo
       - run: npm run build:demo
-      - run: npx playwright install --with-deps chromium
       - run: npm run test:demo:browser
       - uses: actions/upload-pages-artifact@v5
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'

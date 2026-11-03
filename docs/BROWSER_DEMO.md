@@ -36,7 +36,7 @@ On Windows, an installed Edge can be used by setting `DEMO_BROWSER_CHANNEL=msedg
 
 ## GitHub Pages
 
-The Browser demo workflow verifies pull requests and automatically builds/deploys main. One-time repository setup: **Settings → Pages → Build and deployment → Source → GitHub Actions**. Then run **Actions → Browser demo → Run workflow** if the first deployment has not already run. No custom domain is needed. The workflow deploys only `demo-dist`, never backend code, test uploads or local environment files. Updates replace static assets and keep the IndexedDB database name stable.
+The Browser demo workflow uses Chrome already installed on the GitHub Ubuntu runner; it does not download a browser or install OS dependencies on each run. It verifies pull requests and automatically builds/deploys main. One-time repository setup: **Settings → Pages → Build and deployment → Source → GitHub Actions**. Then run **Actions → Browser demo → Run workflow** if the first deployment has not already run. No custom domain is needed. The workflow deploys only `demo-dist`, never backend code, test uploads or local environment files. Updates replace static assets and keep the IndexedDB database name stable.
 
 ## Implementation boundary
 

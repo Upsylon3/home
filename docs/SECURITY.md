@@ -140,7 +140,7 @@ them on (merged only after the same CI run passed) to `alpine:3.24` and
 
 ## Machine-to-machine routes, and HomeMonitor
 
-- **One shared-secret check.** Every `/internal/...` route in HomeCore
+- **General internal shared-secret check.** The general internal routes in HomeCore
   (`events`, `users/usage`, `apps`, `notifications`) goes through
   `homecore/src/internalAuth.js`, which compares the secret in constant time
   (`crypto.timingSafeEqual`), so a wrong guess can't be refined by timing.
@@ -484,3 +484,38 @@ remain unchanged; no independent cryptographic review is claimed.
 
 Don't open a public issue. See `CONTRIBUTING.md` for how to report
 privately.
+
+## Personal task reminder boundary
+
+Decision [006](decisions/006-hometasks-reminders.md) adds a separate private
+Core producer route, `/internal/hometasks/reminders`, blocked by the public
+gateway. Only Core and Tasks mount the same external raw 32-byte key through
+`docker-compose.reminders.yml`. Neither default Compose nor browser clients
+receive it. Missing, unreadable or wrong-size files fail closed. The general
+internal secret and browser tokens cannot authenticate this producer; the
+reminder key cannot authenticate general internal or user APIs. Header
+comparison is constant-time. Keep the file outside repository, data and backup
+sources, restrict host access and rotate/restart both services together.
+
+Tasks is trusted to assert the owner from its own stored row. Core does not
+verify the task against Tasks and does not read its database. A compromised
+Tasks/key can produce bounded notices for enabled users, but cannot choose
+arbitrary notification fields, links, applications or recipients outside
+enabled accounts. Core fixes the source/type/title/link data and enforces
+100 new reminders per user and 1000 globally per UTC day. This limits spam;
+it does not remove the trust in this producer. Only the task title (up to
+200 characters), owner/task IDs and a delivery UUID cross into Core; task notes
+and browser sessions do not. Titles therefore enter Core's notification DB
+and its backups after explicit reminder opt-in.
+
+Core receipts and notification creation are atomic, and concurrent/retried
+requests with the same owner/task UUID cannot create another notice. A
+changed reminder gets a new UUID; a stale worker cannot acknowledge it.
+Completion/deletion/removal cancels locally pending work, but cannot retract
+an already in-flight or delivered notification. Disabled/deleted users and a
+disabled HomeTasks registry entry suppress new delivery; re-enabling alone
+does not rearm it. Core outage or quota exhaustion stays pending for retry.
+Receipts have no cleanup TTL. Back up/restore Core and Tasks consistently:
+restoring Core without matching Tasks can lose replay history, while restoring
+Tasks without Core can leave an acknowledged notice absent. No cross-service
+restore exactly-once, exact-time, email or web-push guarantee is made.

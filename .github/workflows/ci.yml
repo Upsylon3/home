@@ -280,6 +280,19 @@ jobs:
           docker compose -f docker-compose.yml -f docker-compose.automation.yml run --rm -e BACKUP_DIR=/backups/ci-automation backup --once
           docker compose -f docker-compose.yml -f docker-compose.automation.yml run --rm -T --entrypoint python3 backup -c 'from pathlib import Path; from snapshot import verify; root=Path("/backups/ci-automation"); archive=next(root.glob("homebridge-backup-*.tar.gz")); verify(archive,root); print("ok encrypted Bridge database restore integrity; key is outside backup sources")'
 
+      - name: Opt-in personal task reminder delivery and restart proof
+        run: |
+          set -eu
+          export HOMETASKS_REMINDER_KEY_PATH="$RUNNER_TEMP/hometasks-reminder-key"
+          openssl rand -out "$HOMETASKS_REMINDER_KEY_PATH" 32
+          docker compose -f docker-compose.yml -f docker-compose.reminders.yml up -d --no-deps --wait homecore hometasks-backend
+          node apps/hometasks-backend/test-support/reminders-smoke.cjs
+          # Model response loss after Core committed: only the Tasks ack is lost.
+          docker compose exec -T hometasks-backend node -e 'const {db}=require("./src/db"); db.prepare("UPDATE tasks SET reminder_sent_at = NULL WHERE title = ?").run("CI personal reminder"); db.close();'
+          docker compose -f docker-compose.yml -f docker-compose.reminders.yml restart homecore hometasks-backend
+          docker compose -f docker-compose.yml -f docker-compose.reminders.yml up -d --no-deps --wait homecore hometasks-backend
+          node apps/hometasks-backend/test-support/reminders-smoke.cjs --verify-restart
+
       - name: Restore-check live SQLite backups from read-only volumes
         run: |
           set -eu

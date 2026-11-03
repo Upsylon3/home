@@ -1,6 +1,14 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { api } from "../api.js";
 import Modal from "./Modal.jsx";
 import { REPEAT_OPTIONS } from "../repeat.js";
+
+function localReminder(instant) {
+  if (!instant) return "";
+  const date = new Date(instant);
+  const pad = n => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
 
 // The pop-up for editing one task: every field, plus delete.
 //
@@ -21,6 +29,17 @@ export default function TaskDialog({ task, projects, today, onSave, onDelete, on
   const [dueDate, setDueDate] = useState(task.dueDate || "");
   const [repeat, setRepeat] = useState(task.repeat);
   const [projectId, setProjectId] = useState(task.projectId === null ? "" : String(task.projectId));
+  const initialReminder = localReminder(task.reminderAt);
+  const [reminder, setReminder] = useState(initialReminder);
+  const [remindersAvailable, setRemindersAvailable] = useState(null);
+  const [reminderCheckFailed, setReminderCheckFailed] = useState(false);
+  useEffect(() => {
+    let active = true;
+    api.reminderStatus().then(({ data }) => { if (active) setRemindersAvailable(data.available); }).catch(() => {
+      if (active) { setRemindersAvailable(false); setReminderCheckFailed(true); }
+    });
+    return () => { active = false; };
+  }, []);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -51,8 +70,20 @@ export default function TaskDialog({ task, projects, today, onSave, onDelete, on
       setError("A task needs a title.");
       return;
     }
+    let reminderPatch = {};
+    if (reminder !== initialReminder) {
+      if (reminder) {
+        const date = new Date(reminder);
+        // Reject DST gaps normalized by Date, rather than silently moving the hour.
+        if (!Number.isFinite(date.getTime()) || localReminder(date.toISOString()) !== reminder) {
+          setError("That local time does not exist. Choose another time."); return;
+        }
+        reminderPatch = { reminderAt: date.toISOString() };
+      } else reminderPatch = { reminderAt: null };
+    }
     run(() =>
       onSave({
+        ...reminderPatch,
         title: title.trim(),
         notes,
         priority,
@@ -110,6 +141,15 @@ export default function TaskDialog({ task, projects, today, onSave, onDelete, on
           {repeat !== "none" && (
             <p className="field-hint">When you tick it off, the next one is created automatically. Choose "Doesn't repeat" to stop.</p>
           )}
+        </div>
+
+        <div className="field">
+          <label htmlFor="task-reminder">Remind me</label>
+          <input id="task-reminder" type="datetime-local" value={reminder} disabled={!remindersAvailable || task.isDone} onChange={e => setReminder(e.target.value)} aria-describedby="reminder-help" />
+          <p id="reminder-help" className="field-hint">{remindersAvailable === null ? "Checking reminder availability…" : reminderCheckFailed ? "Could not check reminders. Reopen the editor to retry. You can still remove an existing reminder." : !remindersAvailable ? "Reminders need administrator setup. You can still remove an existing reminder." : `Time zone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}. Appears in Home notifications, usually within a minute while services are running. Delivery can be late after an outage.`}</p>
+          {task.reminderAt && <p className="field-hint">{task.reminderState === "sent" ? "Reminder sent." : task.reminderState === "suppressed" ? "Reminder was not sent. Choose a new time to try again." : "Reminder scheduled."}</p>}
+          {reminder && <button type="button" className="btn btn-ghost btn-sm" onClick={() => setReminder("")}>Remove reminder</button>}
+          {repeat !== "none" && <p className="field-hint">For this occurrence only. The next repeat starts without a reminder.</p>}
         </div>
 
         <div className="field">

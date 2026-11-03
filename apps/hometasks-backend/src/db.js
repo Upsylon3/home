@@ -99,6 +99,12 @@ addColumnIfMissing("tasks", "repeat_rule", "TEXT NOT NULL DEFAULT 'none'");
 addColumnIfMissing("tasks", "repeat_anchor", "TEXT");
 addColumnIfMissing("tasks", "spawned_task_id", "INTEGER");
 
+addColumnIfMissing("tasks", "reminder_at", "TEXT");
+addColumnIfMissing("tasks", "reminder_key", "TEXT");
+addColumnIfMissing("tasks", "reminder_sent_at", "TEXT");
+addColumnIfMissing("tasks", "reminder_error", "TEXT");
+addColumnIfMissing("tasks", "reminder_retry_at", "TEXT");
+db.exec("CREATE INDEX IF NOT EXISTS idx_tasks_reminders ON tasks(reminder_at) WHERE reminder_at IS NOT NULL AND completed_at IS NULL AND reminder_sent_at IS NULL AND reminder_error IS NULL");
 require("./automationStore").ensureAutomationSchema(db);
 
 module.exports = { db, DATA_DIR };

@@ -31,9 +31,10 @@ export default function TaskRow({ task, today, projectName, onToggle, onOpen }) 
         <button type="button" className="task-title" onClick={() => onOpen(task)}>
           {task.title}
         </button>
-        {(due || repeats || task.priority !== "none" || projectName) && (
+        {(due || repeats || task.reminderAt || task.priority !== "none" || projectName) && (
           <div className="task-meta">
             {due && <span className={`chip is-${due.tone}`}>{due.text}</span>}
+            {task.reminderAt && !task.isDone && <span className="chip">{task.reminderState === "sent" ? "Reminder sent" : task.reminderState === "suppressed" ? "Reminder not sent" : `Remind ${new Date(task.reminderAt).toLocaleString()}`}</span>}
             {repeats && <span className="chip">{repeats}</span>}
             {task.priority !== "none" && <span className={`chip is-${task.priority}`}>{task.priority} priority</span>}
             {projectName && <span className="chip">{projectName}</span>}

@@ -1,13 +1,23 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 export default function Modal({ title, onClose, children }) {
+  const dialogRef = useRef(null);
+  const previousFocus = useRef(document.activeElement);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   useEffect(() => {
     function handleKeyDown(e) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") closeRef.current();
+      if (e.key === "Tab") {
+        const controls = [...dialogRef.current.querySelectorAll("button, input, textarea, select, a[href]")].filter(el => !el.disabled && el.getClientRects().length);
+        const first = controls[0], last = controls.at(-1);
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
+      }
     }
     document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose]);
+    return () => { document.removeEventListener("keydown", handleKeyDown); previousFocus.current?.focus(); };
+  }, []);
 
   return (
     <div
@@ -24,11 +34,12 @@ export default function Modal({ title, onClose, children }) {
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label={title}
         className="auth-card"
-        style={{ maxWidth: 420, width: "100%", margin: 0 }}
+        style={{ maxWidth: 420, width: "100%", margin: 0, maxHeight: "calc(100dvh - 40px)", overflowY: "auto" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>

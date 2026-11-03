@@ -337,13 +337,14 @@ work independently of HomeBridge. HomeNotes links use `/notes/notes/<id>`.
 
 Tasks and projects. Browser routes except `health` need a login, and every
 query is scoped to the person asking, so nobody can see or change anyone
-else's tasks. Dates are plain `YYYY-MM-DD` strings. The browser sends its own
+else's tasks. Due dates are plain `YYYY-MM-DD` strings. The browser sends its own
 date as `?today=` for the date filters, because the server cannot know a
 person's time zone.
 
 | Method | Path | What it does |
 |---|---|---|
 | GET | `/api/hometasks/health` | *(no auth)* |
+| GET | `/api/hometasks/reminders/status` | Authenticated local configuration check: `{ available }`; does not guarantee Core connectivity or matching keys |
 | GET | `/api/hometasks/summary?today=` | Counts: `open`, `overdue`, `dueToday` |
 | GET | `/api/hometasks/projects` | List projects, each with its `openCount` |
 | POST | `/api/hometasks/projects` | Create a project `{ name }` |
@@ -357,6 +358,49 @@ person's time zone.
 | POST | `/api/hometasks/tasks/:id/reopen` | Un-tick (safe to repeat). Removes the still-open next copy it created; answers `409` if that copy was already completed |
 | DELETE | `/api/hometasks/tasks/:id` | Delete permanently (there is no Trash for tasks) |
 | POST | `/api/hometasks/automation/tasks` | `hometasks` / `tasks.automation.create-once` capability only; scoped create-once inbox task |
+
+### Personal reminders
+
+After creating a task, `PATCH /api/hometasks/tasks/:id` also accepts
+`reminderAt`: a canonical UTC ISO instant with milliseconds, for example
+`2026-11-04T09:00:00.000Z`, or `null` to remove it. A new/changed instant must
+be future and within 366 days (`400` otherwise), on an open task (`409`),
+with the reminder key configured (`503`). Sending the unchanged instant is
+idempotent, including after its time has passed. Metadata and reminder edits
+commit together. Ownership comes from the authenticated user; another user's
+task returns `404`. Omission preserves the current reminder.
+
+Task responses add `reminderAt`, `reminderSentAt` (nullable ISO instants), and
+`reminderState` (`null`, `scheduled`, `sent`, `suppressed`). Completing clears
+all reminder fields; reopening does not rearm them, and the next repeating
+copy has none. Deleting/removing cancels pending work. An already in-flight
+request can still arrive; existing notifications are not retracted.
+
+The server checks up to 20 due tasks every 30 seconds, retries failures after
+one minute (quota failures after one hour), and sends late after downtime.
+Delivery is to Home's in-app notification bell, with a fixed owner-checked
+`/tasks/all?task=<id>` link; no email or browser push. The bell refreshes every
+30 seconds while visible, on opening and on returning to the tab.
+
+`POST /internal/hometasks/reminders` is private machine-to-machine and blocked
+at the gateway. It accepts only `{ deliveryId, userId, taskId, taskTitle }`:
+UUID, positive safe integer IDs, and a nonempty title of at most 200 characters.
+`X-Task-Reminder-Key` is the lowercase hex encoding of the dedicated external
+32-byte key configured by `HOMETASKS_REMINDER_KEY_FILE` in Core and Tasks.
+It never accepts browser tokens or the general internal secret. Missing key
+returns `503`, wrong key `401`, invalid payload `400`. Core fixes application
+`hometasks`, type `info`, title `Task reminder`, body to the task title and data
+to `{ taskId }`; notes are never sent. Enabled users and an enabled HomeTasks
+registry entry are required (`410`, locally suppressed until rescheduled).
+
+A receipt and notification commit atomically: new delivery `201`, same
+UUID/owner/task replay `200` (first title wins), rebinding `409`. Receipts
+persist independently of tasks and notification reads. Limits are 100 new
+reminders per owner and 1000 globally per UTC day (`429`); successful replays
+remain accepted at the limit. The Core/Tasks restore caveat and credential
+trust boundary are in decision 006 and `SECURITY.md`.
+
+### Delegated automation
 
 The automation body must contain exactly `{title, notes, idempotencyKey}`;
 no query parameters. Title is trimmed, nonempty plain text of at most 200

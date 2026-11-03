@@ -382,3 +382,32 @@ To try it: open `apps/homesync-android/` in Android Studio, let Gradle
 sync, connect a device or start an emulator, and hit Run. On the login
 screen, enter your gateway's address (e.g. `192.168.1.50:8080`) — not a
 separate HomeSync-only port.
+
+## Testing personal task reminders
+
+Run `node --test apps/hometasks-backend/test/reminders.test.js` under Node 26
+for real isolated Core/Tasks coverage: UTC validation, owner isolation,
+atomic edits, repeat/completion cancellation, concurrent/lost-response replay,
+credential boundaries, suppression and quotas. No `.env` or user DB is read.
+The Docker job enables `docker-compose.reminders.yml` with a disposable key
+outside the checkout, waits for the actual scheduled worker, restarts Core and
+Tasks and verifies replay without duplicate delivery through the gateway.
+
+For disposable local development only, set `HOMETASKS_REMINDER_KEY_FILE` to
+the same external raw 32-byte file in the Core and Tasks processes before
+starting them. No key means scheduling unavailable; reading/editing tasks and
+removing an existing reminder continue to work. See deployment instructions
+for generation and mounts. The editor converts local date/time to UTC, rejects
+nonexistent DST-gap times and uses the browser's earlier occurrence for an
+ambiguous fall-back hour. Changing the browser time zone does not move a saved
+instant. Due dates remain calendar dates. Use isolated test accounts/data only.
+
+For browser QA, first build `apps/home` and `apps/hometasks`, then run
+`node apps/hometasks-backend/test-support/browser-fixture.cjs`. It prints a
+loopback URL and creates only disposable test services/accounts. Sign in as
+`reminder_reviewer` / `DisposableBrowser123!`. Its test-only
+`POST /__review__/deliver` advances a worker clock to the selected reminder;
+`POST /__review__/disable` removes the disposable key configuration, and
+`POST /__review__/stop` shuts down and removes the fixture's own databases.
+These controls do not exist in production. Actual wall-clock scheduling and
+container restart/replay are proved separately in Docker CI.

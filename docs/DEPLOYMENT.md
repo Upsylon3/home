@@ -416,3 +416,41 @@ show those items as active again. Do not drop the column to roll back.
   "Desktop development with C++" workload, then retry.
 - **A container won't start / a route 502s:** `docker compose logs -f
   <service>` — every backend logs a startup line and any unhandled error.
+
+## Optional HomeTasks reminders
+
+By default Tasks remains fully usable without reminders. To opt into personal
+in-app reminders (decision 006), prepare one external **raw 32-byte** random
+file readable only by the operator and the Core/Tasks containers. Use a new
+absolute path outside this checkout, application data and backup directories;
+never reuse the general internal secret or a Bridge/Vault key. For example,
+after creating a protected external directory, generate without overwriting:
+
+```sh
+node -e 'require("node:fs").writeFileSync(process.argv[1], require("node:crypto").randomBytes(32), {flag:"wx",mode:0o600})' /absolute/private/hometasks-reminder-key
+export HOMETASKS_REMINDER_KEY_PATH=/absolute/private/hometasks-reminder-key
+docker compose -f docker-compose.yml -f docker-compose.reminders.yml up -d --build
+```
+
+The override mounts that file read-only only in Core and Tasks, at
+`HOMETASKS_REMINDER_KEY_FILE`; missing paths are not auto-created. Use the same
+Compose files and external path on subsequent operations (include the Bridge
+override/profile too if already enabled). Rotate by replacing the external
+file and restarting both Core and Tasks. Disabling removes the override/env
+and recreates both containers; pending schedules remain but do not deliver.
+
+Create a task, edit **Remind me**, choose local date/time and save. One reminder
+belongs to that occurrence; completing clears it and the next repeat has none.
+Core stores a fixed HomeTasks notification with only its title and task link.
+Home refreshes the bell while visible; the browser need not be open for the
+server to create the notification. This release provides no email/web push.
+A 30-second worker processes at most 20 due reminders per tick, retries ordinary
+failures after one minute and quotas after one hour, and can deliver late after
+downtime. A further visible-bell refresh can take 30 seconds. Disabled users
+or a disabled app are suppressed and need a newly scheduled time to try again.
+
+Backups include the additive Tasks reminder columns and Core delivery receipts,
+but must not include the external key. Protect the key separately. Restore
+Core and Tasks consistently; unmatched restore points can lose notices or
+replay history. Downgrading binaries leaves the additive schema intact and
+stops reminder delivery. Notifications already sent cannot be recalled.

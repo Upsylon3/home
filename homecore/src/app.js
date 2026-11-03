@@ -96,6 +96,7 @@ app.use("/internal/events", internalEventsRoutes);
 app.use("/internal/delegations", require("./homecore/delegations").issuanceRouter);
 app.use("/internal/apps", internalAppsRoutes);
 app.use("/internal/notifications", internalNotificationsRoutes);
+app.use("/internal/hometasks/reminders", require("./taskReminderNotifications"));
 
 // Catches routes that don't exist, so a typo'd or outdated frontend request
 // gets a clean 404 instead of falling through to the error handler below.

@@ -35,7 +35,7 @@ test("an old tasks table is upgraded in place, keeping its rows", () => {
   const { db } = require("../src/db");
 
   const columns = db.prepare("PRAGMA table_info(tasks)").all().map((c) => c.name);
-  for (const name of ["repeat_rule", "repeat_anchor", "spawned_task_id"]) {
+  for (const name of ["repeat_rule", "repeat_anchor", "spawned_task_id", "reminder_at", "reminder_key", "reminder_sent_at", "reminder_error", "reminder_retry_at"]) {
     assert.ok(columns.includes(name), `missing column ${name}`);
   }
 
@@ -43,7 +43,16 @@ test("an old tasks table is upgraded in place, keeping its rows", () => {
   assert.equal(row.repeat_rule, "none");
   assert.equal(row.repeat_anchor, null);
   assert.equal(row.due_date, "2026-10-09");
+  assert.equal(row.reminder_at, null);
+  assert.equal(row.reminder_key, null);
 
+  // Restart against the migrated file: additive migrations must be repeatable.
   db.close();
+  delete require.cache[require.resolve("../src/db")];
+  const restarted = require("../src/db").db;
+  assert.equal(restarted.prepare("SELECT title FROM tasks WHERE id = ?").get(row.id).title, row.title);
+  assert.equal(restarted.pragma("integrity_check", { simple: true }), "ok");
+
+  restarted.close();
   fs.rmSync(dir, { recursive: true, force: true });
 });

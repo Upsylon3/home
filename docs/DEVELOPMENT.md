@@ -421,3 +421,5 @@ The commit hook only checks commit-message conventions. Full regressions are ava
 The Android emulator uses an explicit 2048 MB userdata partition. Its tiny
 synthetic fixtures do not need the Pixel profile's default >7 GB allocation,
 which can exceed hosted-runner free disk after SDK/Gradle installation.
+
+Android CI readiness uses `scripts/android-network-ready.py` to validate real unmetered emulator Wi-Fi against the disposable local fixture before running WorkManager tests. It requires an observed local HTTP-204 probe and validated Wi-Fi, rather than relying on public Google connectivity-check DNS. This is a CI-only simulated LAN; production network constraints and test assertions are unchanged.

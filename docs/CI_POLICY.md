@@ -24,6 +24,8 @@ The selector resolves the Android fixtures' production, optional and peer depend
 
 Frontend-only jobs install with `--ignore-scripts`; native-backend tests keep the real approved installation. Audit reads the committed dependency graph without another native installation. Existing security, ownership, migration, cryptography, gateway, backup and emulator tests are retained; their relevant paths still select them. Recurrence of hardware/independent-review limits is unchanged.
 
+The emulator first validates unmetered Wi-Fi through a real HTTP-204 endpoint in the loopback-only disposable fixture. The harness refuses to run outside a GitHub API-34 emulator and keeps Android network validation enabled. It avoids public DNS/captive-portal dependencies and fails within 60 seconds with connectivity evidence when the local network is not ready. App/WorkManager charging and network constraints remain unchanged.
+
 ## Pages: reuse the verified build
 
 The Browser demo PR workflow builds and tests once, then retains static files and source-tree/run metadata for 14 days. Deploy browser demo runs on a merged PR affecting the site (or explicitly on main) and downloads that exact immutable artifact. It verifies successful run/head/attempt, expiration, merged source-tree equality, repository path, index presence and absence of links/special files. GitHub's download action fails on a digest mismatch. Only then is the static site uploaded to Pages. Deployment runs no npm install, build, browser or Android tests.

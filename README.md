@@ -16,7 +16,7 @@ and needs network configuration. Automatic bundle upgrades/import are not built.
 
 Try the [browser demo](https://upsylon3.github.io/home/) without a server.
 It uses local browser storage and simulated server features: **test data only**.
-[Demo details](docs/BROWSER_DEMO.md).
+[Demo details](CONTRIBUTING.md#browser-demo).
 
 ## Applications
 
@@ -40,7 +40,7 @@ See [security limits](docs/SECURITY.md) and [remaining work](docs/ROADMAP.md).
 ## Development
 
 Node 26 LTS, npm workspaces, React/Vite, Express/SQLite and Docker Compose/nginx.
-The Android client uses Kotlin. Start with [DEVELOPMENT.md](docs/DEVELOPMENT.md).
+The Android client uses Kotlin. Start with [development instructions](CONTRIBUTING.md#development).
 
 ~~~bash
 npm ci
@@ -54,7 +54,11 @@ Shared visual assets: `design/`. Runtime packaging: `server/`.
 ## Documentation
 
 - [Deployment and recovery](docs/DEPLOYMENT.md)
-- [Architecture](docs/ARCHITECTURE.md) and [API reference](docs/API.md)
-- [Product principles](HOME_MASTER_SPECIFICATION.md) and [design system](docs/DESIGN_SYSTEM.md)
-- [Contributing](CONTRIBUTING.md), [agent rules](AGENTS.md) and [releasing](docs/RELEASING.md)
-- [Changelog](CHANGELOG.md)
+- [Architecture, product and design](docs/ARCHITECTURE.md)
+- [API reference](docs/API.md)
+- [Security](docs/SECURITY.md)
+- [Roadmap](docs/ROADMAP.md)
+- [Validation and review evidence](docs/VALIDATION.md)
+
+For contributors: [development, CI and releases](CONTRIBUTING.md),
+[agent instructions](AGENTS.md) and [changelog](CHANGELOG.md).

@@ -27,11 +27,11 @@ Only unfinished work is listed here. Completed changes belong in
 These are evidence gaps, not features to rebuild:
 
 - **HomeVault:** independent security/cryptography review before real secrets
-  are stored. [Review handoff](HOMEVAULT_REVIEW.md).
+  are stored. [Review handoff](VALIDATION.md#vault-review).
 - **Client performance:** validate the existing KDF on representative older
-  PCs/phones when available. [Optional benchmark](HOMEVAULT_BENCHMARK.md).
+  PCs/phones when available. [Optional benchmark](VALIDATION.md#vault-performance).
 - **HomeSync:** physical-phone, selected-video/selection-removal, Doze/reboot
-  and long-duration backup checks. [Device checks](HOMESYNC_DEVICE_VALIDATION.md).
+  and long-duration backup checks. [Device checks](VALIDATION.md#homesync).
 - **Installer:** hands-on Windows/macOS, reboot and real outside-access checks.
   Linux container tests do not establish those results.
 

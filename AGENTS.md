@@ -1,120 +1,90 @@
-# HOME — instructions for coding agents
+# Coding-agent instructions
 
-This repository is maintained through autonomous LLM coding agents. These instructions apply to every agent, model, IDE integration and automated coding session working here. Read this file before changing anything, then follow [the detailed agent workflow](docs/AGENT_WORKFLOW.md).
+These instructions apply to every coding agent in this repository.
 
-## 1. Operating mandate
+## Workflow
 
-Work as a self-directed maintainer. The project owner has delegated routine product engineering to coding agents and does not want to be interrupted for ordinary implementation choices, clarification, progress approval or PR review.
+Work autonomously on authorized repository engineering. Choose routine
+implementation details without asking the owner; preserve existing work and use
+a short-lived branch. Inspect remote main, open PRs/issues and CI before starting.
+Check that roadmap work is still needed. Prioritize regressions, security/data
+risks and broken journeys, then committed backlog, then concrete maintenance.
+Speculative ideas need a use case and a short design before implementation.
 
-- Do not ask the owner to choose between normal engineering alternatives. Inspect the specifications and existing implementation, choose the safest coherent option, record meaningful assumptions, and proceed.
-- Do not stop after proposing a plan, writing code, or opening a pull request. Verify the change, address CI feedback, and merge your own PR when all repository checks pass and GitHub permissions/rules allow it.
-- If one task is blocked by physical hardware, an independent external review, missing credentials, unavailable infrastructure or a GitHub rule that cannot be satisfied, document the exact limitation and continue with the next independent task. Never pretend the blocked validation happened.
-- Prefer a small, complete, tested improvement over a large speculative rewrite. Keep making useful progress without creating unnecessary PRs or overlapping branches.
+Read the relevant [architecture and product/design contracts](docs/ARCHITECTURE.md),
+[security boundaries](docs/SECURITY.md), [API](docs/API.md),
+[deployment](docs/DEPLOYMENT.md) and [roadmap](docs/ROADMAP.md).
+[CONTRIBUTING.md](CONTRIBUTING.md) owns development, CI, commits and releases.
 
-This autonomy applies to repository engineering. It is **not** permission to access or alter a real deployment, real user data, secrets, accounts, billing, DNS, external infrastructure or repository security settings.
+Source, migrations, tests and workflows establish actual behavior. The product
+contract establishes intent; current guides explain controls and gaps. README
+and changelog provide navigation/history. Investigate conflicts rather than
+silently inventing an architecture or declaring a defect intentional.
+Amend deliberate product decisions explicitly in the same PR.
 
-## 2. Read the right source of truth
+Finish one coherent change: implement, update tests/docs and Unreleased, run
+applicable checks with disposable data, inspect the complete diff, open a PR,
+fix feedback and squash-merge once checks pass and repository rules allow it.
+Use the validated Conventional Commit PR title. Never bypass protection,
+fabricate review, force-push over others' work or change settings to enable merge.
+If approval/permissions genuinely block merging, leave a verified merge-ready PR
+and record the exact blocker. Confirm the merge and any relevant deployment;
+report the outcome, PR, actual checks, limits and next useful task.
 
-Before a task, inspect the affected code and read the relevant parts of:
+## Engineering boundaries
 
-- `HOME_MASTER_SPECIFICATION.md` — product intent, foundational architecture and product constraints. It began as a pre-development specification; it is not proof that every described feature exists.
-- `HOME_ARTISTIC_DIRECTION.md` and `docs/DESIGN_SYSTEM.md` — the visual language and current design tokens.
-- `docs/ARCHITECTURE.md` — implemented service boundaries and the three-tier architecture.
-- `docs/SECURITY.md` — actual controls, known gaps and threat models. Treat security constraints as hard boundaries, not optional guidance.
-- `docs/API.md`, `docs/DEVELOPMENT.md`, `docs/DEPLOYMENT.md` — current interfaces and operating procedures.
-- `docs/ROADMAP.md` — committed backlog versus explicitly speculative ideas.
-- `CONTRIBUTING.md`, `VERSIONING.md`, `docs/RELEASING.md` — contribution, commit and release rules.
+- Tier 1 apps own their process/database. Never read a sibling database.
+  Optional cross-app behavior belongs in Bridge.
+- Backends enforce identity, roles, ownership and isolation. Frontend hiding and
+  manifest declarations are not authorization. Preserve shared-session and
+  Vault client-encryption boundaries.
+- Preserve API/data compatibility. Prefer additive, reversible migrations,
+  tested on disposable databases. Update callers/contracts when APIs change.
+- Reuse shared UI/assets and honor accessibility, mobile and unavailable states.
+- Add dependencies only for a concrete need after checking maintenance,
+  compatibility, runtime/bundle impact and existing utilities.
+- Node baseline is 26 LTS across development, images and workflows.
+  All eight backend workspaces use `better-sqlite3@12.11.1`.
+  Runtime changes must coordinate images/workflows/docs and verify native
+  prebuilds, including the Windows committed-lockfile install.
+- npm 11 permits only reviewed exact-version install scripts in `allowScripts`.
+  Never approve everything or use `--dangerously-allow-all-scripts`.
+- Integration tests use real isolated upstream services where required.
+  Never weaken CI, hide failures or claim checks that were not run.
+- Run proportionate proof: conventions always apply; the tested fail-closed
+  scope selector chooses affected suites/builds and platform jobs. Unknown paths
+  and selection-policy changes require full checks. Full manual/weekly and
+  exact-tag release gates remain. Do not start unrelated stacks/emulators for
+  frontend/docs work or repeat broad checks without a reason.
+- Fix failures caused by the change; investigate unexplained failures against
+  the base. Review errors, migrations, dependencies, generated files, secrets and
+  unintended scope before merging.
+- Routine work stays under Unreleased. A phase/commit is not a release.
+  Release only from validated main with synchronized root package/lock/changelog
+  and a new annotated immutable tag. Never move, reuse, delete or backdate valid
+  tags or recreate the historical inflated version sequence.
 
-Use this evidence hierarchy:
+## Evidence and safety
 
-1. **Source code, database migrations, tests and CI workflows** establish what the current implementation actually does.
-2. **The master and artistic specifications** establish intended product behavior and non-negotiable design principles, unless a later deliberate decision supersedes them.
-3. **The current-state documents under `docs/`** explain the implemented system, known deviations and operational constraints.
-4. README and changelog summaries are navigation/history, not substitutes for inspecting implementation.
+Independent Vault security/cryptography review is still required before real
+secrets. AI review and passing tests cannot satisfy it. HomeSync's recorded
+API-34 emulator journeys do not prove physical phones, selected videos/selection
+removal, Doze/reboot or six-hour delivery. Android CI intentionally runs APK/JVM
+checks only, never an emulator. Hardware-specific KDF claims require actual
+representative client/browser measurements. Keep these gaps visible in
+[validation](docs/VALIDATION.md); improve tooling independently without inventing
+evidence or blocking unrelated repository work.
 
-If these disagree, investigate instead of guessing. Do not silently introduce a new architecture or declare an existing behavior intentional. Correct stale documentation in the same PR. If the product intent itself needs to change, make the smallest explicit specification amendment and explain the reason in the PR.
+Repository autonomy does not authorize real deployment or infrastructure work.
+Never read, print, transmit, commit or invent secrets; modify real `.env` files;
+access/mutate real HOME installations, accounts, databases or storage; delete
+user data; run irreversible migrations; or clean an unknown data path.
+Use disposable values/data only. Do not change repository visibility, permissions,
+secrets, protections, rulesets, billing, domains, integrations or external DNS.
+Do not casually publish releases, change licensing/privacy promises or introduce
+a third-party data processor. Follow the documented process and explicit scope.
 
-## 3. Choose work deliberately
-
-At the start of each session:
-
-1. Inspect the working tree; preserve any pre-existing or uncommitted work.
-2. Update your view of `origin/main`, open PRs, open issues and current CI failures.
-3. Check whether a roadmap item has already been completed or superseded before starting it.
-4. Select one coherent task with a user-visible or reliability/security benefit.
-
-Prioritize in this order:
-
-1. Regressions, failing required CI, security defects, data-loss risks and broken core journeys.
-2. Explicit open issues and the concrete near-term backlog in `docs/ROADMAP.md`.
-3. The next decided product milestone in the roadmap/build order.
-4. Low-risk maintenance that removes a verified compatibility, reliability or accessibility problem.
-5. Only then, ideas explicitly labelled speculative.
-
-Do not turn the speculative brainstorm into a commitment just because it sounds interesting. For a new initiative without detailed acceptance criteria, make a short architecture/product decision record first, choose a narrow first release, and then implement it. Use evidence from the existing app, not a generic SaaS template.
-
-### Known validation limits
-
-Some roadmap items require evidence an LLM cannot manufacture:
-
-- HomeVault still requires an independent security/cryptography review before real secrets are stored. An AI static review, self-review or passing test suite does **not** satisfy that independent review.
-- HomeSync's first API-34 emulator UI sign-in, constrained manual WorkManager execution, byte-verified backup and real permission denial/full-grant and permanent-denial Settings recovery plus selected-photo expansion/foreign-media exclusion have instrumentation tests retained for explicit local device validation; Android CI now runs APK/JVM checks only at the owner's request. This does not establish physical-phone behavior, selected videos/selection removal, Doze/reboot or six-hour delivery; keep those validation limits explicit (docs/HOMESYNC_DEVICE_VALIDATION.md).
-- Hardware-specific Argon2id performance claims require measurement on representative minimum client/browser hardware; the KDF runs client-side, not on the storage server.
-
-Agents may improve tests, prepare review material and remove code defects around these items, but must leave the external validation visibly open until it actually occurs. Do not let one unavailable physical-world check prevent unrelated repository work.
-
-The Node runtime baseline is now **Node 26 LTS** across all Node-based Dockerfiles and the CI, release and reconciliation workflows. All eight backend workspaces use `better-sqlite3` 12.11.1, whose package metadata supports Node 26. For any future major runtime change, update every Node image, all relevant workflows, local-development requirements and the Windows native-install check together; verify native modules and platform prebuilds before editing.
-
-## 4. Engineering rules
-
-- Respect the three-tier architecture in `docs/ARCHITECTURE.md`. Tier 1 apps own their process and database. Never access a sibling app's database or add optional cross-app behavior to a Tier 1 app; optional cross-app behavior belongs in HomeBridge.
-- Backend authorization is authoritative. Frontend hiding is never a security boundary.
-- Preserve ownership checks, session boundaries, data isolation, HomeVault's client-side encryption model and the security decisions in `docs/SECURITY.md`.
-- Prefer additive, reversible database migrations. Test migrations against disposable databases. Never run migrations against a production or personal data directory.
-- Do not add dependencies speculatively. Check maintenance, Node compatibility, bundle/runtime impact and existing project utilities first.
-- npm 11 blocks dependency lifecycle scripts unless explicitly approved. Review each native/install script before adding an exact-version entry to the root `package.json` `allowScripts` map. Never approve every dependency or use `--dangerously-allow-all-scripts` to make an install pass; keep a Windows `npm ci` smoke test for native packages.
-- Keep existing APIs and data compatible unless the task specifically requires a versioned migration. When changing an API, update its callers, tests and `docs/API.md`.
-- New services require isolated tests against a real upstream service where the architecture calls for one; do not replace meaningful integration coverage with mocks.
-- Frontend work must honor `HOME_ARTISTIC_DIRECTION.md` and `docs/DESIGN_SYSTEM.md`, remain accessible, responsive and usable on mobile, and reuse existing components/tokens rather than inventing a parallel visual system.
-- Update documentation and tests with the implementation. Add user-relevant changes under `[Unreleased]` in `CHANGELOG.md`; do not bump the root version for every commit or phase.
-- Do not hide errors, skip meaningful tests, weaken CI, suppress security checks, or claim a check passed when it was not run.
-
-## 5. Branch, PR and merge policy
-
-- Never push routine work directly to `main`. Use a short-lived branch with the prefix and kebab-case naming in `CONTRIBUTING.md`.
-- Use Conventional Commit subjects and PR titles. Enable the local hook with `git config core.hooksPath .githooks`.
-- Keep each PR to one coherent objective. Include the reason, user-visible effect, security/data implications, migration impact and exact verification evidence.
-- Review your own complete diff as a skeptical maintainer before requesting checks: inspect changed files, generated output, migrations, lockfiles, error paths and unintended scope.
-- Run checks proportionate to changed behavior. Repository conventions always applies. `scripts/ci-scope.py` selects affected workspace tests/builds and independent Docker, Windows, gateway, audit and Android jobs. Frontend/demo edits must not start unrelated backends or an emulator; root dev tooling is distinguished from Android fixture runtime dependencies. Unknown paths and policy changes fail closed to full checks. Full regressions run manually and weekly. Use focused local proof first; do not repeatedly run the entire suite or add cases that duplicate existing coverage. See docs/CI_POLICY.md.
-- Fix failures caused by your change. Investigate unrelated failures against the base commit; never wave away an unexplained failure.
-- Once the PR is complete, all applicable checks are green, the diff has been reviewed and no unresolved critical issue remains, squash-merge your own PR if the repository permits it. Use the validated Conventional Commit PR title as the squash title.
-- Never bypass branch protection, fabricate an approval, force-push over another agent's work, delete another agent's branch, or change repository settings to make a merge possible.
-- If GitHub requires a human approval or a permission you do not have, leave a fully verified, merge-ready PR and record the exact blocker. Do not repeatedly interrupt the owner; continue with independent work.
-
-## 6. Release discipline
-
-The current ecosystem baseline is **1.7.0**. Follow `VERSIONING.md` and `docs/RELEASING.md`.
-
-- Keep routine work under `[Unreleased]`; a commit, phase completion or refactor is not automatically a release.
-- Choose PATCH/MINOR/MAJOR only for a real release milestone under SemVer.
-- A release requires a merged, validated main commit, synchronized root `package.json` / root lockfile metadata / changelog, a new annotated immutable tag and the documented release workflow.
-- Never move, reuse, delete or backdate an existing valid release tag. Never recreate the historical inflated version sequence.
-
-## 7. Safety boundaries
-
-Never:
-
-- Read, commit, print, transmit or invent secrets. Do not modify real `.env` files; use disposable local test values only.
-- Deploy to, log into, or mutate any real HOME installation, server, database, storage volume or user account.
-- Delete user data, perform irreversible migrations, or run cleanup commands against an unknown data path.
-- Change GitHub repository visibility, permissions, secrets, branch protection, rulesets, billing, domains or integrations.
-- Publish a release, change licensing/privacy promises, or introduce a third-party data processor casually. Follow the relevant documented process and record the implications.
-- Claim independent security approval, physical-device validation, production readiness or end-to-end verification without evidence.
-
-When a request or environment prevents a safe action, take the safe repository-only path, document the limitation, and continue where possible.
-
-## 8. Definition of done
-
-A task is done only when its intended behavior is implemented, appropriate tests exist, documentation is accurate, applicable checks pass, the diff has been self-reviewed and the PR is merged—or, if merging is genuinely blocked, a complete ready-to-merge PR and an exact blocker are recorded.
-
-At the end of a work session, report the outcome, PR/merge link, tests actually run, remaining limitations and the next best task. Do not end with a routine question asking the owner what to do next.
+When hardware, external review, credentials, infrastructure or rules prevent a
+step, state the exact limitation and continue independent safe work. Completion
+requires implemented behavior, appropriate verification, accurate docs, self-review
+and a merged PR, or a verified ready-to-merge PR with its actual blocker.

@@ -256,7 +256,7 @@ Existing browser status/history response fields remain compatible.
 
 No successful evaluation yet returns `503`. Otherwise the feed returns its
 actual committed evaluation time, including when stale; consumers must enforce
-the decision's two-minute age, 30-second future tolerance and strictly newer
+the [automation contract](SECURITY.md#automation-contract)'s two-minute age, 30-second future tolerance and strictly newer
 observation checks. Reading the feed does not trigger collection. Responses
 are `no-store`, and every request verifies authority live in Core. Browser JWTs
 and wrong audiences return `403`; capabilities cannot read broad browser APIs.
@@ -327,7 +327,7 @@ validation returns 400, oversized request bodies 413; authentication uses the
 shared HomeCore client. Responses are `no-store`; query text is a POST body,
 not a gateway access-log URL. Upstream calls refuse redirects and enforce
 five-second header/body deadlines and 1 MiB response limits. See
-[the decision record](decisions/001-homebridge-search.md).
+[search contract](ARCHITECTURE.md#cross-app-search).
 
 HomeTasks supports `/tasks/all?task=<id>` and `/tasks/done?task=<id>` resource
 links, opening the existing editor through the owned-task API. These links
@@ -398,7 +398,7 @@ UUID/owner/task replay `200` (first title wins), rebinding `409`. Receipts
 persist independently of tasks and notification reads. Limits are 100 new
 reminders per owner and 1000 globally per UTC day (`429`); successful replays
 remain accepted at the limit. The Core/Tasks restore caveat and credential
-trust boundary are in decision 006 and `SECURITY.md`.
+trust boundary are in [task reminders](SECURITY.md#task-reminders).
 
 ### Delegated automation
 
@@ -512,7 +512,7 @@ retention; backups retain it. The owner can create a new vault afterward. A
 retry naming the previous vault cannot delete its replacement. There is no
 in-app undo, secret recovery, historical-copy erasure or unlocked-device
 revocation. No reset is performed by deployment or migration. See
-[decision 003](decisions/003-vault-admin-reset.md).
+[Vault reset controls](SECURITY.md#administrator-vault-reset).
 
 ## HomeSync backend (`/api/homesync`)
 
@@ -546,4 +546,4 @@ authentication. It exposes no code or account identity. On managed bundles,
 and account insertion share one transaction; invalid account fields do not
 consume a valid code. Existing source installs keep the optional field and
 existing registration behavior. Codes are generated on the server, never by
-the public portal; see [decision 008](decisions/008-installable-home-server.md).
+the public portal; see [runtime bundle design](DEPLOYMENT.md#runtime-bundles).

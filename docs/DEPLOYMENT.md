@@ -4,6 +4,39 @@ For a downloaded runtime, use [START-HERE](../server/START-HERE.md). The command
 below describe the source-based Compose installation. Do not mix their
 configuration/data layouts or assume automatic migration.
 
+## Runtime bundles
+
+Downloaded runtimes include built UIs, prebuilt Linux container images and launchers
+for Linux x64/arm64, Windows x64 and macOS Intel/Apple silicon. Docker is a
+prerequisite, not silently installed. Images permit offline start on an already
+Docker-equipped machine. Launchers do not silently change firewall/router or
+OS-startup settings. Use [START-HERE](../server/START-HERE.md).
+
+Persistent host data/backups/configuration are separate from images. Setup
+generates distinct credentials and a stable installation UUID, which is an
+operational identifier rather than proof of server identity. Repeated starts
+preserve data; unknown pre-existing data or partial configuration fail closed.
+Automatic upgrades and importing source Compose volumes remain unsupported.
+
+Managed Core requires a one-use 128-bit setup code expiring in 15 minutes.
+Only its SHA-256 hash is retained; consumption and account creation are atomic
+on both auth aliases, with consumed hashes retained. Claim the first owner on the
+server itself or an authenticated encrypted connection. An IP address is not
+proof of ownership. Issue a separate server code for each additional member.
+
+Local-only loopback HTTP is the default. LAN HTTP requires explicit acknowledgement;
+public mode requires an existing owner, keeps raw HTTP on loopback and uses a
+user-controlled hostname. Changing modes stops an existing TLS listener first.
+The launcher cannot establish router reachability, CGNAT avoidance or certificate
+issuance; test outside the house. Direct bare-IP certificate automation is deferred.
+
+The public `/connect/` portal stores names/origins only in that browser, never
+fetches server APIs or handles credentials/setup codes, and opens HOME without
+a referrer. Clearing its storage removes shortcuts, not accounts. GitHub may
+retain ordinary hosting visit logs. Multiple saved addresses provide no shared
+identity: signed multi-server trust, revocation/recovery and replication are
+separate future designs. Replication is not backup.
+
 ## Requirements and first-time setup
 
 Install Docker with Compose and keep enough disk space for uploads and backups.
@@ -139,7 +172,7 @@ HomeVault specifically: a restored backup is exactly as readable as it
 was the moment it was taken — restoring doesn't bypass encryption, you
 still need the master password or recovery key from that point in time.
 
-## Upgrading
+## Optional integrations
 
 ### Optional cross-app search
 
@@ -151,7 +184,7 @@ registry are not queried. Stop it with `docker compose stop homebridge`.
 Search-only mode retains no data or volume. Remove the profile to opt out
 after revoking any separately enabled automation grants. Do not expose service
 port 4900; the gateway is its
-only public route. See decision 001 for limits and security boundaries.
+only public route. See [search boundaries](ARCHITECTURE.md#cross-app-search).
 
 ### Opt-in Monitor follow-up automation
 
@@ -279,7 +312,7 @@ show those items as active again. Do not drop the column to roll back.
 ## Optional HomeTasks reminders
 
 By default Tasks remains fully usable without reminders. To opt into personal
-in-app reminders (decision 006), prepare one external **raw 32-byte** random
+in-app reminders (see the security guide), prepare one external **raw 32-byte** random
 file readable only by the operator and the Core/Tasks containers. Use a new
 absolute path outside this checkout, application data and backup directories;
 never reuse the general internal secret or a Bridge/Vault key. For example,

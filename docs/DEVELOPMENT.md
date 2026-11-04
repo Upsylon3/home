@@ -258,7 +258,7 @@ cd apps/hometasks && npm test              # 7 tests — dates.js and repeat.js 
 cd apps/homemonitor-backend && npm test    # 71 tests
 cd apps/homemonitor && npm test            # 13 tests — format.js and chart.js only, see below
 cd apps/homevault-backend && npm test      # 43 tests — includes administrator reset, Trash ownership/lifecycle and legacy schema upgrade
-cd apps/homevault && npm test              # 22 tests — crypto.js only, see below
+cd apps/homevault && npm test              # 25 tests — crypto and benchmark behavior, see below
 cd services/homebridge && npm test         # 32 tests — real-service search and bounded upstream failures
 cd apps/homenotes && npm test              # 16 tests — markdown.js only, see below
 ```
@@ -417,3 +417,9 @@ container restart/replay are proved separately in Docker CI.
 Use focused checks during implementation; see [CI_POLICY.md](CI_POLICY.md). Pull requests run affected workspace suites/builds and only relevant stack, dependency and Android jobs. Demo-only changes skip Docker and Android. Frontend-only checks skip native dependency installation. Android changes run APK/JVM tests only; no CI event starts an emulator. Root dev-tool changes do not trigger Android.
 
 The commit hook only checks commit-message conventions. Full regressions are available through manual workflow dispatch and run weekly. Merges do not repeat PR tests. Pages deployment reuses the checked artifact, verifying its source tree against the merged source before publishing; it does not run npm, builds, browser checks or Android again. Unknown paths and changes to the selector fail closed to full validation.
+
+## Vault client performance test
+
+The standalone browser benchmark needs no backend, account or real vault.
+See [the run/record protocol](HOMEVAULT_BENCHMARK.md) for the production-CSP
+browser fixture, JSON recording and minimum-device validation limits.

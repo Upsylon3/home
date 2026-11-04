@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="referrer" content="no-referrer">
+    <meta name="robots" content="noindex">
+    <title>HomeVault device speed test</title>
+    <link rel="icon" type="image/svg+xml" href="%BASE_URL%favicon.svg">
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem("homecloud-theme");
+          var pref = stored === "light" || stored === "dark" ? stored : "system";
+          var resolved =
+            pref === "system"
+              ? window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches
+                ? "light"
+                : "dark"
+              : pref;
+          document.documentElement.setAttribute("data-theme", resolved);
+          // Retro intensity (off | subtle | full), applied before first paint
+          // for the same reason as the theme above. See design/retro.js.
+          var retro = localStorage.getItem("home-retro");
+          document.documentElement.setAttribute(
+            "data-retro",
+            retro === "off" || retro === "full" ? retro : "subtle"
+          );
+          if (resolved === "light") {
+            var meta = document.querySelector('meta[name="theme-color"]');
+            if (meta) meta.setAttribute("content", "#f3e9d2");
+          }
+        } catch (e) {
+          // Storage disabled (e.g. private browsing) — the default dark
+          // theme already baked into the CSS still applies fine.
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <main class="benchmark">
+      <header>
+        <a href="./">HomeVault</a>
+        <h1>Device speed test</h1>
+        <p>Measure how quickly this browser performs the password calculation used by HomeVault. It runs on the device opening this page, not on your storage server.</p>
+      </header>
+      <section aria-labelledby="test-title">
+        <h2 id="test-title">A local test with dummy data</h2>
+        <p>This test uses public synthetic input and fresh random salts. It does not ask for a password, sign in, open a vault, or change encryption settings. No results are uploaded or saved automatically.</p>
+        <p>Keep this page visible and close heavy background apps. The test performs eight derivations. The page can briefly pause while each calculation runs; Stop takes effect after the current calculation.</p>
+        <p class="muted">Current settings: <span id="parameters"></span></p>
+        <form id="benchmark-form">
+          <div class="field">
+            <label for="device">Device label (optional)</label>
+            <input id="device" maxlength="120" placeholder="For example: older phone, battery saver off" autocomplete="off">
+          </div>
+          <div class="actions">
+            <button class="btn btn-primary" id="start" type="submit" disabled>Run speed test</button>
+            <button class="btn btn-ghost" id="stop" type="button" disabled>Stop</button>
+          </div>
+        </form>
+        <p id="status" role="status" aria-live="polite">Loading the local test…</p>
+      </section>
+      <section id="results" aria-labelledby="results-title" hidden>
+        <h2 id="results-title">Your measurement</h2>
+        <dl>
+          <dt>First measured derivation</dt><dd id="first"></dd>
+          <dt>Median of seven following derivations</dt><dd id="median"></dd>
+          <dt>Following derivations: fastest–slowest</dt><dd id="range"></dd>
+        </dl>
+        <details><summary>Individual following measurements</summary><p id="samples"></p></details>
+        <p>These timings measure only the password calculation, not network requests or the full unlock flow. The first measurement is not necessarily a cold start: reload before a fresh-page test.</p>
+        <button class="btn" id="download" type="button" disabled>Download results</button>
+        <p class="muted">The JSON report includes timings, public settings, your device label and browser details. Review it before sharing. It contains no password, salt or derived key.</p>
+      </section>
+      <section aria-labelledby="limits-title">
+        <h2 id="limits-title">What this tells you</h2>
+        <p>A result applies to this browser on this device under its current workload and power settings. Repeat the test on the slowest phone or computer that will actually unlock the vault.</p>
+        <p>This is a performance measurement, not a security approval or a certificate that a minimum device is supported. It never lowers encryption strength. HomeVault still needs an independent security review before use with real secrets.</p>
+      </section>
+    </main>
+    <script type="module" src="/src/benchmark/page.js"></script>
+  </body>
+</html>

@@ -182,6 +182,11 @@ export default function Settings({ onVaultUpdated }) {
 
       <hr className="nav-divider" style={{ margin: "28px 0" }} />
 
+      <h2>Device speed</h2>
+      <p style={{ color: "var(--text-dim)", fontSize: 13 }}>Measure this browser's password calculation using dummy data. No vault contents or settings are used.</p>
+      <a className="btn" href={import.meta.env.BASE_URL + "benchmark.html"} target="_blank" rel="noopener noreferrer">Open device speed test</a>
+      <hr className="nav-divider" style={{ margin: "28px 0" }} />
+
       <h2>Recovery key</h2>
       <p style={{ color: "var(--text-dim)", fontSize: 13 }}>
         Generating a new key replaces the recovery path for the current vault. Save the new key before leaving.

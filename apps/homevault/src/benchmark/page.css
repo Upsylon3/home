@@ -1,0 +1,14 @@
+.benchmark { max-width: 52rem; margin: auto; padding: 2rem 1.25rem; line-height: 1.65; }
+.benchmark header { margin-bottom: 1.5rem; }
+.benchmark h1 { font-family: var(--font-display); font-size: clamp(1.75rem, 5vw, 2.5rem); }
+.benchmark h2 { font-size: 1.15rem; }
+.benchmark section { margin: 1.25rem 0; padding: 1.25rem; border: 1px solid var(--border); border-radius: var(--radius-md, 8px); background: var(--panel); }
+.benchmark .actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; }
+.benchmark .actions .btn { width: auto; }
+.benchmark .muted { color: var(--text-dim); }
+.benchmark dl { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .75rem; }
+.benchmark dd { margin: 0; font-family: var(--font-mono); overflow-wrap: anywhere; }
+.benchmark code { font-family: var(--font-mono); }
+.benchmark #samples { overflow-wrap: anywhere; font-family: var(--font-mono); }
+.benchmark #status { min-height: 3rem; }
+@media (max-width: 480px) { .benchmark dl { grid-template-columns: 1fr; } .benchmark dd { margin-bottom: .5rem; } }

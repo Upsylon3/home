@@ -7,6 +7,16 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 
 ## [Unreleased]
 
+### Added
+- Standalone HomeVault client speed test using production Argon2id defaults,
+  synthetic inputs, separate first/steady timings, cancellation and local JSON
+  export without login, vault access or API calls. Included in server frontend
+  and Pages builds, with a Settings link and production-CSP browser checks.
+- Repeatable desktop measurement recording and a physical low-end-client test
+  protocol. Roadmap item 3 remains open for representative device measurements;
+  the KDF runs on the client browser, not the storage server. Encryption defaults
+  and existing vaults are unchanged; independent review remains required.
+
 ## [1.7.0] — Installable HOME server · 2026-11-04
 
 ### Added

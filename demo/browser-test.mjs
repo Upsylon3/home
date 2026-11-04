@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { verifyPortal } from '../server/portal/browser-proof.mjs';
+import { verifyBenchmark } from '../apps/homevault/test-support/benchmark-proof.mjs';
 const server = spawn(process.execPath, ['demo/serve.mjs'], { env: { ...process.env, PORT: '4174' }, stdio: ['ignore', 'pipe', 'inherit'] });
 await once(server.stdout, 'data');
 const browser = await chromium.launch({ ...(process.env.DEMO_BROWSER_CHANNEL ? { channel: process.env.DEMO_BROWSER_CHANNEL } : {}), headless: true });
@@ -16,8 +17,11 @@ page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
 const see = async text => page.getByText(text, { exact: true }).waitFor();
 try {
   await verifyPortal(page, origin);
+  await verifyBenchmark(browser, origin + 'vault/benchmark.html');
   await page.goto(origin);
   await page.getByRole('heading', { name: /Good|Still up/ }).waitFor();
+  // The greeting renders before the asynchronous app-registry response.
+  await page.getByRole('link', { name: 'Launch', exact: true }).nth(5).waitFor();
   assert.equal(await page.getByRole('link', { name: 'Launch', exact: true }).count(), 6);
   // Upload through the real Cloud XHR control, then verify persistence and exact bytes.
   await page.goto(origin + 'cloud/');

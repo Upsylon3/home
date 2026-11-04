@@ -101,9 +101,16 @@ docs/                  Architecture, security, API reference, deployment, roadma
 - **Infrastructure:** Docker Compose, nginx
 - **Android:** Kotlin, WorkManager, Room
 
+## Vault device speed test
+
+Measure the actual client-side password calculation without an account or
+backend at [the online benchmark](https://upsylon3.github.io/home/vault/benchmark.html).
+See [the protocol and evidence limits](docs/HOMEVAULT_BENCHMARK.md); this does
+not certify low-end device support or replace Vault's independent review.
+
 ## Tests
 
-500 automated tests across 14 suites (9 backends, 4 frontends, the shared identity client), run with
+Automated tests across 14 suites (9 backends, 4 frontends, the shared identity client), run with
 `npm test` from the repo root (or inside any one suite's own folder):
 
 ```
@@ -116,7 +123,7 @@ apps/homesync-backend   20 tests
 apps/homevault-backend  43 tests
 apps/hometasks-backend  69 tests
 apps/homemonitor-backend 71 tests
-apps/homevault          22 tests  (src/crypto.js — the client-side encryption)
+apps/homevault          25 tests  (client-side encryption and KDF benchmark behavior)
 apps/homenotes          16 tests  (src/markdown.js — the XSS sanitizer)
 apps/hometasks           7 tests  (src/dates.js, src/repeat.js — date and wording helpers)
 apps/homemonitor        13 tests  (src/format.js, src/chart.js — number formatting and chart maths)

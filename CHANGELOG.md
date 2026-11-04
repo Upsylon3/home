@@ -7,13 +7,17 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 
 ## [Unreleased]
 
+### Changed
+- Simplified project guides, removed completed roadmap steps and separated open
+  validation from feature work. Setup, recovery and security requirements remain.
+
 ### Added
 - Standalone HomeVault client speed test using production Argon2id defaults,
   synthetic inputs, separate first/steady timings, cancellation and local JSON
   export without login, vault access or API calls. Included in server frontend
   and Pages builds, with a Settings link and production-CSP browser checks.
 - Repeatable desktop measurement recording and a physical low-end-client test
-  protocol. Roadmap item 3 remains open for representative device measurements;
+  protocol. Representative device measurements remain open;
   the KDF runs on the client browser, not the storage server. Encryption defaults
   and existing vaults are unchanged; independent review remains required.
 

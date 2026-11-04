@@ -1,531 +1,144 @@
 # Security
 
-Two parts: what's actually protecting the app today, and HomeVault's
-threat model — the design v0 was built from, plus what has and hasn't
-been checked since.
+HOME is intended for user-controlled personal/family installations.
+**HomeVault has not received independent security/cryptography review. Do not
+store real passwords or secrets in it yet.** [Review handoff](HOMEVAULT_REVIEW.md).
 
-## Part A — implemented today
+## Access and authentication
 
-- **Managed server downloads require one-time registration codes.** Setting
-  `HOME_SETUP_REQUIRED=true` makes both Core registration aliases require a
-  server-issued 128-bit, 15-minute code. Core records consumption atomically
-  with account creation. Another code is required for each household member;
-  code hashes never authorize login or password recovery. The installer binds
-  HTTP to loopback initially and requires a local owner before public HTTPS.
-  Source/development installs retain their previous open-registration behavior.
-  See [decision 008](decisions/008-installable-home-server.md).
+- Core hashes login passwords with bcrypt, supports TOTP/recovery codes and
+  signs revocable JWT sessions. Password changes, disable and sign-out-everywhere
+  invalidate sessions through token versions.
+- Managed bundles require a server-issued, one-use, 128-bit registration code
+  expiring after 15 minutes. Consumption and account creation are transactional.
+  Source/development installs retain open registration unless explicitly configured.
+- Authentication routes are limited to ten attempts per 15 minutes per IP.
+  Proxy trust must match the deployment; do not expose service ports directly.
+- App backends verify sessions with Core. Successful identities may be cached
+  for at most five seconds; expired entries are not reused during outages.
+  Verification has a five-second deadline and bounded caches/in-flight work.
+- Backends enforce roles and ownership. Frontend hiding is never authorization.
+  Monitor is admin-only; Cloud files/folders are owner-only.
+- Share links use high-entropy tokens, separate rate limits and immediate
+  invalidation when the underlying file is trashed.
+- Upload caps, per-user quotas, input/path validation and safe Markdown rendering
+  constrain ordinary file/content operations. These are not a complete security audit.
 
-- **HomeBridge v0 is optional and read-only.** It authenticates through the
-  shared HomeCore client and forwards only the live user's token to selected,
-  enabled Notes/Tasks public APIs, whose ownership checks remain authoritative.
-  There is no background token, database, index, telemetry or query/result
-  persistence. Query text is submitted by POST; responses are `no-store`.
-  Fixed configured origins, refused redirects, bounded bodies and deadlines
-  constrain upstream requests. Registry failure fails closed; source failures
-  are explicit. HomeVault is excluded. See decision 001 for the v0 boundary.
+## Transport and shared origin
 
-- Passwords hashed with **bcrypt** (12 rounds); never stored plain.
-- First-account administrator assignment and account insertion occur in one
-  immediate SQLite transaction after password hashing. Concurrent first
-  registrations cannot each claim administrator privileges, and concurrent
-  duplicate usernames receive a conflict instead of an internal error.
-- **JWT** auth with a per-user **token version** for revocation on password
-  change, "sign out everywhere," and admin-disable. HomeCore checks account
-  state on every request; the seven application backends cache a successful
-  verification for at most five seconds from the start of the verification
-  request. They never reuse an expired entry during an outage.
-- **Bounded delegated authentication** (`packages/homecore-client`): a
-  five-second deadline covers both response headers and body; at most 1,000
-  successful identities and 100 distinct in-flight verifications are kept
-  per backend process. Concurrent requests for the same token share one
-  verification. Only HomeCore's explicit `401`/`403` refuses the session;
-  upstream failures and malformed responses fail closed with a retryable
-  `502`, timeout with `504`, and local verification saturation with `503`.
-  These failures do not clear the user's shared browser session. Redirects
-  are refused and upstream response bodies are never exposed in errors.
-- Auth-adjacent routes (login, register, password change, 2FA
-  setup/disable) **rate-limited** — 10 attempts / 15 minutes / IP.
-- Security headers via `helmet` on every response.
-- **A Content-Security-Policy**, set once at the gateway (`gateway/nginx.conf`,
-  since 1.14.0) and not by each app: the browser runs only this origin's own
-  scripts, plus the one inline theme script (allowed by its sha256), and only
-  talks to this origin. `helmet`'s own CSP stays off in every backend so there
-  is exactly one policy and nothing can send two that disagree. HomeVault alone
-  may compile WebAssembly (`'wasm-unsafe-eval'`), because Argon2id runs as
-  WebAssembly. See "Shared-origin XSS" below.
-- **TOTP 2FA**, with one-time recovery codes and an admin override for a
-  lost phone. The intermediate "pending" token (issued after a correct
-  password, before a 2FA code) is explicitly refused by the main auth
-  middleware everywhere except the route that completes 2FA login.
-  Resetting 2FA on an account that already has it enabled requires the
-  current password, so a stolen session token alone can't silently strip
-  it.
-- **Share links** (`apps/homecloud-backend/src/publicShare.js`) use a
-  192-bit random token, rate-limited separately from login (60 / 15
-  minutes / IP), and stop working the instant the underlying file is
-  trashed.
-- The login **rate limiter counts each real visitor separately.**
-  Behind the gateway every request reaches the backends from the
-  gateway's own address, and the limiter used to key on that — so
-  everyone shared one allowance of 10 attempts per 15 minutes, and anyone
-  able to reach the login page could lock every user out by burning it.
-  Fixed in 1.9.0: the gateway forwards `X-Forwarded-For`, and HomeCore
-  and HomeCloud's backend read the visitor's address from it, but only
-  past proxies on private addresses (`TRUSTED_PROXIES` in each
-  `rateLimiter.js`), so a visitor can't type a fake address to dodge the
-  limit (`homecore/test/rateLimiting.test.js`). The other backends don't
-  rate-limit anything themselves.
-- Per-file upload cap (1 GB) and per-user quota (default 5 GB,
-  admin-overridable).
-- File/folder/note ownership enforced server-side on every route —
-  never a frontend check.
-- HomeNotes' Markdown preview is sanitized with `DOMPurify.sanitize()`
-  (`apps/homenotes/src/markdown.js`) before it ever reaches
-  `dangerouslySetInnerHTML`. Not a precaution — a real, confirmed stored
-  XSS was found and fixed here during this review; see "Shared-origin
-  XSS" below for why it mattered more than an ordinary XSS bug would on
-  this project specifically.
-- Docker builds use `npm ci` against locked dependency versions, not a
-  fresh resolve, so a rebuild months later can't silently pull different
-  package versions than what was tested.
-- The batch-zip feature uses `yazl` (one small dependency) rather than
-  a heavier alternative, specifically to avoid a larger transitive
-  dependency tree.
-- Every backend is on Express 5, which resolves a patched `qs` on its
-  own. An earlier moderate-severity `qs` advisory (in Express 4's
-  dependency tree) used to be patched by an `overrides` pin in the root
-  `package.json`; that pin was removed in [1.1.4] once `npm ls qs` and
-  `npm audit` confirmed it was no longer needed.
-- `.github/dependabot.yml` opens weekly update PRs for npm, Gradle and
-  the Dockerfiles, so a new advisory or an end-of-life base image shows
-  up as a PR instead of waiting for the next manual review.
+Raw gateway port 8080 is HTTP. Managed bundles bind it to loopback by default;
+LAN exposure is an explicit unencrypted mode. Never forward 8080 to the internet.
+Use HTTPS or a protected private-network connection for broader access.
+Optional Caddy provides public HTTPS when configured; it does not make an
+internet-facing login equivalent to a private deployment. See [deployment](DEPLOYMENT.md).
 
-**Resolved since the last review:** every frontend's `vite` (and its
-`esbuild` dependency) previously carried four dev-server-only advisories
-— one high severity — tracked in this section until the `vite@8`
-upgrade landed. `npm audit` reports zero vulnerabilities as of this
-writing. See `CHANGELOG.md`'s `[1.1.2]` entry for the advisory IDs and
-what the upgrade involved.
+All app UIs share one origin and the bearer token in localStorage. A script
+running in any app can access that session. The gateway's CSP, sanitized
+Markdown and tab-lifetime Vault keys mitigate this risk but do not eliminate it.
+Keep the strict script policy, no unsanitized untrusted HTML, and no persistent
+plaintext vault keys. Only Vault's prefix needs `wasm-unsafe-eval`.
 
-**Resolved since the last review, and unrelated to the above:** every
-Dockerfile in this repo (all eleven — every frontend and every backend)
-was pinned to `node:20-slim`. Found while checking Node-version
-compatibility for the `vite@8` upgrade above, **confirmed against
-Node's own release schedule, not assumed:** Node.js 20 reached
-end-of-life on 2026-04-30 and has not received a security patch since
-— a live gap in every service's production base image, not a
-dev-only one like the `vite` advisories. Bumped to `node:22-slim`
-(Maintenance LTS, security support through 2027-04-30) across all
-eleven Dockerfiles and `docs/DEVELOPMENT.md`'s prerequisites. Checked
-first that this doesn't newly require a `better-sqlite3` upgrade this
-project can't take: the version this project's `^11.3.0` range actually
-resolves to (11.10.0, confirmed directly, not just read off the
-registry's "latest" dist-tag, which is a much later, unrelated 13.x
-line with its own newer Node floor) declares no `engines` constraint at
-all. **Since verified end-to-end:** the review that made this change
-couldn't run Docker, so it was left open. It is now closed by `ci.yml`'s
-Docker job, which builds every image on `node:22-slim` and boots the whole
-stack (see `docs/DEVELOPMENT.md`).
+CORS is broad when unset and no credentialed cookies are used. Cross-origin
+pages do not acquire the user's bearer token automatically, but wildcard CORS
+is not an authorization boundary. Set explicit origins where appropriate.
 
-**Current runtime baseline (after the 1.6.2 release):** the historical
-Node 22 baseline above has since been superseded. All 15 Node-based Docker
-images, CI workflows and local-development prerequisites now use Node 26
-Active LTS. The eight backends use `better-sqlite3` 12.11.1, which declares
-Node 26 support and publishes the matching native ABI prebuilds. The CI
-workflow verifies the committed-lockfile install and native SQLite round-trip
-on Windows as well as the full Linux/Docker stack. Node 26's official Debian
-slim image includes the `libatomic1` runtime dependency required by the
-Node 26 binary.
+## Known limits
 
-**Resolved in [1.1.4], same theme as the Node bump:**
-`services/backup/Dockerfile` moved off Alpine 3.20 (end-of-life
-2026-04-30) to `alpine:3.22`, and the five frontend Dockerfiles moved
-from `nginx:1.27-alpine` to `nginx:1.30-alpine`, which carries several
-CVE fixes the older line lacks. Like the Node bump, this was first made
-without Docker available, and is now confirmed by `ci.yml`'s Docker job,
-which builds those images and boots the stack. Dependabot has since moved
-them on (merged only after the same CI run passed) to `alpine:3.24` and
-`nginx:1.31-alpine`.
+- Cloud, Notes, Tasks and other ordinary app data are server-readable. Vault is
+  the client-encrypted exception; HOME does not automatically encrypt disks or backups.
 
-## Machine-to-machine routes, and HomeMonitor
-
-- **General internal shared-secret check.** The general internal routes in HomeCore
-  (`events`, `users/usage`, `apps`, `notifications`) goes through
-  `homecore/src/internalAuth.js`, which compares the secret in constant time
-  (`crypto.timingSafeEqual`), so a wrong guess can't be refined by timing.
-  An unset secret still means nobody gets in.
-- **The two new endpoints are narrow.** `GET /internal/apps` returns only
-  slug, name, health path and enabled. `POST /internal/notifications` can
-  only create notifications for admins, with length limits on every field.
-- **HomeMonitor is admin-only, enforced on the server** (`requireAdmin` in
-  `apps/homemonitor-backend/src/app.js`); the web app's "Administrators only"
-  page is just courtesy. It reads and reports; nothing it exposes can change
-  the system.
-- **Least privilege in Docker.** The monitor container gets HomeCore's
-  `.env` only to obtain the shared internal secret, and `JWT_SECRET` is blanked
-  for it in `docker-compose.yml`, so it never holds the key that could forge
-  a login. It is NOT given the Docker socket (that would be root on the host);
-  its backups mount is read-only.
-
-## What's not covered yet
-
-- **No TLS anywhere in the request chain.** The gateway terminates plain
-  HTTP only. Fine for a trusted home LAN; not fine for anything reachable
-  more broadly, and a **hard blocker** for HomeVault (see below).
-  **Decided approach:** a private overlay network (Tailscale or
-  WireGuard) for remote access, not public exposure with a reverse-proxy
-  cert — simpler to operate correctly for a self-hosted family server,
-  and avoids the recurring cost of managing public certificates for
-  something that was never meant to be reachable by the open internet.
-  See `DEPLOYMENT.md`. **Opt-in exception (1.9.0):** for people who need
-  to reach the server from somewhere a private network client can't be
-  installed (a locked-down work PC), `DEPLOYMENT.md` documents an
-  optional public HTTPS front door (Caddy, started only with
-  `--profile public`). That is a deliberate step away from the decision
-  above, not a replacement for it: it puts the login screen — and, on the
-  shared origin, HomeVault's encrypted blobs — on the public internet,
-  so treat the overlay network as the safer default and read the
-  trade-offs in that section first.
-- **Application-manifest permissions are declarative for browser-session APIs.** Applications
-  declare intended permissions in their manifest (HomeCore's application
-  registry), but those catalog declarations are not checked before
-  granting access to another application's resource — `HOME_MASTER_SPECIFICATION.md`
-  §28 calls for four enforced authorization layers (identity, role,
-  permission, ownership); layer 3 (permission) is the one not actually
-  implemented yet. Identity, role and resource-ownership checks do operate;
-  manifest declarations add no caller-application isolation today. That gap
-  is accepted for HomeCloud/HomeMedia/HomeSync/HomeNotes
-  as built, but **not** something HomeVault, or any future
-  security-sensitive app, should rely on as a boundary — see "sibling
-  application overreach" below. **Decided:** deliberately deferred
-  until HomeVault actually needs it, rather than built speculatively
-  ahead of a real consumer — but it's a hard
-  prerequisite for HomeVault specifically, not indefinitely optional.
-  The separately enforced action/audience checks for background capabilities
-  below do not solve this generic model: ordinary browser sessions identify a
-  user, not the calling application. Canonical Core route aliases preserve
-  existing identity, role and ownership checks without claiming new permissions.
-- **Minor, low-severity: `/api/auth/login` reveals whether a disabled
-  account exists.** An unknown username and a wrong password for a real
-  account both return the same generic "Incorrect username or
-  password." (good — no ordinary credential-guessing enumeration), but
-  a disabled account gets its own distinct message ("This account has
-  been disabled..."), which tells an attacker guessing usernames that
-  one exists and is disabled. Noted during this review, not changed:
-  telling a legitimate locked-out user why they can't log in is a
-  reasonable trade-off, and what leaks is account existence plus
-  disabled status, not credentials — low enough stakes that changing
-  it wasn't treated as urgent, but worth a conscious call rather than
-  an unnoticed gap.
-- No email-based password reset (an admin-panel reset is the intentional
-  substitute — no outgoing mail server to run).
-- No account-deletion flow — only disable. See
-  `ARCHITECTURE.md` §6 for the gap this leaves once one is added.
-- **Every backend's `CORS_ORIGIN` defaults to `*` when unset — and
-  confirmed, not assumed, during this review: `docker-compose.yml`
-  never sets it for any service, so every backend actually ships with
-  wide-open CORS today,** not just as a fallback for an operator who
-  forgot to configure it. The practical risk is low specifically
-  because this ecosystem authenticates with Bearer tokens read from
-  each app's own `localStorage`, never cookies — none of the `cors()`
-  calls set `credentials: true` (checked directly in each backend's
-  `app.js`), and a wildcard origin plus no credentials means a
-  malicious page can't get a browser to attach anything of the victim's
-  to a cross-origin request in the first place; it would need the
-  token already, which is exactly what "Shared-origin XSS" above is
-  about, not a new exposure this adds. Still open, still worth setting
-  explicitly per-service once real domains exist, rather than relying
-  on this reasoning indefinitely.
+- App-manifest permissions do not isolate ordinary browser applications:
+  sessions identify users, not the calling app. Scoped background capabilities
+  are a separate enforced mechanism, not a fix for this generic gap.
+- A disabled-account login response reveals that the account exists and is
+  disabled. This is the current usability tradeoff.
+- Account disable and administrator password reset are supported; full
+  cross-service account deletion and email-based recovery are not.
+- Source installations need explicit secrets/transport configuration. The public
+  portal is only an address launcher; it does not authenticate or secure servers.
+- Local backup copies do not protect against disk/machine loss. SQLite integrity
+  checks do not certify all cross-service references or historical file content.
+- Hardware/browser measurements and AI self-review do not constitute physical
+  device validation or independent security approval.
 
 ## HomeVault threat model and v0 status
 
-> **v0 is built. It has not had a real security review.** Everything
-> below this callout is the design this v0 implements — the same
-> architecture, unchanged. What actually exists in code:
->
-> - **Independent-review handoff prepared:** [HOMEVAULT_REVIEW.md](HOMEVAULT_REVIEW.md)
->   maps the exact review scope, safe reproduction, evidence limits and open
->   questions. Preparation found a real post-unlock rewrap failure: restored
->   vault keys were non-extractable despite rewrap requiring export. The narrow
->   fix preserves the generated-key policy and has crypto, real-API and browser
->   lifecycle proof. This correction and packet do **not** satisfy independent review.
->
-> - **Verified by automated test** (`apps/homevault/test/crypto.test.js`,
->   run in complete isolation from any UI): Argon2id derivation is
->   deterministic for the same inputs and differs for a different
->   password or salt; AES-256-GCM encrypt/decrypt round-trips; a wrong
->   key or tampered ciphertext throws rather than silently returning
->   garbage; the master-password and recovery-key unwrap paths both
->   reach the same underlying vault key; a fresh random IV is used on
->   every encryption; a single mistyped character in a recovery key is
->   caught immediately via a checksum, with a distinct "you made a
->   typo" error, rather than silently producing a different, wrong
->   32-byte key.
-> - **Followed exactly as designed**: client-side envelope encryption,
->   Argon2id (OWASP's current default parameters — `m=19456, t=2, p=1`,
->   stored per-vault so a future parameter change never breaks an
->   existing vault), AES-256-GCM with a per-field IV, a recovery kit
->   generated once and never stored server-side, titles encrypted (not
->   just sensitive fields), the vault key held only in memory with its
->   own shorter-than-the-session auto-lock timer.
-> - **A second, more adversarial self-review pass** (not the "does the
->   code match the design doc" check above — deliberately trying to
->   find a way to break it) went through nonce/salt/IV generation, key
->   extractability choices, the verifier mechanism, and the recovery-key
->   format by hand. Found and fixed two real, minor issues: a mistyped
->   recovery-key character was silently dropped instead of flagged (see
->   the checksum bullet above), and copying the recovery key to the
->   clipboard had no auto-clear (now clears after 30s, matching
->   Bitwarden/1Password). Also confirmed, not just assumed: no
->   `Math.random()` anywhere in the security-critical path; the vault
->   key must stay extractable so it can be re-wrapped, so the
->   non-extractable wrapping-key choices provide less real protection
->   against the already-documented "Shared-origin XSS" than they might
->   look like. **This still is not the independent review below** — same
->   author reviewing their own work, just a more skeptical pass at it.
->   See `CHANGELOG.md`'s `[1.1.3]` entry for the full writeup.
-> - **Explicitly NOT done**: an independent security/cryptography review
->   by anyone other than whoever wrote this. Automated tests confirm the
->   code does what it was written to do; they cannot confirm the design
->   itself has no flaw a reviewer would catch. **Do not store real
->   passwords or secrets in this v0 until that review happens.**
-> - **Prerequisites below that remain genuinely open**: concrete
->   Argon2id parameters *for this specific v0* are the OWASP default,
->   not yet validated on representative minimum client/browser hardware.
->   The [device benchmark](HOMEVAULT_BENCHMARK.md) and local desktop timings
->   do not close that prerequisite; defaults remain unchanged. TLS and the shared-origin decision are settled (see
->   Part A above and "Shared-origin XSS" below) and not blockers for
->   this v0 existing, but remain blockers for exposing it beyond a
->   trusted LAN.
-> - **Item deletion is recoverable through Trash.** Titles and secret data
->   stay encrypted, with the same ciphertext and IVs. Only deletion time is
->   added as public metadata. Trash has no automatic expiration; the owner
->   can restore an item or explicitly delete it forever. Whole-vault deletion
->   remains irreversible and includes Trash. Deleting a database row is not
->   secure erasure of SQLite pages, storage media or historical backups.
-> - **Administrator reset** is available in Home Settings. Vault verifies the
->   administrator live in Core and requires explicit account confirmation plus
->   the checked vault id. Deletion and a local audit record commit together.
->   It removes active items and Trash, never recovers secrets or erases backups.
->   See [decision 003](decisions/003-vault-admin-reset.md).
+The browser derives a 32-byte wrapping key with Argon2id
+(`m=19456 KiB, t=2, p=1` and a random 16-byte salt). A random 256-bit vault key
+encrypts item titles/content using AES-256-GCM and fresh 12-byte IVs. The master
+password wraps that vault key; a separate random 256-bit recovery key provides
+another wrapping path. Recovery-key checksums detect typos, not attackers.
 
-HomeVault is the ecosystem's answer to Bitwarden/1Password — holding
-passwords, secure notes, TOTP secrets, recovery info, and API keys.
-Every other app here (HomeCloud, HomeMedia, HomeNotes) trusts the
-server with plaintext, because a file server that can't read files can't
-serve thumbnails. HomeVault's whole design problem is the opposite: **the
-server should be useful without ever being trusted with plaintext.**
+The backend stores encrypted items, wrapped keys and limited metadata. It does
+not receive plaintext secrets, a master password or a usable decryption key.
+A new device still needs the master password/recovery key. Administrators can
+disable/reset/delete data through authorized operations, not decrypt it.
+Encrypted Trash retains item ciphertext until permanent deletion.
 
-### Goals, in priority order
+Important boundaries:
 
-1. **Confidentiality from the server** — an admin, a bug, a full DB
-   dump, or a compromised container should never yield readable vault
-   contents.
-2. **Confidentiality from other Home users**, including a HomeCore admin.
-3. **Integrity** — tampering must be detectable, never silently decrypted
-   into garbage (or worse, attacker-chosen data).
-4. **Availability** matching the rest of the ecosystem's degrade-gracefully
-   pattern.
-5. **Recoverability that doesn't undermine goal 1** — a forgotten master
-   password is common; the recovery path can't quietly become a
-   server-side skeleton key.
-
-**Explicitly out of scope:** a fully compromised client device
-(keyloggers, malicious extensions), physical access to an
-already-unlocked session (mitigated by auto-lock, not eliminated),
-post-quantum crypto, and HomeAI ever reading vault contents (see
-`ROADMAP.md`).
-
-### Architecture: client-side envelope encryption
-
-The same well-understood pattern Bitwarden/1Password use — not a novel
-scheme (novel cryptography is itself a threat):
-
-```
-Master password
-      │  Argon2id (memory-hard KDF, client-side)
-      ▼
-Master key        (never leaves the device, never stored anywhere)
-      │  wraps / unwraps
-      ▼
-Vault key          (random 256-bit, generated once at vault creation)
-      │  encrypts, unique nonce per item
-      ▼
-Individual items   (passwords, notes, TOTP secrets, ...)
-```
-
-The server stores only the **wrapped vault key** and the **encrypted
-items** — neither useful without the master password, which the server
-never sees. Wrapping (rather than encrypting every item directly from
-the master password) is why changing the master password is a cheap
-re-wrap, not an O(n) re-encryption of the whole vault.
-
-- **Argon2id**, not PBKDF2/bcrypt — memory-hard, because the realistic
-  attack is offline brute-force against a stolen dump, not online
-  guessing (already rate-limited at the login layer). Parameters need
-  measurement on the actual client browsers that unlock vaults. A Pi
-  matters only if it runs that browser. Keep OWASP guidance as a floor;
-  weak storage-server hardware must never pressure parameters downward.
-- **AES-256-GCM or XChaCha20-Poly1305**, unique nonce per item — reusing
-  a nonce with the same key is the one classical mistake that fully
-  breaks AEAD.
-- **Item titles are encrypted too**, not just sensitive fields — a
-  deliberate tradeoff: search/sort become client-side only (fine at
-  personal-vault scale), but it closes a real gap (plaintext titles like
-  "Bank of America" leak a lot to a database-dump attacker without ever
-  breaking the encryption).
-
-### Threat catalog (condensed)
-
-| Threat | Mitigation |
+| Risk | Current boundary |
 |---|---|
-| **Server/DB compromise** | Stored items/envelopes are ciphertext plus accepted metadata, permitting offline password guessing. Weak/reused passwords, stolen recovery material and historical wrappers remain risks. Active modification of delivered client JavaScript is a different boundary; see the review handoff. |
-| **Network interception** | Blocking prerequisite: the gateway has no TLS yet. Not shippable for a password manager without it, even on a "trusted" home LAN. |
-| **Shared-origin XSS** | Every app on the gateway's single origin shares one security perimeter — a stored XSS bug in *any* app can read *every* app's token out of `localStorage`, HomeVault's included, regardless of what the key is called (since 1.9.0 all apps share one, `home_session_token` — see `ARCHITECTURE.md` §5; before that each app had its own, and same-origin script access never cared that the keys differed). **Decided:** stay on the shared origin (simpler ops, one cert, consistent with every other app) rather than a separate origin just for HomeVault, on the condition that the mitigation is real, not aspirational: a strict CSP project-wide, no unsanitized `dangerouslySetInnerHTML`/`innerHTML` with untrusted content anywhere, and the decrypted vault key kept tab-lifetime-only, never in `localStorage`. **That condition was violated in practice, found, and fixed during this review:** HomeNotes' Markdown preview rendered `marked.parse()` output straight into `dangerouslySetInnerHTML` with zero sanitization — a real, confirmed path from a note's content (including pasted content, completely ordinary use of a notes app) to a script that reads every app's token, HomeVault's included. Fixed by routing through `DOMPurify.sanitize()` (`apps/homenotes/src/markdown.js`, tested in `apps/homenotes/test/markdown.test.js`); see `CHANGELOG.md`. Re-confirmed via grep that this was the *only* `dangerouslySetInnerHTML`/raw-HTML-injection site in `apps/*/src` — worth re-checking on every future app addition, not a one-time sweep. **The CSP half of that condition is now built (1.14.0):** the gateway sends one policy with no `'unsafe-inline'` and no `'unsafe-eval'` for scripts, `connect-src 'self'` (restricting fetch-like connections, not proving exfiltration prevention) and `frame-ancestors 'none'`, checked in a real browser (see `CHANGELOG.md`). It limits what an XSS bug can do; it does not make one harmless, because a script that IS allowed to run can still read the token, so sanitizing at the source stays the first wall. |
-| **Sibling application overreach via HomeCore** | HomeCore's permission system is declarative, not enforced (see above). Encryption itself — not HomeCore's authorization layer — is what actually stops this: a fully compromised sibling app still only gets ciphertext. |
-| **Malicious/compromised HomeVault backend code** | Structurally limited — the server is never sent plaintext to begin with, so there's nothing to exfiltrate unless the *client* is also compromised. |
-| **HomeCore admin overreach** | An admin can disable/reset a Core account credential and impersonate its session, including using owner destructive APIs. That does not recover a distinct Vault master key. Home Settings now offers a dedicated reset: live Core administrator verification, checked vault id, explicit confirmation and atomic local audit. Its status response exposes only existence/id, never encrypted envelopes or contents. It cannot revoke unlocked copies or erase backups. No admin-only route returns decrypted contents. |
-| **Lost master password** | A recovery kit — a high-entropy recovery key generated once, shown once, independently unwrapping the same vault key — is the only acceptable path. The user stores it offline; the server never sees it. Explicitly unacceptable: email reset links, security questions, or anything else that routes through something the server can see or influence. |
-| **Metadata leakage** | Item count, blob size, and timestamps are unavoidably visible even with content encrypted. Acknowledge rather than hide — keep it to the structural minimum, treat size-padding as future hardening, not a v1 blocker. |
-| **Standing decrypted key in memory** | The unlocked vault key lives in React context with a five-minute idle lock independent of the Core session. Generated/restored vault keys are extractable for rewrap; wrapping keys use non-extractable imports. No persistent web storage is intended for keys; JavaScript/GC provide no guaranteed secure erasure. Lifecycle and async races remain review targets. |
-| **Multi-device sync UX** | Not a threat, a design consequence worth documenting: a new device syncs the *encrypted* vault immediately but needs the master password re-entered before anything is readable. Correct behavior, not friction to fix. |
+| Stolen database | Offline password guessing remains possible; password quality and KDF cost matter |
+| Compromised serving code | A server that changes delivered JavaScript can steal secrets on a later unlock; ciphertext storage alone does not prevent this |
+| Shared-origin XSS | An allowed script can use the shared session and attack an unlocked client |
+| Record substitution/replay | Current AES-GCM records lack application AAD/rollback counters; authenticated bytes are not proof of record identity or freshness |
+| Historical credentials | Password changes/recovery regeneration rewrap the same data key; old credentials plus an old envelope may still expose later items |
+| Memory and unlocked clients | Five-minute idle lock limits exposure; extractable vault keys support rewrap, wrapping-key imports are non-extractable; JS/WASM/GC do not guarantee secure erasure |
+| Metadata and deletion | Item counts, sizes and timestamps are visible; deleting current records does not erase older backups |
+| Compromised device/extensions | Outside the confidentiality guarantee; no client crypto fixes a keylogger |
 
-### Prerequisites before HomeVault v0 handles anything real
+Vault keys are kept in tab memory, not persistent web storage. HomeAI and
+server-side search must never receive decrypted Vault content. Review must
+address format validation, resource bounds, key lifecycle, async races and
+the limits above before real use. [The review packet](HOMEVAULT_REVIEW.md)
+contains the detailed scope; [the optional benchmark](HOMEVAULT_BENCHMARK.md)
+measures client performance, not security.
 
-AES-GCM currently authenticates ciphertext bytes, without application AAD
-binding records/fields/types or an authenticated rollback counter. Bit-tamper
-refusal is not proof against valid same-vault ciphertext substitution or replay.
-Password changes and recovery regeneration rewrap the **same** data key; old
-credentials plus an old envelope can still expose it and decrypt later items.
-These limits and potential required format/version changes need independent
-disposition in the [review handoff](HOMEVAULT_REVIEW.md). Current UI language
-distinguishes this from compromised-key revocation and secure deletion.
+## Internal services and optional automation
 
-In priority order:
-1. **An independent security/cryptography review of the actual v0 code**
-   (not just this design document) — nothing below matters if the
-   implementation itself has a flaw a reviewer would catch that
-   automated tests, by construction, cannot. See the v0 status callout
-   at the top of this section for exactly what's been verified so far
-   and what hasn't.
-2. **TLS for anything beyond a trusted LAN** — the single largest gap
-   between "sound on paper" and "safe to actually use" once real secrets
-   are involved. (Decided: a private overlay network, not a public
-   reverse-proxy cert — see Part A above.) Not a blocker for local,
-   LAN-only use during review.
-3. **Argon2id parameters validated on representative minimum client/browser
-   hardware.** v0 ships OWASP's current default (`m=19456, t=2, p=1`) as
-   a reasonable starting point, not a completed prerequisite — see the
-   v0 status callout and [benchmark protocol](HOMEVAULT_BENCHMARK.md). The
-   standalone tool is implemented; the representative-device matrix stays open.
+General internal APIs use a constant-time shared-secret check and fail closed
+when unconfigured. Keep Core/internal ports private: headers alone cannot
+prove a trusted caller. Monitor has no Docker socket, gets read-only backup
+access, and is not given the JWT signing key.
 
-The shared-vs-separate-origin decision, and the recovery-kit UX, are
-both settled and implemented (see the v0 status callout above) — no
-longer blocking prerequisites.
+Bridge search forwards only the live user's token to configured Notes/Tasks
+APIs and retains no search index or browser token. [Search boundary](decisions/001-homebridge-search.md).
 
-## Scheduled delegation and opt-in worker
+[Monitor follow-up automation](decisions/002-scheduled-monitor-followup.md) is
+off by default and requires operator setup plus owner consent:
 
-[Decision 002](decisions/002-scheduled-monitor-followup.md) defines the first
-scheduled bridge and its restricted authority: separate Monitor-read and
-Tasks-create-once capabilities, explicit owner consent, live revocation and
-role checks, expiry, bounded effects and encrypted operational credentials.
-It also records the remaining effect of a compromised running Bridge.
-Core now implements hash-only 256-bit, audience/action-bound 30-day
-capabilities. Issuance/renewal require fresh explicit consent and a full enabled
-administrator session on private internal routes. Public gateway access to
-those routes is blocked; browser Origin/Fetch Metadata requests are refused.
-Keep direct Core ports private: headers alone cannot establish a trusted server.
-Owner listing/revocation returns metadata only. Auditing is atomic with grant
-writes and never includes tokens or hashes. Account/epoch/registry checks run
-on every capability verification, with no positive cache. Ordinary session
-routes never accept capabilities, and shared middleware sets a separate principal.
+- Core issues hash-only 256-bit, action/audience-bound 30-day capabilities.
+  Enabled-admin, account/epoch/registry checks and revocation are live, with no
+  positive verification cache. Session APIs never accept capabilities.
+- Issuance is private and refuses browser-origin requests. Owner grant controls
+  expose metadata only; credential surrender can revoke only its own parent.
+- Monitor provides bounded incident metadata; unknown readings do not resolve
+  incidents. Tasks owns atomic create-once receipts and a cap of 20 new tasks
+  per subject/integration/UTC day, including retained deleted-task receipts.
+- Bridge encrypts credentials/pending payloads with AES-256-GCM and context-bound
+  associated data. Its read-only 32-byte key stays outside repo, data and backups.
+  Encryption protects stored state, not a compromised running worker.
+- Four shared slots and per-rule leases bound dispatch. Disable pauses before
+  I/O; failed surrender persists. In-flight requests may finish; no rollback
+  of already-created tasks is promised.
+- Restored Core grants must be revoked, Monitor's instance rotated and Bridge
+  paused offline before traffic resumes. Old Tasks receipts can roll back;
+  cross-service exactly-once recovery is not guaranteed. Never prune receipts
+  without a replacement duplicate-prevention design.
 
-Restoring an older Core database can resurrect previously revoked credentials.
-The offline maintenance procedure in `DEPLOYMENT.md` revokes restored grants
-before traffic resumes; a normal restart preserves them. It requires an explicit
-existing database path and an offline acknowledgment, which is an operator
-precondition rather than automatic offline detection.
-
-Monitor's action returns only bounded incident/condition metadata and the
-committed evaluation time. Unknown/missing readings cannot resolve an open
-incident. Notification failure is independent of state freshness through an
-atomic durable outbox. Offline Monitor restore maintenance rotates the pinned
-instance and clears freshness before traffic resumes, preventing the
-worker from silently accepting rolled-back incident history as the same source.
-
-Tasks' action accepts only bounded title/notes and an idempotency key. Subject
-and integration come from Core. Atomic receipts prevent duplicate creation
-across concurrent requests, response loss, renewal and manual deletion. The
-20-new-tasks/subject/integration/UTC-day cap counts retained receipts, including
-deleted tasks. Receipts retain payload hashes for conflict detection but no
-task content; hashes still permit guesses about known candidate payloads.
-Restoring Tasks to an older snapshot can roll back receipts and cannot promise
-cross-service exactly-once history. Never prune receipts to reclaim storage
-without a new explicit duplicate-prevention design.
-
-The optional worker uses AES-256-GCM with a fresh nonce for each credential
-and canonical pending payload. Associated data binds integration, subject,
-grant and audience (or pinned instance/incident for intent). Metadata is not
-whole-database encryption. A read-only 32-byte key file stays outside repository,
-state volume and backups. Missing/invalid keys leave search usable and automation
-unconfigured; authentication failures on existing ciphertext pause affected
-rules. Wrong keys cannot silently rewrite pending payloads. Loss of a pending
-payload requires key recovery/manual attention, never a fabricated retry.
-
-No browser session or Core signing/shared internal secret is retained in Bridge.
-Encrypted state protects backups, not a compromised running worker. Core's
-capability surrender endpoint permits only revocation of the presented
-credential's own parent, including after expiry or role loss. It returns no
-metadata and grants no data/action access. Disable pauses locally before I/O;
-failed surrender stays pending across restart. Already authorized requests
-can finish; no task rollback is promised. Core's direct owner grant control
-remains independent of Bridge.
-
-Four shared SQLite slots plus per-rule expiring leases bound dispatch and
-prevent overlapping cycles. Restarts discard incomplete qualification but
-retain canonical intent/receipts. A Bridge restore must run offline pause
-maintenance before traffic: restored grants require surrender and fresh owner
-consent. This prevents an old backup from undoing a local pending Disable.
-Browser keyboard/mobile, disposable-service and Docker tests establish only
-the documented repository behavior. Existing HomeVault external-review limits
-remain unchanged; no independent cryptographic review is claimed.
+[Task reminders](decisions/006-hometasks-reminders.md) use a separate external
+32-byte producer key mounted only into Core/Tasks. Browser tokens and the
+general internal secret cannot authenticate that route. Missing/invalid keys
+fail closed. Core bounds enabled-user notices to 100/user and 1000 globally
+per UTC day; only title/IDs/delivery UUID cross the boundary, not task notes.
+Receipts and notification creation are atomic. Completion/deletion cancels
+pending work but cannot retract in-flight/delivered notices. Restore both
+services consistently; exact-time and cross-service restore delivery are not
+guaranteed. Keep keys separate and follow [operational restore steps](DEPLOYMENT.md).
 
 ## Reporting a vulnerability
 
-Don't open a public issue. See `CONTRIBUTING.md` for how to report
-privately.
-
-## Personal task reminder boundary
-
-Decision [006](decisions/006-hometasks-reminders.md) adds a separate private
-Core producer route, `/internal/hometasks/reminders`, blocked by the public
-gateway. Only Core and Tasks mount the same external raw 32-byte key through
-`docker-compose.reminders.yml`. Neither default Compose nor browser clients
-receive it. Missing, unreadable or wrong-size files fail closed. The general
-internal secret and browser tokens cannot authenticate this producer; the
-reminder key cannot authenticate general internal or user APIs. Header
-comparison is constant-time. Keep the file outside repository, data and backup
-sources, restrict host access and rotate/restart both services together.
-
-Tasks is trusted to assert the owner from its own stored row. Core does not
-verify the task against Tasks and does not read its database. A compromised
-Tasks/key can produce bounded notices for enabled users, but cannot choose
-arbitrary notification fields, links, applications or recipients outside
-enabled accounts. Core fixes the source/type/title/link data and enforces
-100 new reminders per user and 1000 globally per UTC day. This limits spam;
-it does not remove the trust in this producer. Only the task title (up to
-200 characters), owner/task IDs and a delivery UUID cross into Core; task notes
-and browser sessions do not. Titles therefore enter Core's notification DB
-and its backups after explicit reminder opt-in.
-
-Core receipts and notification creation are atomic, and concurrent/retried
-requests with the same owner/task UUID cannot create another notice. A
-changed reminder gets a new UUID; a stale worker cannot acknowledge it.
-Completion/deletion/removal cancels locally pending work, but cannot retract
-an already in-flight or delivered notification. Disabled/deleted users and a
-disabled HomeTasks registry entry suppress new delivery; re-enabling alone
-does not rearm it. Core outage or quota exhaustion stays pending for retry.
-Receipts have no cleanup TTL. Back up/restore Core and Tasks consistently:
-restoring Core without matching Tasks can lose replay history, while restoring
-Tasks without Core can leave an acknowledged notice absent. No cross-service
-restore exactly-once, exact-time, email or web-push guarantee is made.
+Use private GitHub vulnerability reporting if available, or contact the
+maintainer privately. Do not post secrets, personal data or exploit details
+in a public issue.

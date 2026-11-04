@@ -49,4 +49,4 @@ This session's local `emulator -accel-check` returned code 6 and reported that
 the Android Emulator hypervisor driver is not installed. No personal AVD was
 started or modified, and no driver/host virtualization setting was changed.
 No suitable emulator run was established. Re-check readiness on a future host;
-real-device/emulator sign-in, scheduling and backup remain open in roadmap item 2.
+real-device/emulator sign-in, scheduling and backup remain tracked in the device validation guide.

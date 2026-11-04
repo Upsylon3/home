@@ -1,6 +1,6 @@
 # HomeSync device validation
 
-Roadmap item 2 needs an actual Android runtime, not just a successful compile.
+HomeSync device validation needs an actual Android runtime, not just a successful compile.
 The first reproducible target is a fresh API 34 Google APIs x86_64 Pixel 6
 emulator on a disposable GitHub Ubuntu runner. The instrumented journeys are in
 `BackupJourneyTest`, `PermissionDeniedJourneyTest` and
@@ -138,7 +138,7 @@ action is pinned to a reviewed v2 commit. KVM permissions change only on the
 ephemeral GitHub runner, never the developer's machine.
 
 The UI Automator 2.4.0 update is reviewed in
-[PR #81](https://github.com/Upsylon3/home/pull/81), roadmap item 8. The
+[PR #81](https://github.com/Upsylon3/home/pull/81). The
 [stable release notes](https://developer.android.com/jetpack/androidx/releases/test-uiautomator)
 introduce optional Kotlin/window APIs and accessibility/gesture fixes; these
 journeys retain their existing UiDevice/By API and assertions. Published Google

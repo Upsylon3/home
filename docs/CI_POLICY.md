@@ -41,3 +41,10 @@ python scripts/ci-scope.py --base origin/main --head HEAD --event pull_request
 ```
 
 Scope selection is not a security/authorization boundary: the existing repository rules and PR review/merge policy still govern changes. No branch protection, permissions, repository secrets or billing settings are changed.
+
+## Release source verification
+
+`CI` also accepts a reusable-workflow `source_ref` input. The release workflow
+supplies its validated tag, every checkout uses that explicit ref, and selection
+is forced to the full regression gate. Release staging depends on all of those
+checks passing. Normal PR selection and manual/weekly runs retain their policy.

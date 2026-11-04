@@ -93,7 +93,7 @@ The Node runtime baseline is now **Node 26 LTS** across all Node-based Dockerfil
 
 ## 6. Release discipline
 
-The current ecosystem baseline is **1.6.2**. Follow `VERSIONING.md` and `docs/RELEASING.md`.
+The current ecosystem baseline is **1.7.0**. Follow `VERSIONING.md` and `docs/RELEASING.md`.
 
 - Keep routine work under `[Unreleased]`; a commit, phase completion or refactor is not automatically a release.
 - Choose PATCH/MINOR/MAJOR only for a real release milestone under SemVer.

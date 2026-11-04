@@ -36,7 +36,9 @@ const origin = 'http://127.0.0.1:8080';
 async function request(route, body, token) {
   const response = await fetch(origin + route, {
     method: body ? 'POST' : 'GET',
-    headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(token ? { Authorization: 'Bearer ' + token } : {}) },
+    // Synchronous Docker stop/start blocks Node's socket-close callbacks.
+    // Each probe must open a new connection instead of reusing a pre-stop socket.
+    headers: { Connection: 'close', ...(body ? { 'Content-Type': 'application/json' } : {}), ...(token ? { Authorization: 'Bearer ' + token } : {}) },
     ...(body ? { body: JSON.stringify(body) } : {}), signal: AbortSignal.timeout(15_000)
   });
   return response;
@@ -54,8 +56,9 @@ try {
   assert.equal((await request('/api/auth/register', { ...account, username: 'replay-user', setupCode: code })).status, 403);
   const form = new FormData();
   form.append('file', new Blob(['installer persistence proof']), 'proof.txt');
-  const upload = await fetch(origin + '/api/homecloud/files/upload', { method: 'POST', headers: { Authorization: 'Bearer ' + token }, body: form });
+  const upload = await fetch(origin + '/api/homecloud/files/upload', { method: 'POST', headers: { Connection: 'close', Authorization: 'Bearer ' + token }, body: form });
   assert.equal(upload.status, 201);
+  await upload.json();
   const before = fs.readFileSync(path.join(root, 'configuration/core.env'), 'utf8');
   compose(['stop']);
   assert.equal(initialize(root), false);

@@ -22,9 +22,6 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 - Public `/connect/` launcher alongside the browser demo: addresses stay in the
   current browser and login happens on the selected HOME. No central account
   database or multi-server trust is introduced.
-
-
-### Added
 - Scope PR checks to affected apps and runtime dependencies; skip Android/Docker for demo edits and avoid native installs for frontend-only checks. Keep full manual/weekly regression coverage, remove all CI Android emulator execution while retaining APK/JVM checks and local instrumentation sources, and deploy the exact checked Pages artifact without repeating builds/tests after merge.
 - Add a serverless browser demo built from all seven existing web interfaces, with IndexedDB files/notes/tasks/media, real client-side Vault encryption, sample data, reset controls and GitHub Pages deployment. Demo sign-in and server monitoring are simulated; no cross-device sync or real account security is implied.
 - Add opt-in personal HomeTasks reminders: choose one local date/time per occurrence and receive an owner-scoped Core notification with a task link. Use a separate external producer key, additive schedules/receipts, outage retries and replay protection. Completing clears the reminder; repeated copies start without one. Home refreshes its notification bell while visible. No email/web push or assignment in this release.

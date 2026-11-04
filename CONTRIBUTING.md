@@ -1,119 +1,43 @@
 # Contributing
 
-## Before you start
+See [DEVELOPMENT.md](docs/DEVELOPMENT.md) for setup and tests. Coding agents
+must follow [AGENTS.md](AGENTS.md).
 
-If you are an AI coding agent, start with [AGENTS.md](AGENTS.md) and follow [docs/AGENT_WORKFLOW.md](docs/AGENT_WORKFLOW.md). The project is maintained autonomously by coding agents: do not interrupt the owner for routine decisions; verify your work, open a focused PR and merge it when all checks pass and repository rules allow it. These instructions do not authorize production access or changes to repository security settings.
+## Changes
 
-If a change would contradict [HOME_MASTER_SPECIFICATION.md](HOME_MASTER_SPECIFICATION.md)
-or [HOME_ARTISTIC_DIRECTION.md](HOME_ARTISTIC_DIRECTION.md), that's a
-deliberate decision to make and record (in the PR description and, if
-it's a lasting change of direction, in the doc itself) — not something
-to drift into silently. Everything under `docs/` is a condensed,
-current-state view derived from those two; when they disagree, the
-docs are what's stale, not the other way around.
+- Inspect the source and relevant product, architecture and security rules.
+  Explain deliberate changes to those rules.
+- Keep PRs focused. Preserve ownership, data and API compatibility; use additive
+  migrations and disposable test databases.
+- Add dependencies only for a concrete need. Use real upstream services in
+  integration tests where the architecture requires them.
+- Update relevant docs and `[Unreleased]`. Follow the shared design system.
+- Run [applicable checks](docs/CI_POLICY.md), review the diff and fix failures.
+  Never claim tests or device validation that did not happen.
 
-Read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) next, specifically the
-three-tier layering rule. It's the one thing every other rule below
-exists to protect: **a Tier 1 app (HomeCloud, HomeMedia, HomeSync,
-HomeNotes, and any future one) owns its own database and process, never
-reaches into another app's database, and never branches on whether
-another app is installed.** Optional cross-app behavior belongs in
-HomeBridge (its optional search v0 is built — see [docs/ROADMAP.md](docs/ROADMAP.md)), not
-bolted onto an existing app.
+## Branches and commits
 
-## Setting up
+Use `feat/`, `fix/`, `docs/`, `chore/`, `refactor/`, `test/`, `ci/`, `build/`
+or `perf/` followed by a short kebab-case name. Dependabot branches are exempt.
+Use Conventional Commit subjects and PR titles:
 
-See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for installing
-dependencies, running services locally, and running the test suite.
-
-## Making a change
-
-1. **Every new service gets its own isolated test suite**, run against a
-   real upstream dependency (a real HomeCore instance, say) rather than a
-   mock — see any existing `test/helpers/app.js` for the pattern.
-2. **Run the focused proof before opening a PR**: use [CI_POLICY.md](docs/CI_POLICY.md) and the tested change selector. Run affected workspace tests/builds and relevant integration checks; do not repeat unrelated full suites for demo, frontend or documentation edits. Unknown paths and CI selection-policy changes run the full gate. Full manual/weekly regressions and the release gate remain available. Wait for applicable selected PR checks before merging; deployment reuses the checked static artifact instead of testing it again.
-3. **No speculative dependencies.** Add a package only when a spec'd
-   feature actually needs it, not because it might be useful later — see
-   the [1.0.0] changelog entry for an example of three that had quietly
-   stopped being used at all.
-4. **Comment the "why," not the "what."** Code should be readable enough
-   that a comment restating what a line does adds nothing; a comment
-   explaining why a non-obvious choice was made (a tradeoff, a gotcha, a
-   constraint from another service) is worth writing down.
-5. **Update the docs in the same change**, not after. If your change
-   makes something in `docs/` inaccurate, fix it in the same commit —
-   that's how the docs stay trustworthy.
-
-## Commit messages and branches
-
-Use **Conventional Commits** for commit subjects and pull-request titles:
-
-```text
-<type>(<scope>): <imperative summary>
-```
-
-The scope is optional. Use one of these types:
-
-- `feat`: new user-facing capability (normally a MINOR release).
-- `fix`: bug or security fix (normally a PATCH release).
-- `docs`: documentation only.
-- `refactor`: internal restructuring without behavior change.
-- `test`: tests only.
-- `ci`: CI or workflow changes.
-- `build`: build, packaging or toolchain changes.
-- `perf`: performance improvement.
-- `chore`: maintenance, including dependency updates.
-- `revert`: revert an earlier change.
-
-Examples:
-
-```text
-feat(homecloud): add expiring shared links
+~~~text
+feat(homecloud): add expiring share links
 fix(homecore): reject revoked sessions
-docs: clarify the release procedure
-chore(deps): update the root workspace lockfile
-test(homesync): cover duplicate uploads
-ci: validate release tags
-feat(homevault)!: rotate the vault envelope
-```
+docs: simplify deployment instructions
+~~~
 
-Keep the type and scope lowercase, start the summary with a lowercase
-letter or number, use imperative wording, and omit the final period.
-Aim for a short subject (about 72 characters); longer automated
-dependency-update subjects are permitted. Explain the reason and relevant
-trade-offs in the commit body. Use a `BREAKING CHANGE: ...` footer or
-the `!` marker for incompatible changes.
+Allowed types: `feat`, `fix`, `docs`, `refactor`, `test`, `ci`, `build`,
+`perf`, `chore`, `revert`. Use lowercase type/scope, an imperative summary,
+no trailing period, and `!`/`BREAKING CHANGE:` for incompatible changes.
 
-Branch names use the matching lowercase prefix:
-`feat/`, `fix/`, `docs/`, `chore/`, `refactor/`, `test/`,
-`ci/`, `build/` or `perf/`, followed by a kebab-case description.
-Dependabot's `dependabot/*` branches are exempt.
+Enable the local hook: `git config core.hooksPath .githooks`. Open PRs to
+`main`; do not push routine work directly. Wait for applicable checks, then
+squash-merge using the validated PR title. Respect protection rules.
+See [versioning](VERSIONING.md) and [releasing](docs/RELEASING.md).
 
-The repository checks pull-request titles, branch names and non-merge
-commit subjects in GitHub Actions. A local commit-msg hook is included;
-enable it once per clone with:
+## Security reports
 
-```bash
-git config core.hooksPath .githooks
-```
-
-Open pull requests against `main`; do not push routine work directly to
-it. Use **squash merging**, with the pull-request title as the squash
-commit title, so the resulting main-branch commit follows the same
-convention. In GitHub repository settings, disable merge-commit and
-rebase merging if you want this to be guaranteed for every contributor.
-
-Protect `main` in Settings → Branches: require a pull request and require
-the `Repository conventions / Commit, PR and branch conventions` check
-plus the five applicable `CI` jobs (tests/builds, Windows native SQLite installation, dependency audit, gateway and Docker). Their job-level scope skips are intentional for Android/documentation-only changes; do not require unrelated reruns. The Android check is conditional and should be required only
-when GitHub's rules can correctly account for skipped runs.
-
-See [VERSIONING.md](VERSIONING.md) and [docs/RELEASING.md](docs/RELEASING.md)
-for release rules and the exact tagging procedure.
-
-## Security issues
-
-Don't open a public issue for a security vulnerability. See
-[docs/SECURITY.md](docs/SECURITY.md) for what's already a known,
-documented gap (TLS, permission enforcement) versus something new worth
-reporting privately to whoever maintains this repository.
+Contact the maintainer privately through an available private GitHub channel.
+Do not post credentials, personal data or exploit details in a public issue.
+Known limitations are in [SECURITY.md](docs/SECURITY.md).

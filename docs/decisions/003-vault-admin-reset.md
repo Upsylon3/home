@@ -1,6 +1,6 @@
 # Administrator Vault reset
 
-Status: implemented; independent security review remains open. Roadmap item 3 authorizes this bounded
+Status: implemented; independent security review remains open. The Vault follow-up plan authorized this bounded
 account-support action; it does not authorize any real reset or deployment.
 
 Home Settings, the ecosystem shell, lists Core accounts for administrators.

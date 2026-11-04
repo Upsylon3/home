@@ -1,44 +1,13 @@
-## Summary
+# Summary
 
-<!-- What changes for the user? -->
+<!-- Describe the problem and resulting behavior. Link an issue/roadmap entry if useful. -->
 
-## Why
+# Verification
 
-<!-- Link the issue or roadmap item. Explain why this belongs in HOME. -->
+<!-- List checks actually run and their results. Explain relevant limits or skipped checks. -->
 
-## Implementation
+# Compatibility
 
-<!-- Describe the approach and important trade-offs. -->
+<!-- Mention security, data, API or deployment changes and migration/rollback steps, if any. -->
 
-## Safety and compatibility
-
-- Security/privacy impact:
-- Data/schema/migration impact:
-- API/deployment compatibility:
-- Reversibility/rollback:
-
-## Verification
-
-- [ ] Relevant focused tests run
-- [ ] `npm test`
-- [ ] `npm run build --workspaces --if-present` (or explain why not applicable)
-- [ ] Windows committed-lockfile install and native SQLite smoke test
-- [ ] `bash gateway/test/gateway-smoke.sh` (or explain why not applicable)
-- [ ] Docker/full-stack CI checked where applicable
-- [ ] Android workflow checked if Android code changed
-- [ ] All applicable GitHub checks are green
-
-Exact commands and results:
-
-## Documentation and release
-
-- [ ] Relevant docs updated
-- [ ] `CHANGELOG.md` updated under `[Unreleased]` for user-visible changes
-- [ ] No version bump made unless this is a deliberate release
-
-## Agent self-review
-
-- [ ] Reviewed the complete diff against `main`
-- [ ] Checked for unrelated changes, secrets and generated artifacts
-- [ ] Checked authorization, ownership and error paths
-- [ ] Confirmed no known unresolved critical issue remains
+<!-- Before merging: review the full diff, pass applicable checks, update relevant docs and Unreleased. No routine version bump. -->

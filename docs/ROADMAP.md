@@ -1,329 +1,45 @@
 # Roadmap
 
-Two parts: a concrete near-term backlog, and a longer-term cross-module
-ideas brainstorm — explicitly speculative, none of it committed. Coding
-agents must follow [AGENTS.md](../AGENTS.md) and
-[docs/AGENT_WORKFLOW.md](AGENT_WORKFLOW.md): check current code and open
-PRs before selecting work, keep external-validation items open until
-verified, and do not treat the brainstorm as committed scope.
+Only unfinished work is listed here. Completed changes belong in
+[CHANGELOG.md](../CHANGELOG.md). Later ideas are not committed features.
 
-**Runtime maintenance status:** the coordinated Node 22 → Node 26 LTS
-migration is complete (backlog item 9). The next agents should re-check the
-remaining feasible backlog against the current source and open PRs, preserve the completed adaptive icon, HomeBridge milestone and first emulator
-journey, then select the next concrete follow-up below. Hardware/device and
-independent security-review items remain explicitly open until the required
-real-world validation is available.
+## Usability and reliability
 
-**Build order, decided:** HomeVault → HomeTasks → HomeBridge →
-HomeMonitor → HomeAI. HomeVault first because it's security-critical and
-already had a full threat model (`SECURITY.md`) — **v0 is now built**
-(see `ARCHITECTURE.md`'s status table), so HomeTasks came next (**built: backend, web app, repeating tasks and opt-in personal reminders; assignment is the next HomeTasks follow-up**): the
-highest everyday-value, most conventional build (CRUD app, no new
-architectural pattern needed). HomeBridge after that, once there are
-enough real apps for its cross-app ideas (`ROADMAP.md`'s brainstorm
-below) to actually matter. HomeMonitor (**v0 built**, see `ARCHITECTURE.md`)
-and HomeAI last — lower urgency, and HomeAI specifically benefits from permission enforcement landing
-first (see below).
+- **Server upgrades and import:** preserve accounts, credentials and files when
+  updating a bundle or moving a source-based installation.
+- **Remote access:** improve DNS, router and HTTPS setup/diagnostics. Direct
+  access cannot work through every provider's CGNAT configuration.
+- **Backups:** add off-machine copies and coordinated cross-service snapshots.
+  Existing per-database restore checks do not provide either guarantee.
+- **Application installation:** replace pre-seeded registry entries with an
+  install/register/enable flow. Uninstall must not silently delete data.
 
-**HomeTasks reminders v1:** one explicit time per task occurrence, delivered
-through Core's in-app notification bell, is implemented with an optional
-dedicated key, persistent retries and receipt-based replay protection. See
-[decision 006](decisions/006-hometasks-reminders.md) for scope and limits.
-Assignment is still unbuilt; email/web push and inherited repeating reminders
-are outside this first release.
+## Application work
 
-## Installable server milestone
+- Enforce caller-application permissions before adding HomeAI or other consumers
+  that need this boundary. Browser sessions currently identify users, not apps.
+- Add HomeTasks assignment after defining its sharing and ownership model.
+- Design signed multi-server pairing, revocation and recovery before accepting
+  another HOME's accounts. Storage replication is a separate feature.
 
-The first server-runtime foundation is implemented: prebuilt-container release
-bundles, Windows/Linux/macOS launchers, protected one-time account setup,
-persistent installation folders, opt-in LAN/public HTTPS configuration and a
-browser-local public address launcher. See [decision 008](decisions/008-installable-home-server.md).
-Docker is still a prerequisite. Router setup and dynamic DNS updates remain
-user-configured; there is no automated upgrade/import, remote reachability
-certification or multi-server account trust yet. Physical OS/router validation,
-signed multi-server pairing with revocation/recovery and off-machine backups
-are follow-ups. Source-only historical releases remain unchanged.
+## Open validation
 
-## Near-term backlog
+These are evidence gaps, not features to rebuild:
 
-**Reliability progress from the November 2026 audit:** backups now use SQLite
-online snapshots, restore-check database integrity, and validate HomeCloud
-upload/thumbnail references before publication. Tests cover concurrent writes
-and the real Docker read-only mounts. Failed cycles preserve previous
-archives. Coordinated cross-service snapshots and off-machine backup copies
-remain follow-ups; per-database consistency does not establish those guarantees.
+- **HomeVault:** independent security/cryptography review before real secrets
+  are stored. [Review handoff](HOMEVAULT_REVIEW.md).
+- **Client performance:** validate the existing KDF on representative older
+  PCs/phones when available. [Optional benchmark](HOMEVAULT_BENCHMARK.md).
+- **HomeSync:** physical-phone, selected-video/selection-removal, Doze/reboot
+  and long-duration backup checks. [Device checks](HOMESYNC_DEVICE_VALIDATION.md).
+- **Installer:** hands-on Windows/macOS, reboot and real outside-access checks.
+  Linux container tests do not establish those results.
 
-1. **An independent security/cryptography review of HomeVault v0.** The
-   single most important item on this list — see `SECURITY.md`'s v0
-   status callout for exactly what's been verified by automated test
-   versus what still needs human review. Nothing real should go into a
-   HomeVault vault before this happens.
-   [The review handoff](HOMEVAULT_REVIEW.md) is prepared with source map,
-   disposable reproduction and explicit open questions. Its post-unlock
-   rewrap fix and automated/browser evidence do not close this review item.
-2. **First HomeSync emulator journey verified; physical-phone follow-ups remain.**
-   A fresh API-34 Google APIs x86_64 Pixel 6 emulator now runs the real app's
-   sign-in and charging-constrained manual backup against disposable real
-   Core/Sync/Cloud services. The instrumented test verifies blocked work before
-   charging, exact uploaded bytes/SHA-256, repeat-backup deduplication and Activity
-   recreation. Periodic schedule creation is observed; six-hour delivery is not.
-   See [device validation](HOMESYNC_DEVICE_VALIDATION.md) and the Android workflow
-   evidence linked from PR #79. [PR #80](https://github.com/Upsylon3/home/pull/80)
-   adds real permission denial, worker
-   refusal before registration, and full-grant exact-byte backup recovery.
-   [PR #82](https://github.com/Upsylon3/home/pull/82) covers repeated denial,
-   suppressed requests and recovery through the real Android Settings UI.
-   The selected-photo journey additionally verifies a real restricted grant,
-   foreign-media exclusion and byte-verified backup. It also covers adding a
-   newly allowed photo through Review media access while a third photo stays
-   excluded, with two-photo byte/hash and dedup proof. Physical phones,
-   selected videos/selection removal,
-   Doze/reboot and long-duration/background behavior remain validation follow-ups.
-3. **HomeVault follow-ups deferred out of v0.** The remaining performance
-   prerequisite is validation on representative minimum **client/browser**
-   hardware: Argon2id runs in the browser opening the vault, not the storage
-   server. A Pi is relevant only if it also runs that browser. The standalone
-   [device speed test and protocol](HOMEVAULT_BENCHMARK.md) now use the actual
-   shipped parameters (`m=19456, t=2, p=1`), synthetic inputs, first/subsequent
-   samples and local JSON export. Desktop headless measurements and CI are
-   not minimum-device certification. The owner has clarified provisional
-   targets: old Dell office hardware (OptiPlex 3020-class i3/i5, 4 GiB) and
-   Galaxy S9/S10-class phones, with their S20 FE as an available reference.
-   The protocol defines provisional one-second steady/two-second first-call
-   UX goals. Physical target-device measurements remain **open**; none have
-   been certified from the desktop result. Defaults are unchanged.
-   Administrator vault reset is implemented in Home Settings with live Core
-   authority, confirmation, replacement-vault protection and transactional audit
-   ([decision 003](decisions/003-vault-admin-reset.md)). Encrypted Trash supports
-   restore and permanent deletion; no automatic expiration. Whole-vault deletion
-   includes Trash. These completed features do not close the remaining benchmark
-   or independent review prerequisites.
-4. **Done: align the HomeSync Android adaptive icon with the shared icon set.**
-   The foreground layer is now generated from `design/icons/homesync.svg`
-   in the same command that produces the web icon exports. Its 48-unit mark
-   is centered in Android's 72dp safe zone on the existing warm-black
-   background, so launcher masking and the Home dashboard use the same
-   HomeSync identity. Re-run `node design/make-favicons.mjs` whenever the
-   canonical icon or brand color changes. Typeface and accent color remain
-   settled, not open questions.
-5. **Done: add canonical Core routes with backward compatibility.** Auth
-   and admin now expose `/api/core/auth` and `/api/core/admin` through the
-   same routers as their existing aliases. `/api/core/activity/homecloud`
-   preserves the legacy personal Cloud feed without replacing cross-app
-   activity views. Known response contracts, sessions, ownership and shared
-   rate-limit budgets are covered by real HTTP tests. Existing clients keep
-   working; no redirect, removal deadline or error-format migration is imposed.
-   See `API.md` for Core-first rollout and rollback requirements for future
-   consumers. General manifest-permission enforcement remains deliberately
-   deferred, independently of these URL aliases and scoped capabilities.
-6. **Done: the whole stack builds and boots end to end.** `ci.yml`'s
-   Docker job runs `docker compose build`, starts every container and
-   checks the stack through the gateway, on GitHub's machines. It is green,
-   which also confirms the `node:26-slim`, `nginx` and `alpine` base-image
-   bumps (see `SECURITY.md`). Getting it green took
-   three real fixes, all in `CHANGELOG.md`: the Dockerfiles predated the
-   move to npm workspaces, HomeCloud's backend inherited the wrong port,
-   and the gateway started before the services it forwards to. Kept here,
-   rather than deleted, so the numbering that other files point at stays
-   valid. What it does not cover is a real browser session or a device.
-7. **Done: the gateway's base image is pinned.** `gateway/Dockerfile` was
-   `FROM nginx:alpine`, a floating tag, while the frontends were pinned.
-   It is now `nginx:1.31-alpine`, the same as they are, so a surprise
-   upgrade can't land on the one container that publishes a host port, and
-   Dependabot now tracks it like the rest. Kept here so the numbering
-   other files point at stays valid.
-8. **Triage Dependabot updates continuously** (`.github/dependabot.yml`).
-   Majors are deliberately left out of the weekly group so each one is
-   reviewed on its own. Use CI as a gate, not as a substitute for reading
-   the changelog and compatibility notes. Be especially careful with
-   native modules such as `better-sqlite3`: a major bump was tried and
-   reverted during the 1.1.4 work (see the changelog).
-   The test-only UI Automator 2.4.0 update is reviewed in
-   [PR #81](https://github.com/Upsylon3/home/pull/81): published Android/toolchain
-   minima fit the current baseline, existing UiDevice/By APIs remain in use, and
-   the current full-access, denial, Settings and selected-photo expansion
-   journeys are required. This closes that update, not recurring triage.
+## Later ideas
 
+File versioning/encryption at rest, media poster thumbnails and duplicate
+detection, shared albums, collaborative notes, cross-app exports and more
+Bridge integrations need a concrete use case and design before implementation.
+HomeAI must honor user permissions and never receive decrypted Vault contents.
 
-9. **Done: migrate the ecosystem runtime from Node 22 to Node 26 LTS.**
-   Node 26 entered Active LTS on 2026-10-28 and is supported through
-   2029-04-30. All 15 Node-based Dockerfiles now use `node:26-slim`; the CI,
-   release and reconciliation workflows and local-development prerequisites
-   use Node 26 as well. The eight backend workspaces moved from
-   `better-sqlite3` 11.10.0 to 12.11.1. Its package metadata allows Node 26,
-   and its published release includes ABI 147 prebuilds for Windows x64 and
-   Linux x64/arm64. The upgrade deliberately stays on the 12.x line: HOME's
-   earlier v13 experiment broke the committed-lockfile Windows install by
-   trying to compile from source. CI now has a Windows `npm ci` check that
-   requires the prebuilt-install success message and exercises a real SQLite
-   round-trip. The full Linux workspace/build, gateway and Docker stack jobs
-   remain the other required gates. Keep future Node majors blocked from
-   automatic image bumps; handle them as one coordinated migration. See the
-   [official Node.js release table](https://nodejs.org/en/about/previous-releases).
-
-10. **Done: the gateway starts when an app is missing.** It used to name
-   every container directly in `proxy_pass`, which nginx resolves once at
-   startup, so one missing app stopped the whole gateway and "run only
-   HomeCloud" was impossible. Every location now uses a variable, so names
-   are looked up per request through Docker's DNS (`resolver 127.0.0.11`);
-   prefixed frontends use an explicit `rewrite` to strip their prefix; and an
-   unreachable app gets a friendly 503 (a styled page for frontends, JSON for
-   APIs) while an app's own error answers pass through untouched. The
-   compose `depends_on` workaround is gone. Tested in a real nginx by
-   `gateway/test/gateway-smoke.sh` (58 checks, also run in CI). Home's own
-   container got the same fix, since it used to crash-loop whenever
-   HomeCloud's backend was missing. Kept here,
-   rather than deleted, so the numbering that other files point at stays
-   valid. Verified by the full Docker Compose CI job, which stops and
-   restarts an app and confirms recovery without restarting the gateway.
-   This still does not replace a real browser or physical-device test.
-
-11. **AGP 9 build migration implemented; device validation remains open.**
-   HomeSync now uses AGP 9.1.1, Gradle 9.3.1 and compileSdk 37, with built-in
-   Kotlin and an explicit Kotlin 2.4.21 compiler classpath aligned with Compose.
-   CI uses JDK 17 and explicitly installs the SDK. Target SDK remains 34, minimum
-   SDK 26, and Room/KSP/application libraries stay unchanged. AndroidX update
-   restrictions tied to the old API-36 ceiling are lifted; future AGP/Gradle
-   minor/major updates still require coordinated review. CI reads the committed
-   wrapper version directly ([decision 005](decisions/005-android-ci-toolchain-selection.md)). See [decision 004](decisions/004-android-agp9.md)
-   for sources, verification gates and rollback. Build success does not close
-   the physical-device and long-duration follow-ups in item 2.
-
-**Settled, not open questions anymore** (kept here so the reasoning
-isn't lost): TLS approach (private overlay, not public certs —
-`SECURITY.md`), HomeVault's origin (shared, with CSP — `SECURITY.md`; the CSP shipped in 1.6.2),
-HomeBridge's background-trigger auth (scoped service credential —
-`ARCHITECTURE.md` §4), permission enforcement (deferred until HomeVault
-needs it — `SECURITY.md`), account deletion (disable-only, permanently —
-`ARCHITECTURE.md` §6), HomeCloud's owner-only sharing (staying
-owner-only until a feature forces it — `ARCHITECTURE.md` §6), and the
-generic per-app dashboard stat (staying hardcoded per app for now).
-
-
-## Deferred features, by service (already decided, just not built)
-
-- **HomeCloud:** multi-file/folder drag-drop batch upload, file
-  versioning, encryption at rest.
-- **HomeMedia:** video poster-frame thumbnails (needs ffmpeg), duplicate
-  detection, shared/multi-user albums, mobile upload integration.
-- **HomeNotes:** real-time collaborative editing, note templates.
-- **HomeSync:** in-place-edit detection is deferred (not built, not
-  ruled out). True resumable/chunked upload and a numeric
-  battery-percentage threshold are **decided against** — whole-file
-  retry and WorkManager's built-in `requiresBatteryNotLow` constraint
-  stay as the permanent design, not gaps waiting to be filled.
-- **HomeVault:** benchmarking Argon2id on
-  minimum hardware — see item 3 above. Administrator reset is now built.
-  The core vault itself is built (v0).
-
-## HomeBridge first release
-
-The first narrow bridge is implemented: optional read-only search across a
-person's own notes and tasks from Home's `/search` page. The design, failure
-behavior, privacy boundaries and explicit opt-out are recorded in
-[decision 001](decisions/001-homebridge-search.md). The `bridge` Compose profile
-is opt-in; no query or search index is persisted, and no session token is
-retained for background use (the shared five-second identity cache applies). Scheduled
-automation uses separate HomeCore-minted capabilities and requires the explicit
-opt-in below. HomeVault is never a server-side search source.
-
-## First scheduled bridge: opt-in Monitor follow-up implemented
-
-[Decision 002](decisions/002-scheduled-monitor-followup.md) scopes critical
-HomeMonitor alerts into a consenting administrator's own HomeTasks inbox.
-Four fresh critical observations spanning 15 minutes qualify an incident;
-durable receipts prevent duplicate tasks, and users manage tasks manually.
-The fixed permission boundary is curated Monitor alert reads plus create-once
-tasks, using separate Core-issued, audience-bound credentials. Enrollment is
-off by default; expiry, revocation, limits and storage protection are part of
-the acceptance criteria.
-
-Core authority/shared verification now exists: consented, audience-bound
-30-day grants, live revocation/account checks, separate capability middleware
-and offline restore revocation. Monitor now persists instance/incident IDs and
-transactional evaluation freshness, preserving unknown states and notification
-retries. Tasks now offers create-once receipts with atomic daily limits,
-deletion retirement and concurrent/restart proof. Both action APIs use separate
-capabilities and work independently of Bridge installation.
-Encrypted Bridge state, the bounded worker and Home Settings enrollment/disable
-controls now implement the journey. Search-only remains the default. Operators
-must explicitly add the automation Compose override and an external read-only
-key, then each administrator must consent for their own account. Core provides
-independent owner revocation when Bridge is unavailable.
-Real-service/fake-clock tests cover qualification, response loss, restart,
-two-owner isolation, leases, outages and rollback. Browser checks cover desktop
-keyboard controls, mobile layout and direct Core revocation with Bridge offline;
-Docker covers the opt-in topology and encrypted database backup restoration.
-Next work should follow concrete regressions or a separately scoped milestone;
-this does not commit other brainstorm integrations or replace external reviews.
-HomeSync inactivity was rejected for this first bridge because current
-timestamps do not prove healthy idle check-ins or completed backup cycles.
-Other source apps and write bridges remain uncommitted.
-
-## Cross-module ideas brainstorm (speculative)
-
-Everything below rides on infrastructure that already exists — the
-shared event bus and the application registry — so most of these are "a
-new listener, zero new plumbing" rather than new infrastructure per
-idea. Apart from the implemented Notes/Tasks search and the scoped Monitor
-follow-up milestone above, none of this is committed; it remains raw material
-for later HomeBridge releases
-(Tier 2, see `ARCHITECTURE.md` §4).
-
-**The showcase-level ideas:**
-
-- **A true cross-app timeline.** Home's "Recent" widget already pulls
-  from the shared event bus. The big version: every module emits into
-  the same feed, and the dashboard becomes an actual life timeline.
-  Cheap relative to its value — arguably the single best
-  effort-to-payoff idea on this list.
-- **Global search** across HomeCloud filenames, HomeMedia photos/EXIF,
-  HomeNotes, HomeTasks, and (carefully — see the security note below)
-  HomeVault item titles, but only when already unlocked.
-- **"This needs attention" becomes a real task, automatically.** Any
-  module's warning state can optionally spawn a HomeTasks entry instead
-  of a notification that gets swiped away — HomeSync hasn't synced in 9
-  days → a task, not just a badge.
-- **Life-event bundles.** A template that spins up a coordinated set
-  across modules for a real moment — "Trip to Portland" → a HomeMedia
-  album auto-collecting anything shot in that date range, a HomeNotes
-  packing list, a HomeTasks checklist.
-- **Security events, converged.** HomeVault's "new login detected"
-  pattern applies just as much to a new HomeCloud device, an admin
-  action anywhere, a 2FA change — HomeMonitor is the natural place these
-  converge into one feed.
-- **One export, everything.** A single "download everything" pulling
-  HomeCloud files, HomeMedia albums/metadata, HomeNotes, HomeTasks, and a
-  HomeVault encrypted export (still ciphertext, still portable) in one
-  action.
-- **One consent screen for AI access.** When HomeAI wants to read across
-  multiple apps, an explicit "HomeAI wants to read: Files, Notes, Photos
-  — Allow?" screen — the permission-enforcement gap above, made
-  user-facing instead of only a backend concern.
-
-**Smaller pairwise ideas:** quota-aware throttling before HomeSync fails
-a batch; attaching a HomeCloud file to a note/task by reference;
-storage-growth *forecasting* ("full in ~40 days") instead of a static
-percentage; file Q&A / semantic search over HomeCloud contents; tagging
-photos by originating device; promoting a note checklist item into a
-real HomeTasks item with one click; natural-language task creation via
-HomeAI; multi-device sync health at a glance for a household. Two worth
-flagging distinctly: **face grouping** in HomeMedia is biometric-adjacent
-and deserves its own consent design and mini threat-model pass, not a
-casual bullet point next to "auto-album suggestions"; and a HomeTasks
-item **linking** to a HomeVault item (e.g. a passport number) must stay
-a pointer, never a copy — opening it means unlocking at HomeVault's own
-origin.
-
-**The one deliberate non-bridge:** HomeAI never reads HomeVault. On
-purpose. HomeVault's entire design is that the server never holds a key
-capable of decrypting vault contents — HomeAI indexing over it would
-require exactly that. Worth stating explicitly here so it isn't
-reintroduced later as a casual "nice to have."
-
-**Two blockers show up repeatedly across the ideas above** — worth
-fixing once rather than working around per-idea: permission enforcement
-still being declarative (see `SECURITY.md`), and HomeCloud's file
-authorization being strictly owner-only (blocks any genuinely
-multi-user version of the ideas above — a shared album, a
-household-shared life-event bundle).
+Keep dependency updates, security fixes and failing checks ahead of new features.

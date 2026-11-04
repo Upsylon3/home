@@ -1,173 +1,60 @@
-# Home
+# HOME
 
-A self-hosted personal/family cloud ecosystem: a small set of independent
-web apps (file storage, photos, notes, phone backup) that share one
-login, one gateway, and one identity service, instead of each
-reinventing accounts and permissions on its own.
+A self-hosted personal and family cloud. Accounts, files and configuration stay
+on your hardware. Local use needs no third-party account or internet connection.
 
-Everything runs on hardware you own. No third-party cloud dependency —
-internet access is optional, used only for remote access or updates if
-you choose to set that up.
+## Get started
 
-## What's here
+1. Download a Windows, Linux or macOS bundle from
+   [Releases](https://github.com/Upsylon3/home/releases).
+2. Install Docker and extract the bundle where you want its data.
+3. Follow [START-HERE](server/START-HERE.md) to start HOME and claim the owner account.
 
-| App | What it does | Status |
-|---|---|---|
-| **Home** | The dashboard/launcher — what's available, what happened recently | Built |
-| **HomeCloud** | File storage: folders, sharing, Trash, 2FA, admin panel | Built |
-| **HomeMedia** | Photo/video library — albums, favorites, EXIF, no storage of its own | Built |
-| **HomeNotes** | A Markdown notes workspace | Built |
-| **HomeSync** | Android app that backs up phone photos/videos to HomeCloud | Backend built and tested; API-34 emulator UI sign-in and byte-verified backup exercised in CI. Physical-phone and long-duration checks remain — see [device validation](docs/HOMESYNC_DEVICE_VALIDATION.md) |
-| **HomeVault** | Client-side-encrypted password/secrets manager | **v0 built, self-reviewed twice, not independently reviewed** — see [docs/SECURITY.md](docs/SECURITY.md) before storing anything real |
-| **HomeCore** | Shared identity, sessions, permissions, and the app registry — no UI of its own | Built |
-| **HomeTasks** | Tasks and projects, due dates, priorities, repeating tasks | Built — backend and web app, tested |
-| **HomeMonitor** | Server, services and backups at a glance, with alerts (admins only) | **v0 built** — backend and web app, tested |
-| HomeAI | Assistant | Not started — see [docs/ROADMAP.md](docs/ROADMAP.md) |
-| **HomeBridge** | Optional read-only search across your notes and tasks from Home | **v0 built** — opt in with Compose's `bridge` profile; see [the decision record](docs/decisions/001-homebridge-search.md) |
+The [public portal](https://upsylon3.github.io/home/connect/) remembers server
+addresses in your browser; it does not host accounts. Outside access is optional
+and needs network configuration. Automatic bundle upgrades/import are not built.
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how these fit
-together, and [docs/SECURITY.md](docs/SECURITY.md) for what's protecting
-them today and what isn't yet.
+Try the [browser demo](https://upsylon3.github.io/home/) without a server.
+It uses local browser storage and simulated server features: **test data only**.
+[Demo details](docs/BROWSER_DEMO.md).
 
-## Browser-only demo
+## Applications
 
-Explore HOME without a server: the browser demo stores test data only in your current browser and includes the existing Vault encryption flow. See [demo access, details and limitations](docs/BROWSER_DEMO.md).
+| App | Purpose |
+|---|---|
+| Home | Dashboard and app launcher |
+| HomeCloud | Files, folders, share links and Trash |
+| HomeMedia | Photos, videos and albums backed by HomeCloud |
+| HomeNotes | Markdown notes |
+| HomeTasks | Tasks, projects, repeating tasks and optional reminders |
+| HomeSync | Android photo/video backup to HomeCloud |
+| HomeVault | Client-side-encrypted secrets; independent review still required |
+| HomeMonitor | Admin-only service, storage and backup monitoring |
+| HomeCore | Shared identity, sessions and app registry |
+| HomeBridge | Optional cross-app search and consented automation |
 
-## Quick start (Docker)
+**Do not store real secrets in HomeVault before its independent review.**
+HomeSync still needs physical-phone and long-duration validation.
+See [security limits](docs/SECURITY.md) and [remaining work](docs/ROADMAP.md).
 
-For the installable server runtime and Windows/Linux/macOS launchers, see
-[the server setup guide](server/START-HERE.md). Version 1.7.0 packages prebuilt-container downloads; earlier source-only
-release tags are unchanged. Docker remains a prerequisite. The optional
-[public launcher](https://upsylon3.github.io/home/connect/) remembers addresses
-on your browser; login and account creation happen on your own HOME.
+## Development
 
-Requires [Docker](https://www.docker.com/) with Compose.
+Node 26 LTS, npm workspaces, React/Vite, Express/SQLite and Docker Compose/nginx.
+The Android client uses Kotlin. Start with [DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
-```bash
-cp homecore/.env.example homecore/.env
-cp apps/homecloud-backend/.env.example apps/homecloud-backend/.env
-# Edit both files: set real values for JWT_SECRET and HOMECORE_INTERNAL_SECRET
-# (the same HOMECORE_INTERNAL_SECRET value in both files — see the comments
-# in each file). Generate one with: openssl rand -hex 32
+~~~bash
+npm ci
+npm test
+npm run build --workspaces --if-present
+~~~
 
-docker compose up --build -d
-```
-
-Open `http://localhost:8080`. The first account you register becomes the
-admin. HomeCloud lives at `/cloud`, HomeMedia at `/media`, HomeNotes at
-`/notes` — all behind that same address and login.
-
-For running services individually without Docker, the Android app, and
-everything else involved in working on this codebase, see
-[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). For a from-scratch production
-deployment, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
-
-## Project layout
-
-```
-HOME_MASTER_SPECIFICATION.md   The governing product/architecture spec — see Documentation below
-HOME_ARTISTIC_DIRECTION.md     The governing visual/UX spec
-gateway/              nginx — the single public entry point (see docs/ARCHITECTURE.md)
-homecore/             Identity, sessions, permissions, the app registry — shared by every app
-packages/
-  homecore-client/    Shared client every other backend uses to verify a request with HomeCore
-apps/
-  home/               Dashboard frontend
-  homecloud/           HomeCloud frontend
-  homecloud-backend/   HomeCloud backend — files, folders, sharing
-  homemedia/           HomeMedia frontend
-  homemedia-backend/   HomeMedia backend
-  homenotes/           HomeNotes frontend
-  homenotes-backend/   HomeNotes backend
-  homesync-backend/    HomeSync backend — the API the Android app talks to
-  homesync-android/    The Android app itself (Kotlin)
-  homevault/           HomeVault frontend — the only app whose code ever sees a plaintext secret
-  homevault-backend/   HomeVault backend — stores only ciphertext, never a key
-services/backup/       Nightly backup of every app's data volume
-services/homebridge/   Optional search and consented Monitor follow-up tasks (Tier 2)
-design/                Icon set + wordmark, shared across every frontend
-scripts/               Windows dev launcher (see docs/DEVELOPMENT.md)
-docs/                  Architecture, security, API reference, deployment, roadmap
-```
-
-## Tech stack
-
-- **Backend:** Node.js, Express, SQLite (`better-sqlite3`), Node's
-  built-in test runner (`node --test`)
-- **Frontend:** React, Vite, React Router
-- **Client-side cryptography (HomeVault only):** the browser's native
-  Web Crypto API (AES-256-GCM) plus `hash-wasm` for Argon2id — see
-  [docs/SECURITY.md](docs/SECURITY.md)
-- **Infrastructure:** Docker Compose, nginx
-- **Android:** Kotlin, WorkManager, Room
-
-## Vault device speed test
-
-Measure the actual client-side password calculation without an account or
-backend at [the online benchmark](https://upsylon3.github.io/home/vault/benchmark.html).
-See [the protocol and evidence limits](docs/HOMEVAULT_BENCHMARK.md); this does
-not certify low-end device support or replace Vault's independent review.
-
-## Tests
-
-Automated tests across 14 suites (9 backends, 4 frontends, the shared identity client), run with
-`npm test` from the repo root (or inside any one suite's own folder):
-
-```
-homecore                77 tests
-packages/homecore-client 34 tests  (real HomeCore integration and HTTP failure/cache boundaries)
-apps/homecloud-backend  44 tests
-apps/homemedia-backend  28 tests
-apps/homenotes-backend  24 tests
-apps/homesync-backend   20 tests
-apps/homevault-backend  43 tests
-apps/hometasks-backend  69 tests
-apps/homemonitor-backend 71 tests
-apps/homevault          25 tests  (client-side encryption and KDF benchmark behavior)
-apps/homenotes          16 tests  (src/markdown.js — the XSS sanitizer)
-apps/hometasks           7 tests  (src/dates.js, src/repeat.js — date and wording helpers)
-apps/homemonitor        13 tests  (src/format.js, src/chart.js — number formatting and chart maths)
-services/homebridge    32 tests  (real-service search/worker, encrypted state, leases, races and upstream failures)
-```
-
-The other three frontends (`home`, `homecloud`, `homemedia`) have no
-automated tests; for those, `npm run build` is the check.
-
-See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for how to run them and
-what each layer covers.
+Source: `homecore/`, `apps/`, `packages/`, `services/`, `gateway/`.
+Shared visual assets: `design/`. Runtime packaging: `server/`.
 
 ## Documentation
 
-- [AGENTS.md](AGENTS.md) — mandatory instructions for every coding agent.
-- [docs/AGENT_WORKFLOW.md](docs/AGENT_WORKFLOW.md) — autonomous task selection, implementation, verification and merge procedure.
-- [HOME_MASTER_SPECIFICATION.md](HOME_MASTER_SPECIFICATION.md) —
-  the governing product and architecture intent. It began as a
-  pre-development brief; it is not an inventory of implemented features.
-  Changes that depart from its lasting principles must be deliberate and
-  documented.
-- [HOME_ARTISTIC_DIRECTION.md](HOME_ARTISTIC_DIRECTION.md) — the
-  original visual/UX brief `docs/DESIGN_SYSTEM.md` is condensed from.
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — how the apps fit
-  together, and the rules for adding a new one
-- [docs/API.md](docs/API.md) — every HTTP endpoint, by service
-- [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) — running this locally,
-  code layout, testing
-- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — a from-scratch production
-  setup, backups, upgrading
-- [docs/SECURITY.md](docs/SECURITY.md) — what's protecting this today,
-  and HomeVault's threat model and v0 status
-- [docs/HOMEVAULT_REVIEW.md](docs/HOMEVAULT_REVIEW.md) — independent-review
-  handoff, safe reproduction and unresolved security questions; review remains open
-- [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md) — visual direction,
-  for anyone designing a new screen
-- [docs/ROADMAP.md](docs/ROADMAP.md) — what's next
-- [CONTRIBUTING.md](CONTRIBUTING.md) — how to propose a change
-- [VERSIONING.md](VERSIONING.md) — the single ecosystem version, SemVer rules and version authority.
-- [docs/RELEASING.md](docs/RELEASING.md) — the release checklist, annotated tags and GitHub Releases.
-- [CHANGELOG.md](CHANGELOG.md) — what changed, by version
-
-## License
-
-Proprietary — all rights reserved. See [LICENSE](LICENSE). This is a
-deliberately conservative default, chosen to be easy to relax later
-(open source, or a different license) rather than hard to undo.
+- [Deployment and recovery](docs/DEPLOYMENT.md)
+- [Architecture](docs/ARCHITECTURE.md) and [API reference](docs/API.md)
+- [Product principles](HOME_MASTER_SPECIFICATION.md) and [design system](docs/DESIGN_SYSTEM.md)
+- [Contributing](CONTRIBUTING.md), [agent rules](AGENTS.md) and [releasing](docs/RELEASING.md)
+- [Changelog](CHANGELOG.md)

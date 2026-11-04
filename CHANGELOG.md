@@ -8,6 +8,23 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 ## [Unreleased]
 
 ### Added
+
+- Installable HOME server runtime packaging for Linux x64/arm64, Windows x64
+  and macOS Intel/Apple silicon, with prebuilt containers, launchers, persistent
+  configuration/data, generated service credentials and a first-start guide.
+  Docker remains a prerequisite; source-only historical releases are unchanged.
+- One-use, 15-minute server-issued registration codes on managed installations,
+  enforced transactionally on both Core API aliases and supported by Home and
+  Cloud signup. Owners can issue another code for each household member.
+- Optional local/LAN/public-HTTPS setup using the existing Caddy gateway and
+  user-controlled hostnames, with public access gated on a locally created owner.
+  DNS updates, router rules and external reachability remain user-configured.
+- Public `/connect/` launcher alongside the browser demo: addresses stay in the
+  current browser and login happens on the selected HOME. No central account
+  database or multi-server trust is introduced.
+
+
+### Added
 - Scope PR checks to affected apps and runtime dependencies; skip Android/Docker for demo edits and avoid native installs for frontend-only checks. Keep full manual/weekly regression coverage, remove all CI Android emulator execution while retaining APK/JVM checks and local instrumentation sources, and deploy the exact checked Pages artifact without repeating builds/tests after merge.
 - Add a serverless browser demo built from all seven existing web interfaces, with IndexedDB files/notes/tasks/media, real client-side Vault encryption, sample data, reset controls and GitHub Pages deployment. Demo sign-in and server monitoring are simulated; no cross-device sync or real account security is implied.
 - Add opt-in personal HomeTasks reminders: choose one local date/time per occurrence and receive an owner-scoped Core notification with a task link. Use a separate external producer key, additive schedules/receipts, outage retries and replay protection. Completing clears the reminder; repeated copies start without one. Home refreshes its notification bell while visible. No email/web push or assignment in this release.

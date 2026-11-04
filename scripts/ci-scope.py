@@ -70,6 +70,11 @@ def select(paths, before=None, after=None, event='pull_request'):
             continue
         if path in {'scripts/ci-scope.py', '.github/workflows/ci.yml'} or path.startswith('scripts/test/test_ci_'):
             full('CI selection policy changed')
+        elif path.startswith('server/portal/'):
+            result['demo'] = True
+        elif path.startswith('server/') or path == '.github/workflows/server.yml':
+            if not path.startswith('server/test/') and path != '.github/workflows/server.yml':
+                result['docker'] = True
         elif path.startswith('demo/') or path in {'.github/workflows/demo.yml', '.github/workflows/demo-deploy.yml'} or path.startswith('scripts/demo-') or path.startswith('scripts/test/test_demo_') or path.startswith('scripts/test/demo-'):
             result['demo'] = True
         elif path == '.github/workflows/android.yml' or path.startswith('scripts/android-') or path == 'scripts/test/test_android_gradle_version.py':

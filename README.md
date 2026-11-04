@@ -35,6 +35,13 @@ Explore HOME without a server: the browser demo stores test data only in your cu
 
 ## Quick start (Docker)
 
+For the installable server runtime and Windows/Linux/macOS launchers, see
+[the server setup guide](server/START-HERE.md). Release packaging now builds
+prebuilt-container downloads for future releases; existing source-only release
+tags are unchanged. Docker remains a prerequisite. The optional
+[public launcher](https://upsylon3.github.io/home/connect/) remembers addresses
+on your browser; login and account creation happen on your own HOME.
+
 Requires [Docker](https://www.docker.com/) with Compose.
 
 ```bash

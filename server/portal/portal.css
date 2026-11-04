@@ -1,0 +1,17 @@
+:root { color-scheme: dark; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 1rem/1.6 var(--font-sans); }
+main { max-width: 48rem; margin: auto; padding: 2.5rem 1.25rem; }
+.brand { font: 700 1.3rem var(--font-mono); letter-spacing: .12em; }
+h1 { font-size: clamp(2rem, 6vw, 3rem); margin-bottom: .5rem; }
+h2 { font-size: 1.25rem; }
+section { padding: 1.25rem; margin-top: 1.5rem; background: var(--panel); border: 1px solid var(--border); border-radius: .5rem; }
+a { color: var(--amber); overflow-wrap: anywhere; }
+label { display: block; margin-top: 1rem; }
+input { box-sizing: border-box; width: 100%; font: inherit; padding: .65rem; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: .25rem; }
+button { cursor: pointer; font: inherit; padding: .5rem 1rem; background: var(--amber); color: var(--on-accent); border: 1px solid var(--border); border-radius: .25rem; }
+button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid var(--teal); outline-offset: 3px; }
+#address-help { color: var(--text-dim); font-size: .9rem; }
+#homes { list-style: none; padding: 0; }
+#homes li { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; padding: .75rem 0; border-bottom: 1px solid var(--border); }
+#homes a { flex: 1; min-width: 12rem; }
+#homes button { background: var(--panel-raised); color: var(--text); }

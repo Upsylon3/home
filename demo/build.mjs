@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { build } from 'vite';
 import react from '@vitejs/plugin-react';
-import { copyFile, writeFile } from 'node:fs/promises';
+import { copyFile, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 
 const root = process.cwd();
@@ -18,6 +18,11 @@ for (const [app, prefix] of Object.entries(apps)) {
 }
 for (const file of ['worker.js', 'api.mjs', 'bootstrap.js']) await copyFile('demo/' + file, 'demo-dist/demo-' + file);
 await writeFile('demo-dist/.nojekyll', '');
+await mkdir('demo-dist/connect', { recursive: true });
+for (const file of ['index.html', 'portal.css', 'portal.mjs', 'address.mjs']) {
+  await copyFile('server/portal/' + file, 'demo-dist/connect/' + file);
+}
+await copyFile('design/tokens.css', 'demo-dist/connect/tokens.css');
 
 function demoPlugin() {
   return {

@@ -2,6 +2,7 @@ import { chromium } from 'playwright';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
+import { verifyPortal } from '../server/portal/browser-proof.mjs';
 const server = spawn(process.execPath, ['demo/serve.mjs'], { env: { ...process.env, PORT: '4174' }, stdio: ['ignore', 'pipe', 'inherit'] });
 await once(server.stdout, 'data');
 const browser = await chromium.launch({ ...(process.env.DEMO_BROWSER_CHANNEL ? { channel: process.env.DEMO_BROWSER_CHANNEL } : {}), headless: true });
@@ -14,6 +15,7 @@ page.on('pageerror', e => errors.push(e.message));
 page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
 const see = async text => page.getByText(text, { exact: true }).waitFor();
 try {
+  await verifyPortal(page, origin);
   await page.goto(origin);
   await page.getByRole('heading', { name: /Good|Still up/ }).waitFor();
   assert.equal(await page.getByRole('link', { name: 'Launch', exact: true }).count(), 6);

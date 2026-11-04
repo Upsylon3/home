@@ -91,3 +91,21 @@ release ref rather than discarding its commit, and only corrects the
 annotation of `v1.1.5`. Do not invent backdated release tags or GitHub
 Releases when the exact release commit cannot be established from the
 source history.
+
+## Installable server downloads
+
+After source validation, the release workflow builds native Linux x64 and
+arm64 containers from the tagged Dockerfiles. It packages the runtime with
+Windows x64, Linux x64/arm64 and macOS Intel/Apple silicon launchers, and
+boots the packaged topology on each Linux builder before publishing.
+Publication waits for both architectures. Each archive includes images,
+configuration tooling and START-HERE.md; no user data or credentials are
+packaged. SHA256SUMS files accompany the downloads. Source archives remain
+available. Existing release tags are not moved or repackaged by this change.
+
+`node server/build.mjs` runs on a disposable native Linux Docker builder and
+writes a fresh `server-dist/` directory (or an explicit new output directory).
+It builds images and archives; it does not publish, configure a real server,
+or alter a user's existing deployment. Installer/public-gateway and physical
+Windows/macOS operation remain separate validation from Linux container CI.
+See [decision 008](decisions/008-installable-home-server.md).

@@ -33,6 +33,7 @@ reset.onclick = async () => {
   localStorage.setItem('home_demo_session_token', 'browser-demo');
   location.href = base;
 };
-bar.append(home, text, reset); document.body.prepend(bar);
+const connect = document.createElement('a'); connect.href = base + 'connect/'; connect.textContent = 'Open my HOME'; connect.style.color = 'inherit';
+bar.append(home, text, reset, connect); document.body.prepend(bar);
 // Ask browsers to retain demo data; a refusal does not prevent using it.
 navigator.storage?.persist?.().catch(() => {});

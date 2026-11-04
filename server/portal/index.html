@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'none'; img-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Open your HOME</title>
+  <link rel="stylesheet" href="tokens.css">
+  <link rel="stylesheet" href="portal.css">
+  <script type="module" src="portal.mjs"></script>
+</head>
+<body>
+  <main>
+    <a class="brand" href="../">HOME</a>
+    <h1>Open your HOME</h1>
+    <p>Your account and files live on your server. This page remembers addresses on this browser and opens the HOME you choose.</p>
+    <section aria-labelledby="saved-title">
+      <h2 id="saved-title">Your saved homes</h2>
+      <ul id="homes"></ul>
+      <p id="empty">No addresses saved on this browser yet.</p>
+    </section>
+    <section aria-labelledby="add-title">
+      <h2 id="add-title">Add a HOME</h2>
+      <form id="add-home">
+        <label for="name">Name</label>
+        <input id="name" maxlength="80" placeholder="My home" required>
+        <label for="address">Server address</label>
+        <input id="address" maxlength="2048" placeholder="https://myhome.duckdns.org" spellcheck="false" required aria-describedby="address-help">
+        <p id="address-help">At home, you can use a local address such as http://192.168.1.50:8080. Outside, use the HTTPS address set up on your server. Saving an address does not make it reachable.</p>
+        <button type="submit">Save address</button>
+      </form>
+      <p id="message" role="status" aria-live="polite"></p>
+    </section>
+    <section aria-labelledby="setup-title">
+      <h2 id="setup-title">Need to set up a server?</h2>
+      <p><a href="https://github.com/Upsylon3/home/releases">Get the HOME server download</a> and follow its START-HERE guide. Installation creates your first account locally. To join someone else's HOME, ask its owner for its address and an account setup code.</p>
+      <p>Enter passwords and setup codes only on your own server. This portal has no central HOME login or account directory. Multiple saved addresses are shortcuts; shared accounts across servers are not implemented yet.</p>
+      <p>Clear an entry with Forget. Clearing browser storage removes every saved address here, but leaves accounts and data on your servers. GitHub hosts this page and may log visits.</p>
+    </section>
+  </main>
+</body>
+</html>

@@ -43,6 +43,14 @@ becomes admin.
 Data persists in named Docker volumes. `docker compose down && docker
 compose up` keeps it; `docker compose down -v` deletes everything.
 
+## Installable server runtime
+
+[The runtime guide](../server/START-HERE.md) describes the prebuilt download,
+protected owner claim, local/LAN/public access choices and data recovery.
+The instructions below describe the source-based Compose path; managed
+downloads use `home.cmd` / `home.sh` and their generated `compose.json` instead.
+Do not mix the two installations or expect automatic named-volume migration.
+
 ## Reaching it from other devices
 
 From a phone or another computer on the same network, use the server's

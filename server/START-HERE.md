@@ -1,0 +1,145 @@
+# Your HOME server
+
+This download runs the complete HOME server and web interface on your own
+computer. No HOME subscription, GitHub login, Node, Git or compiler is needed.
+The first account lives here. This release does not yet link accounts across
+servers or combine their storage.
+
+## Before starting
+
+1. Install Docker Desktop on Windows/macOS, or Docker Engine with the Compose
+   plugin on Linux: https://docs.docker.com/get-started/get-docker/.
+   Windows needs Linux containers/WSL 2. Start Docker before HOME. Docker
+   installation, OS permissions and any required restart remain manual.
+2. Choose the download matching your processor: x64 for Intel/AMD, arm64 for
+   Apple silicon or an ARM Linux machine. Windows downloads target x64.
+3. Extract the complete archive into a private folder on the disk where you
+   want HOME's data. Keep its contents together; avoid commas in its path.
+   This is a new installation, not an importer for an existing Compose server.
+
+Images are included, so HOME itself needs no internet connection after Docker
+and this download are installed. Initial Docker installation may need internet.
+
+## Start and claim your HOME
+
+- **Windows:** double-click `home.cmd`. For other actions, open a terminal in
+  this folder and run `home.cmd ACTION`.
+- **Linux/macOS:** open Terminal in this folder and run `./home.sh`.
+  If necessary first run `chmod +x home.sh`. For other actions use
+  `./home.sh ACTION`.
+
+The launcher loads the included containers, creates configuration and starts
+HOME. Open **http://localhost:8080/register on this same server computer**.
+Copy the temporary setup code from the launcher's output and create your owner
+account. Codes expire after 15 minutes and work once. Run the `code` action for
+a new code. Nobody can claim the server merely by knowing its IP address.
+
+Create your owner account locally before enabling access from other devices.
+Do not send setup codes through the public portal. Later, give a new code to
+each household member you want to join; their accounts are regular users.
+The owner can manage accounts in HOME Settings. Enable two-factor authentication
+before allowing public access. HomeVault still awaits independent security
+review: do not use it for real secrets yet.
+
+## Everyday actions
+
+| Action | Purpose |
+|---|---|
+| `start` (default) | Start the existing installation; preserve configuration and data |
+| `code` | Issue one account-creation code; invalidate the previous unconsumed code |
+| `access` | Choose this computer, trusted LAN, or public HTTPS |
+| `status` | See which services are running |
+| `logs` | Inspect service errors; redact private information before sharing |
+| `stop` | Stop HOME, keeping its data |
+
+Containers restart when Docker starts unless stopped explicitly. On Windows
+and macOS, configure Docker Desktop to start at sign-in if desired. A sleeping
+or powered-off computer cannot serve HOME. These launchers do not change your
+OS startup, firewall or router settings automatically.
+
+## Other devices at home
+
+Run `access` and select **Home network**. This explicitly enables unencrypted
+HTTP on port 8080 for a trusted LAN; do not use it for HomeVault or forward it
+to the internet. Find the server's local IPv4 address with `ipconfig` on
+Windows, `hostname -I` on Linux, or `ipconfig getifaddr en0` on macOS Wi-Fi.
+Then open `http://LOCAL-IP:8080` on a device on the same network. Allow port
+8080 through the server firewall for the private network only if necessary.
+Reserve the server's local IP in the router so forwarding/bookmarks stay valid.
+For encrypted private access, use a private-network connection and HTTPS instead.
+
+## Outside access without paying for HOME infrastructure
+
+You do not need a central HOME account or paid domain. An optional free
+dynamic hostname (for example https://www.duckdns.org/) can point to your
+public IP and follow it when it changes. Create that provider account
+yourself and configure its updater on your router or server using the
+provider's instructions. This release does not store a DNS-provider token
+or automatically update DNS. The provider supplies an address, not HOME login.
+
+1. First create the owner account locally and enable its two-factor login.
+2. Obtain a hostname and point it to your home connection's public IP.
+   If using IPv6 DNS, ensure its address and firewall routing are correct too.
+3. Reserve the server's LAN IP. In your router, forward **TCP ports 80 and
+   443** to that computer; allow those ports in its firewall. **Never forward
+   port 8080.** Do not disable the firewall or expose the whole computer/DMZ.
+4. Run `access`, choose **Public HTTPS**, enter the hostname and confirm.
+   Caddy obtains and renews the free certificate. Until DNS and incoming
+   connections work, the public address will not work.
+5. Turn off Wi-Fi on your phone and open `https://YOUR-HOSTNAME` using mobile
+   data. A test inside the house does not prove outside access. Bookmark this
+   address or save it in the HOME public portal; sign in on your server.
+
+The wizard validates your hostname and local owner setup. It cannot establish
+public reachability from inside your network, diagnose all routers/CGNAT, or
+promise a certificate before the public validation succeeds. Use `logs` to
+inspect certificate errors. Changing back to local or LAN access stops the
+public gateway; remove old router rules yourself as well.
+
+**If direct access fails:** some providers share public IPv4 between households
+(CGNAT), or block incoming connections. A saved IP or hostname does not bypass
+that. Ask whether your provider offers a public IP without charge. Alternatively,
+use a personal private-network service such as https://tailscale.com/pricing
+(currently a free personal plan) on the server and accessing devices. Follow its
+HTTPS setup guidance. This adds a provider dependency for connectivity; HOME
+accounts and files remain here. It is optional and is not bundled or activated.
+
+Raw public-IP HTTPS is not configured by this version. A free hostname is the
+supported direct-access path, allowing the existing gateway to renew certificates.
+
+## Data, backups and recovery
+
+- `data/` contains persistent databases, uploads and certificates.
+- `configuration/` contains service credentials and installation settings.
+- `backups/` receives nightly validated application snapshots, retained for
+  14 days. Certificates and configuration need their own protected backup.
+
+Keep this entire folder private: someone who can read/modify it can control
+your HOME. On Windows, restrict its permissions to your OS account; container
+Unix permission flags do not establish Windows access controls. Protect the
+disk and backups using your operating system's encryption facilities.
+
+Backups on the same disk do not protect against disk failure. Copy protected
+backups off the machine. To make a coordinated full copy, run `stop`, copy
+`data/`, `configuration/`, `compose.json` and `backups/` to protected storage,
+then `start`. Preserve credentials: replacing them can break existing services
+and sessions. Do not run two copies of the same installation concurrently.
+
+Repeat starts preserve configuration, credentials and data. If setup reports
+incomplete state, keep the folder and restore the matching configuration from
+backup; it intentionally refuses to overwrite unidentified data. If failure
+occurred during a brand-new setup and there is no user data, extract a fresh
+download to a different empty folder. Do not delete an unknown data folder.
+
+This first installer has no automated upgrade/migration or uninstall wizard.
+Keep using the same folder. Do not replace an existing installation with a new
+download or run `docker compose down -v` as an upgrade. To remove the software,
+stop it first; deleting data is a separate deliberate decision. If Docker's
+image cleanup removes a needed image, run `docker load -i images.tar` here.
+
+## Components
+
+HOME uses Docker container images based on Node.js, nginx, Alpine Linux and
+Caddy. Source and license information for HOME is at
+https://github.com/Upsylon3/home; the matching release tag identifies its code.
+Upstream components retain their licenses and notices within their images.

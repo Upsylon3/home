@@ -20,8 +20,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release:
-    name: Validate and publish release
+  validate:
+    name: Validate release source
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
@@ -71,15 +71,64 @@ jobs:
       - name: Test the gateway configuration
         run: bash gateway/test/gateway-smoke.sh
 
-      - name: Create the GitHub Release from CHANGELOG.md
+  prepare:
+    name: Prepare a draft release
+    needs: validate
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - run: node scripts/validate-release.mjs "$RELEASE_TAG" . > release-notes.md
+      - run: node server/publish.mjs prepare
+
+  downloads:
+    name: Build ${{ matrix.arch }} server downloads
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+      - run: node --test server/test/setup.test.mjs server/test/package.test.mjs
+      - name: Build runtime images and OS archives
+        run: node server/build.mjs
+      - name: Boot the packaged topology and prove account/file persistence
+        run: node server/smoke.mjs server-dist/home-server
+      # Release assets avoid metered Actions artifact storage for large image bundles.
+      - name: Upload this architecture to the draft release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            echo "GitHub Release $RELEASE_TAG already exists; leaving it unchanged."
-            exit 0
-          fi
-          gh release create "$RELEASE_TAG" \
-            --verify-tag \
-            --title "HOME $RELEASE_TAG" \
-            --notes-file "$RUNNER_TEMP/release-notes.md"
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: node server/publish.mjs upload
+
+  publish:
+    name: Publish validated server downloads
+    needs: [validate, downloads]
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - run: node server/publish.mjs finalize

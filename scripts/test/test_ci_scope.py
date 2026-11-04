@@ -6,6 +6,13 @@ spec = importlib.util.spec_from_file_location('scope', Path(__file__).parents[1]
 scope = importlib.util.module_from_spec(spec); spec.loader.exec_module(scope)
 
 class ScopeTests(unittest.TestCase):
+    def test_server_portal_and_runtime_have_separate_checks(self):
+        portal = scope.select(['server/portal/portal.mjs'])
+        self.assertTrue(portal['demo']); self.assertFalse(portal['docker']); self.assertFalse(portal['android'])
+        runtime = scope.select(['server/runtime.mjs'])
+        self.assertTrue(runtime['docker']); self.assertFalse(runtime['demo']); self.assertFalse(runtime['android'])
+        self.assertFalse(scope.select(['server/test/setup.test.mjs'])['docker'])
+
     def baseline(self):
         lock = {'packages': {'': {}, 'homecore': {'dependencies': {'express': '1', 'better-sqlite3': '1'}}, 'apps/homecloud-backend': {}, 'apps/homesync-backend': {}, 'packages/homecore-client': {}, 'node_modules/express': {'version': '1', 'dependencies': {'send': '1'}}, 'node_modules/send': {'version': '1'}, 'node_modules/better-sqlite3': {'version': '1'}, 'node_modules/playwright': {'version': '1', 'dev': True}}}
         return {'package.json': {'version': '1.6.2', 'workspaces': scope.WORKSPACES, 'scripts': {}, 'devDependencies': {'playwright': '1'}}, 'package-lock.json': lock}

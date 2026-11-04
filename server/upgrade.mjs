@@ -7,7 +7,30 @@ import { runtimeCompose } from './runtime.mjs';
 
 const journalName = 'upgrade-state.json';
 const readJson = file => JSON.parse(fs.readFileSync(file, 'utf8'));
-const digest = file => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+function digest(file) {
+  const hash = crypto.createHash('sha256'), buffer = Buffer.alloc(1024 * 1024);
+  const fd = fs.openSync(file, 'r');
+  try { let length; while ((length = fs.readSync(fd, buffer, 0, buffer.length, null))) hash.update(buffer.subarray(0, length)); }
+  finally { fs.closeSync(fd); }
+  return hash.digest('hex');
+}
+function record(snapshot, file, kind, content = '') {
+  snapshot.hash.update(JSON.stringify([path.relative(snapshot.root, file).split(path.sep).join('/'), kind, content]) + '\n');
+}
+function sourceDigest(root) {
+  const snapshot = { root, hash: crypto.createHash('sha256') };
+  function visit(file) {
+    const stat = fs.lstatSync(file);
+    if (stat.isSymbolicLink()) throw new Error('Source changed during upgrade.');
+    if (stat.isDirectory()) {
+      record(snapshot, file, 'directory');
+      for (const name of fs.readdirSync(file).sort()) visit(path.join(file, name));
+    } else if (stat.isFile()) record(snapshot, file, 'file', digest(file));
+    else throw new Error('Source changed during upgrade.');
+  }
+  for (const name of ['configuration', 'data', 'backups']) visit(path.join(root, name));
+  return snapshot.hash.digest('hex');
+}
 function keepOwner(file, stat) {
   if (process.platform === 'win32') return;
   const actual = fs.statSync(file);
@@ -99,7 +122,8 @@ export function planUpgrade(source, target) {
     plainTree(journalFile);
     const journal = readJson(journalFile);
     if (!Object.entries(identity).every(([key, value]) => journal[key] === value) ||
-        !/^\.upgrade-[a-f0-9]{24}$/.test(journal.stage) || !['copying', 'committing', 'complete'].includes(journal.status)) {
+        !/^\.upgrade-[a-f0-9]{24}$/.test(journal.stage) || !['copying', 'committing', 'complete'].includes(journal.status) ||
+        (journal.status !== 'copying' && !/^[a-f0-9]{64}$/.test(journal.sourceDigest))) {
       throw new Error('This destination belongs to another or unrecognized upgrade.');
     }
     if (journal.status === 'complete' && readState(target).installationId !== state.installationId) {
@@ -114,25 +138,20 @@ export function planUpgrade(source, target) {
   return { source, target, state, identity, volumes: nextVolumes, project: expected.name };
 }
 
-function copyVerified(source, target) {
+function copyVerified(source, target, snapshot) {
   const stat = fs.lstatSync(source);
   if (stat.isDirectory() && !stat.isSymbolicLink()) {
     fs.mkdirSync(target, { recursive: true, mode: stat.mode & 0o777 });
-    for (const name of fs.readdirSync(source)) copyVerified(path.join(source, name), path.join(target, name));
+    record(snapshot, source, 'directory');
+    for (const name of fs.readdirSync(source).sort()) copyVerified(path.join(source, name), path.join(target, name), snapshot);
     keepOwner(target, stat);
   } else if (stat.isFile() && !stat.isSymbolicLink()) {
     fs.copyFileSync(source, target, fs.constants.COPYFILE_EXCL);
     fs.chmodSync(target, stat.mode & 0o777);
     keepOwner(target, stat);
-    // Stream/hash large files in bounded chunks instead of reading uploads into RAM.
-    const hashFile = file => {
-      const hash = crypto.createHash('sha256'), buffer = Buffer.alloc(1024 * 1024);
-      const fd = fs.openSync(file, 'r');
-      try { let length; while ((length = fs.readSync(fd, buffer, 0, buffer.length, null))) hash.update(buffer.subarray(0, length)); }
-      finally { fs.closeSync(fd); }
-      return hash.digest('hex');
-    };
-    if (hashFile(source) !== hashFile(target)) throw new Error('Upgrade copy verification failed; original data is intact.');
+    const checksum = digest(source);
+    if (checksum !== digest(target)) throw new Error('Upgrade copy verification failed; original data is intact.');
+    record(snapshot, source, 'file', checksum);
   } else throw new Error('Source storage changed or contains a symbolic link/special file.');
 }
 
@@ -153,13 +172,18 @@ export function upgradeBundle(source, target, { confirmStopped = false } = {}) {
     keepOwner(journalFile, owner);
   }
   const stage = path.join(plan.target, journal.stage);
+  if (journal.status === 'committing' && sourceDigest(plan.source) !== journal.sourceDigest) {
+    throw new Error('The original changed after copying. Preserve both folders and use a fresh destination bundle to transfer its latest data.');
+  }
   if (journal.status === 'copying') {
     if (fs.existsSync(stage)) {
       plainTree(stage);
       fs.rmSync(stage, { recursive: true }); // Only this journal's private, validated staging directory.
     }
     fs.mkdirSync(stage, { mode: 0o700 });
-    for (const name of ['configuration', 'data', 'backups']) copyVerified(path.join(plan.source, name), path.join(stage, name));
+    const snapshot = { root: plan.source, hash: crypto.createHash('sha256') };
+    for (const name of ['configuration', 'data', 'backups']) copyVerified(path.join(plan.source, name), path.join(stage, name), snapshot);
+    journal.sourceDigest = snapshot.hash.digest('hex');
     for (const name of plan.volumes) fs.mkdirSync(path.join(stage, 'data', name), { recursive: true, mode: 0o700 });
     journal.status = 'committing';
     checkpoint(journal);

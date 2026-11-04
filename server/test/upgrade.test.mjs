@@ -142,3 +142,18 @@ test('a mismatched or traversal-shaped journal never authorizes cleanup or overw
   assert.throws(() => planUpgrade(source, target), /unrecognized upgrade/);
   assert.equal(fs.readFileSync(file(source, 'data/homecore_data/homecore.db'), 'utf8'), 'opaque database bytes');
 });
+
+test('publication retry refuses a stale staged snapshot after the original receives new writes', t => {
+  const { source, target, file } = fixture(t);
+  const originalRename = fs.renameSync;
+  const renaming = mock.method(fs, 'renameSync', (from, to) => {
+    if (to === file(target, 'data')) throw new Error('Simulated interruption before storage publication');
+    return originalRename(from, to);
+  });
+  assert.throws(() => upgradeBundle(source, target, { confirmStopped: true }), /interruption/);
+  renaming.mock.restore();
+  fs.appendFileSync(file(source, 'data/homecore_data/homecore.db'), 'new source writes');
+  assert.throws(() => upgradeBundle(source, target, { confirmStopped: true }), /original changed after copying/);
+  assert.throws(() => initialize(target), /Upgrade is incomplete/);
+  assert.match(fs.readFileSync(file(source, 'data/homecore_data/homecore.db'), 'utf8'), /new source writes$/);
+});

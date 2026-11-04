@@ -170,7 +170,9 @@ pre-upgrade recovery copy**; do not start or delete it casually. New writes go
 to the new folder. Never run both copies or upgrade actions concurrently.
 
 If copying fails, preserve both folders and rerun the same upgrade command.
-An incomplete destination refuses to start. A retry after completion does not
+An incomplete destination refuses to start. If the original changed after a
+finished copy, resuming publication is refused: extract another fresh destination
+and transfer the original's latest data. A retry after completion does not
 recopy older data over new writes; it only starts the transferred installation.
 
 If new services have started, the old folder is now an older snapshot: returning

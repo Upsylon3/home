@@ -13,7 +13,8 @@ for (const [app, prefix] of Object.entries(apps)) {
   await build({
     configFile: false, root: path.join(root, 'apps', app), base: appBase,
     plugins: [demoPlugin(), react()],
-    build: { outDir: path.join(root, 'demo-dist', prefix), emptyOutDir: app === 'home', target: 'esnext' }
+    build: { outDir: path.join(root, 'demo-dist', prefix), emptyOutDir: app === 'home', target: 'esnext',
+      ...(app === 'homevault' ? { rolldownOptions: { input: { app: path.join(root, 'apps/homevault/index.html'), benchmark: path.join(root, 'apps/homevault/benchmark.html') } } } : {}) }
   });
 }
 for (const file of ['worker.js', 'api.mjs', 'bootstrap.js']) await copyFile('demo/' + file, 'demo-dist/demo-' + file);

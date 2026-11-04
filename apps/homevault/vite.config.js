@@ -1,4 +1,5 @@
 import { defineConfig } from "vite";
+import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
 
 // Two proxy targets in dev, matching production's nginx routing exactly
@@ -17,6 +18,14 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   base: process.env.NODE_ENV === "production" ? "/vault/" : "/",
   plugins: [react()],
+  build: {
+    rolldownOptions: {
+      input: {
+        app: fileURLToPath(new URL("./index.html", import.meta.url)),
+        benchmark: fileURLToPath(new URL("./benchmark.html", import.meta.url))
+      }
+    }
+  },
   server: {
     port: 5177,
     proxy: {

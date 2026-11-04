@@ -79,15 +79,21 @@ remain follow-ups; per-database consistency does not establish those guarantees.
    excluded, with two-photo byte/hash and dedup proof. Physical phones,
    selected videos/selection removal,
    Doze/reboot and long-duration/background behavior remain validation follow-ups.
-3. **HomeVault follow-ups deferred out of v0**: benchmarking Argon2id's
-   parameters against real
-   minimum self-hosting hardware (v0 ships OWASP's default, untested
-   against, say, a Raspberry Pi specifically). The administrator vault-reset
-   action is implemented in Home Settings with live Core authority, explicit
-   confirmation, replacement-vault protection and a local transactional audit
-   ([decision 003](decisions/003-vault-admin-reset.md)). Item soft-delete/undo is now implemented through
-   encrypted Trash with explicit restore and permanent deletion. Trash has no
-   automatic expiration; whole-vault deletion includes it.
+3. **HomeVault follow-ups deferred out of v0.** The remaining performance
+   prerequisite is validation on representative minimum **client/browser**
+   hardware: Argon2id runs in the browser opening the vault, not the storage
+   server. A Pi is relevant only if it also runs that browser. The standalone
+   [device speed test and protocol](HOMEVAULT_BENCHMARK.md) now use the actual
+   shipped parameters (`m=19456, t=2, p=1`), synthetic inputs, first/subsequent
+   samples and local JSON export. Desktop headless measurements and CI are
+   not minimum-device certification; physical low-end phone/browser testing
+   and an agreed latency budget remain **open**. Defaults are unchanged.
+   Administrator vault reset is implemented in Home Settings with live Core
+   authority, confirmation, replacement-vault protection and transactional audit
+   ([decision 003](decisions/003-vault-admin-reset.md)). Encrypted Trash supports
+   restore and permanent deletion; no automatic expiration. Whole-vault deletion
+   includes Trash. These completed features do not close the remaining benchmark
+   or independent review prerequisites.
 4. **Done: align the HomeSync Android adaptive icon with the shared icon set.**
    The foreground layer is now generated from `design/icons/homesync.svg`
    in the same command that produces the web icon exports. Its 48-unit mark

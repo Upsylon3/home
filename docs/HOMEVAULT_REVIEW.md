@@ -168,6 +168,12 @@ must distinguish this fixture from the real nginx/Docker deployment.
 | Chromium browser exercise | At 1365px: actual setup, encrypted item, reload/unlock, password change, recovery regeneration, recovery/new password and original-item decryption with Vault CSP; observed Vault request bodies exclude tested plaintext. At 390px: Settings fits viewport; screenshot inspected. Not independent testing or a complete lifecycle/clipboard/session matrix. |
 | Existing real-nginx/Docker gates | Gateway has 58 checks; CI rebuilds all seven frontends and boots disposable services. A green run is required for the exact candidate. It does not replace adversarial browser review or minimum-device Argon2id measurements. |
 
+The separate [client benchmark](HOMEVAULT_BENCHMARK.md) uses production KDF
+code with synthetic input, without accounts or API calls. Its unit/browser
+checks and desktop observations establish tool behavior, not minimum-device
+support or an independent review. Physical low-end browser measurements remain
+open; server hardware does not determine client-side derivation latency.
+
 The KDF smoke test's generous ten-second ceiling is a CI hang guard, not a
 hardware/UX performance claim. Fresh command results and CI commit/run links
 belong in the change's PR; reviewers must rerun them on the pinned target.

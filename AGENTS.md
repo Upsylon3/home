@@ -59,7 +59,7 @@ Some roadmap items require evidence an LLM cannot manufacture:
 
 - HomeVault still requires an independent security/cryptography review before real secrets are stored. An AI static review, self-review or passing test suite does **not** satisfy that independent review.
 - HomeSync's first API-34 emulator UI sign-in, constrained manual WorkManager execution, byte-verified backup and real permission denial/full-grant and permanent-denial Settings recovery plus selected-photo expansion/foreign-media exclusion have instrumentation tests retained for explicit local device validation; Android CI now runs APK/JVM checks only at the owner's request. This does not establish physical-phone behavior, selected videos/selection removal, Doze/reboot or six-hour delivery; keep those validation limits explicit (docs/HOMESYNC_DEVICE_VALIDATION.md).
-- Hardware-specific Argon2id performance claims require measurement on representative minimum hardware.
+- Hardware-specific Argon2id performance claims require measurement on representative minimum client/browser hardware; the KDF runs client-side, not on the storage server.
 
 Agents may improve tests, prepare review material and remove code defects around these items, but must leave the external validation visibly open until it actually occurs. Do not let one unavailable physical-world check prevent unrelated repository work.
 

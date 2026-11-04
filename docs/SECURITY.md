@@ -291,9 +291,9 @@ them on (merged only after the same CI run passed) to `alpine:3.24` and
 >   passwords or secrets in this v0 until that review happens.**
 > - **Prerequisites below that remain genuinely open**: concrete
 >   Argon2id parameters *for this specific v0* are the OWASP default,
->   not yet benchmarked against real minimum self-hosting hardware as
->   originally planned — reasonable starting point, not a completed
->   prerequisite. TLS and the shared-origin decision are settled (see
+>   not yet validated on representative minimum client/browser hardware.
+>   The [device benchmark](HOMEVAULT_BENCHMARK.md) and local desktop timings
+>   do not close that prerequisite; defaults remain unchanged. TLS and the shared-origin decision are settled (see
 >   Part A above and "Shared-origin XSS" below) and not blockers for
 >   this v0 existing, but remain blockers for exposing it beyond a
 >   trusted LAN.
@@ -363,9 +363,9 @@ re-wrap, not an O(n) re-encryption of the whole vault.
 - **Argon2id**, not PBKDF2/bcrypt — memory-hard, because the realistic
   attack is offline brute-force against a stolen dump, not online
   guessing (already rate-limited at the login layer). Parameters need
-  tuning against real self-host hardware (could be a Raspberry Pi);
-  target OWASP's current guidance as a floor, derived client-side so
-  weak server hardware never pressures parameters downward.
+  measurement on the actual client browsers that unlock vaults. A Pi
+  matters only if it runs that browser. Keep OWASP guidance as a floor;
+  weak storage-server hardware must never pressure parameters downward.
 - **AES-256-GCM or XChaCha20-Poly1305**, unique nonce per item — reusing
   a nonce with the same key is the one classical mistake that fully
   breaks AEAD.
@@ -413,10 +413,11 @@ In priority order:
    are involved. (Decided: a private overlay network, not a public
    reverse-proxy cert — see Part A above.) Not a blocker for local,
    LAN-only use during review.
-3. **Argon2id parameters benchmarked against real minimum self-hosting
+3. **Argon2id parameters validated on representative minimum client/browser
    hardware.** v0 ships OWASP's current default (`m=19456, t=2, p=1`) as
    a reasonable starting point, not a completed prerequisite — see the
-   v0 status callout.
+   v0 status callout and [benchmark protocol](HOMEVAULT_BENCHMARK.md). The
+   standalone tool is implemented; the representative-device matrix stays open.
 
 The shared-vs-separate-origin decision, and the recovery-kit UX, are
 both settled and implemented (see the v0 status callout above) — no

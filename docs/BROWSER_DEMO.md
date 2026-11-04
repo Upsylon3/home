@@ -45,3 +45,12 @@ The Browser demo workflow uses Chrome already installed on the GitHub Ubuntu run
 `demo/worker.js` handles only this build's scoped `demo-api` requests and stores structured-clone state (including file Blobs) in `home-browser-demo-v1`. Requests are serialized across tabs to avoid lost read-modify-write updates. Failed mutations and quota errors are not committed. Unrelated network requests are never redirected to a server or Supabase. UI assets are served by Pages; demo content stays in the browser. CSP preserves the theme script hash and allows Vault WebAssembly compilation without allowing arbitrary inline scripts.
 
 This build is a testing adapter, not an alternative production architecture or evidence of backend authorization. Future frontend API changes should extend the demo contract and its browser checks together.
+
+## Standalone Vault speed test
+
+`vault/benchmark.html` is a separate static entry, built with the real Vault
+KDF. It does not load the demo bootstrap, simulated sign-in or IndexedDB adapter.
+It needs no account and measures this client browser using synthetic input.
+See [the benchmark protocol](HOMEVAULT_BENCHMARK.md). Its privacy/cancellation
+and export behavior are covered by the browser demo job; CI timing is not
+minimum-device evidence.

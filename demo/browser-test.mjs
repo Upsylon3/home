@@ -20,6 +20,8 @@ try {
   await verifyBenchmark(browser, origin + 'vault/benchmark.html');
   await page.goto(origin);
   await page.getByRole('heading', { name: /Good|Still up/ }).waitFor();
+  // The greeting renders before the asynchronous app-registry response.
+  await page.getByRole('link', { name: 'Launch', exact: true }).nth(5).waitFor();
   assert.equal(await page.getByRole('link', { name: 'Launch', exact: true }).count(), 6);
   // Upload through the real Cloud XHR control, then verify persistence and exact bytes.
   await page.goto(origin + 'cloud/');

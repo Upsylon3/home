@@ -85,6 +85,46 @@ a specific phone or Raspberry Pi faithfully.
 
 ## Evidence and remaining acceptance
 
+### Provisional client targets — owner clarification, 2026-11-04
+
+The owner wants an old Dell office computer and a phone a couple of
+generations older than their Galaxy S20 FE. Use these concrete reference
+classes for the first physical-device matrix; they are performance targets,
+not a statement that all older devices are unsupported or that these pass:
+
+| Reference client | Initial configuration to test | Evidence status |
+|---|---|---|
+| Old Dell office PC | OptiPlex 3020-class machine; fourth-generation Core i3/i5, 4 GiB RAM; normal desktop Chrome or Firefox | Not measured on a representative office configuration |
+| Older phone | Galaxy S9-class as the lower reference, with S10-class also useful; normal mobile Chrome | Not measured; record exact model/processor variant and Android/browser versions |
+| Available phone | Owner's Galaxy S20 FE, normal mobile browser | Available reference device; no results received yet; cannot stand in for an older phone |
+
+These example classes are grounded in [Dell's OptiPlex 3020 specifications](https://i.dell.com/sites/doccontent/business/smb/merchandizing/en/Documents/Dell_OptiPlex_3020_with_Micro_Technical_Spec_Sheet.pdf)
+and [Samsung's Galaxy S9 specifications](https://www.samsungmobilepress.com/media-assets/galaxy_s9?tab=specs).
+The RAM configuration and latency targets are project choices, not manufacturer
+certifications. The measured i7-4790K/16 GiB desktop is a stronger reference
+configuration, not proof for the i3/i5 office-PC target. No phone results may
+be inferred from desktop measurements or synthetic CPU throttling.
+
+Use an initial UX target of **at most one second for each run's steady median
+and two seconds for its first measured derivation**, across three fresh-page
+runs. Also record every sample/outlier, errors and observed responsiveness.
+These are provisional usability goals, not security thresholds or certified
+results. A slower result requires investigation and an explicit decision;
+never automatically reduce the shipped work factors to achieve the target.
+
+Record the actual OS and browser version. Google's current Android Chrome
+requirements are [Android 10 or later](https://support.google.com/chrome/answer/95346?co=GENIE.Platform%3DAndroid&hl=en).
+Check those requirements again when testing rather than treating the version
+here as permanent. Hardware-speed validation does not establish OS security
+support or approval to store real secrets on an unmaintained installation.
+
+For the available S20 FE, open the public speed test, leave battery saver off,
+keep the page visible and reload between three runs. Retain each exported JSON
+or record the first and median timings together with Android/browser and
+power/load conditions. This measures only synthetic input, so no real vault
+or password is needed. Additional tests with battery saver on can be retained
+separately, never mixed into the baseline without identifying the conditions.
+
 The local report under [benchmarks](benchmarks/) is a desktop headless-browser
 observation, not the minimum-device prerequisite. Its source revision and
 execution conditions are embedded. Browser/CPU load and power state can
@@ -93,13 +133,15 @@ unlock responsiveness.
 
 Before closing item 3:
 
-1. Agree on the minimum browser/device class actually intended for Vault.
+1. Use the provisional owner-selected client classes and UX goals above;
+   confirm the exact physical models and browser versions when results arrive.
 2. Run three fresh-page tests in normal browsers on representative physical
    low-end clients (including a phone), recording model, browser, power/load
    conditions, failures and observed responsiveness. Only include a Pi in
    this matrix if it will run the client browser.
 3. Assess measured first-call and steady latency against an explicitly chosen
-   UX budget. No budget or hardware floor has been certified by this change.
+   UX goals above. Neither the hardware targets nor the latency goals have
+   been validated by the existing desktop observation.
 4. If changes are justified, review the security tradeoff and stored per-vault
    compatibility separately. Never silently lower Argon2id cost for a slower
    server or automatically rewrite existing vaults.

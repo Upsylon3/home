@@ -86,8 +86,12 @@ remain follow-ups; per-database consistency does not establish those guarantees.
    [device speed test and protocol](HOMEVAULT_BENCHMARK.md) now use the actual
    shipped parameters (`m=19456, t=2, p=1`), synthetic inputs, first/subsequent
    samples and local JSON export. Desktop headless measurements and CI are
-   not minimum-device certification; physical low-end phone/browser testing
-   and an agreed latency budget remain **open**. Defaults are unchanged.
+   not minimum-device certification. The owner has clarified provisional
+   targets: old Dell office hardware (OptiPlex 3020-class i3/i5, 4 GiB) and
+   Galaxy S9/S10-class phones, with their S20 FE as an available reference.
+   The protocol defines provisional one-second steady/two-second first-call
+   UX goals. Physical target-device measurements remain **open**; none have
+   been certified from the desktop result. Defaults are unchanged.
    Administrator vault reset is implemented in Home Settings with live Core
    authority, confirmation, replacement-vault protection and transactional audit
    ([decision 003](decisions/003-vault-admin-reset.md)). Encrypted Trash supports

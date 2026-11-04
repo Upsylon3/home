@@ -25,6 +25,8 @@ not discarded. Salt generation, network, key unwrapping, rendering and full
 unlock latency are excluded. The test does not measure peak memory use.
 
 Conclusion: the current defaults completed on this host under these conditions.
+The owner subsequently identified old Dell office PCs and S9/S10-class phones
+as provisional targets; the i7/16 GiB result does not certify those classes.
 No minimum client class, phone performance or latency budget is certified.
 Representative low-end browser tests and the independent security review
 remain open. CI measurements must not be appended here as physical-device proof.

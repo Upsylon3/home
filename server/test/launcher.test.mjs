@@ -10,6 +10,8 @@ test('Unix launcher stops and verifies writers before copying, with safe failure
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const previous = path.join(root, 'old folder'), current = path.join(root, 'new folder'), bin = path.join(root, 'bin');
   for (const dir of [previous, current, bin]) fs.mkdirSync(dir);
+  const alias = path.join(root, 'old-folder-alias');
+  fs.symlinkSync(previous, alias, 'dir');
   fs.copyFileSync('server/home.sh', path.join(current, 'home.sh'));
   fs.writeFileSync(path.join(current, 'installer-image.txt'), 'disposable-test-image');
   const log = path.join(root, 'calls.jsonl');
@@ -26,11 +28,12 @@ if (args[0] === 'inspect') console.log(scenario === 'custom' ? 'other-compose.js
 if (args[0] === 'ps' && args.includes('-q') && scenario === 'running') console.log('still-running-container');
 if (args.includes('upgrade') && scenario === 'copy-fail') process.exit(1);
 `, { mode: 0o755 });
-  for (const scenario of ['success', 'running', 'copy-fail', 'invalid', 'custom', 'complete']) {
+  for (const scenario of ['success', 'alias', 'running', 'copy-fail', 'invalid', 'custom', 'complete']) {
     fs.writeFileSync(log, '');
-    const result = spawnSync('sh', [path.join(current, 'home.sh'), 'upgrade', previous], {
+    const selectedSource = scenario === 'alias' ? alias : previous;
+    const result = spawnSync('sh', [path.join(current, 'home.sh'), 'upgrade', selectedSource], {
       encoding: 'utf8', timeout: 30_000, env: { ...process.env, PATH: bin + path.delimiter + process.env.PATH,
-        HOME_LAUNCHER_LOG: log, HOME_LAUNCHER_CASE: scenario, HOME_LAUNCHER_PREVIOUS: previous }
+        HOME_LAUNCHER_LOG: log, HOME_LAUNCHER_CASE: scenario, HOME_LAUNCHER_PREVIOUS: selectedSource }
     });
     assert.equal(result.error, undefined);
     const calls = fs.readFileSync(log, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse);
@@ -38,7 +41,7 @@ if (args.includes('upgrade') && scenario === 'copy-fail') process.exit(1);
     const check = calls.findIndex(args => args[0] === 'ps' && args.includes('-q'));
     const copy = calls.findIndex(args => args.includes('upgrade'));
     const start = calls.findIndex(args => args.includes('up'));
-    if (scenario === 'success') {
+    if (scenario === 'success' || scenario === 'alias') {
       assert.equal(result.status, 0, result.stderr);
       assert.ok(stop >= 0 && check > stop && copy > check && start > copy);
       assert.ok(calls[copy].includes('type=bind,source=' + previous + ',target=/previous,readonly'));

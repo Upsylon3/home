@@ -2,7 +2,7 @@
 set -eu
 cd -- "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 action=${1:-start}
-case "$action" in start|code|access|stop|status|logs) ;; *) echo 'Usage: ./home.sh [start|code|access|stop|status|logs]' >&2; exit 1 ;; esac
+case "$action" in start|code|access|stop|status|logs|upgrade) ;; *) echo 'Usage: ./home.sh [start|code|access|stop|status|logs|upgrade OLD-FOLDER]' >&2; exit 1 ;; esac
 command -v docker >/dev/null 2>&1 || { echo 'Install Docker Engine with Compose (Linux) or Docker Desktop (macOS), then run HOME again. See START-HERE.md.' >&2; exit 1; }
 docker info >/dev/null 2>&1 || { echo 'Start Docker, select Linux containers if applicable, and try again.' >&2; exit 1; }
 docker compose version >/dev/null 2>&1 || { echo 'Docker Compose v2 is required. See START-HERE.md.' >&2; exit 1; }
@@ -15,6 +15,31 @@ image=$(cat installer-image.txt)
 if ! docker image inspect "$image" >/dev/null 2>&1; then
   echo 'Loading the included HOME containers. This may take a few minutes.'
   docker load -i images.tar
+fi
+if [ "$action" = upgrade ]; then
+  [ "$#" -eq 2 ] || { echo 'Usage: ./home.sh upgrade /path/to/old-home-folder' >&2; exit 1; }
+  previous=$(CDPATH= cd -P -- "$2" && pwd -P)
+  current=$(pwd -P)
+  case "$previous/" in "$current/"*) echo 'Old and new folders must be separate and non-nested.' >&2; exit 1 ;; esac
+  case "$current/" in "$previous/"*) echo 'Old and new folders must be separate and non-nested.' >&2; exit 1 ;; esac
+  case "$previous$current" in *,*) echo 'Installation paths must not contain commas.' >&2; exit 1 ;; esac
+  project=$(docker run --rm --mount "type=bind,source=$current,target=/bundle" --mount "type=bind,source=$previous,target=/previous,readonly" --entrypoint node "$image" /bundle/setup/cli.mjs check-upgrade)
+  if [ "$project" != complete ]; then
+    case "$project" in home-server-????????-????-????-????-????????????) ;; *) echo 'Invalid upgrade project.' >&2; exit 1 ;; esac
+    containers=$(docker ps -aq --filter "label=com.docker.compose.project=$project")
+    for container in $containers; do
+      config_files=$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project.config_files"}}' "$container")
+      [ "$config_files" = "$previous/compose.json" ] || { echo 'This project uses another folder or Compose overrides; migration refused.' >&2; exit 1; }
+    done
+    echo 'Stopping the old HOME (including optional services) before making a verified copy. Keep both folders private.'
+    docker compose --project-name "$project" -f "$previous/compose.json" --profile '*' stop
+    running=$(docker ps -q --filter "label=com.docker.compose.project=$project")
+    [ -z "$running" ] || { echo 'Some source containers are still running; upgrade refused.' >&2; exit 1; }
+    docker run --rm --mount "type=bind,source=$current,target=/bundle" --mount "type=bind,source=$previous,target=/previous,readonly" --entrypoint node "$image" /bundle/setup/cli.mjs upgrade --confirm-stopped
+  fi
+  docker compose -f compose.json up -d --wait --wait-timeout 180 --remove-orphans
+  echo 'HOME upgraded. Use this new folder only. If startup failed, keep the old folder and consult START-HERE.md.'
+  exit
 fi
 network=''
 if [ "$action" = access ]; then

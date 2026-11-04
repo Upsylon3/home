@@ -5,8 +5,8 @@ Only unfinished work is listed here. Completed changes belong in
 
 ## Usability and reliability
 
-- **Server upgrades and import:** preserve accounts, credentials and files when
-  updating a bundle or moving a source-based installation.
+- **Source installation import:** migrate source Compose volumes and configuration
+  into a managed bundle while preserving accounts, credentials and files.
 - **Remote access:** improve DNS, router and HTTPS setup/diagnostics. Direct
   access cannot work through every provider's CGNAT configuration.
 - **Backups:** add off-machine copies and coordinated cross-service snapshots.

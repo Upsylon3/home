@@ -21,7 +21,7 @@ jobs:
         with:
           node-version: 26
       - name: Test configuration and address validation
-        run: node --test server/test/setup.test.mjs server/test/package.test.mjs
+        run: node --test server/test/*.test.mjs
       - name: Parse the Windows launcher
         shell: pwsh
         run: |

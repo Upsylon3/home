@@ -1,4 +1,4 @@
-param([ValidateSet('start','code','access','stop','status','logs')][string]$Action = 'start')
+param([ValidateSet('start','code','access','stop','status','logs','upgrade')][string]$Action = 'start', [string]$PreviousFolder)
 $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
 if (-not (Get-Command docker -ErrorAction SilentlyContinue)) { throw 'Install Docker Desktop, start it with Linux containers, then run HOME again. See START-HERE.md.' }
@@ -17,6 +17,56 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host 'Loading the included HOME containers. This may take a few minutes.'
     docker load -i images.tar
     if ($LASTEXITCODE -ne 0) { throw 'Could not load HOME images.' }
+}
+if ($Action -eq 'upgrade') {
+    if (-not $PreviousFolder) { throw 'Usage: home.cmd upgrade "C:\path\to\old-home-folder"' }
+    $previous = (Resolve-Path -LiteralPath $PreviousFolder).Path.TrimEnd('\','/')
+    $current = (Resolve-Path -LiteralPath $PSScriptRoot).Path.TrimEnd('\','/')
+    # Resolve-Path does not canonicalize every junction ancestor on Windows.
+    # Reject aliases rather than risk copying a folder into its own storage.
+    if ($env:OS -eq 'Windows_NT') {
+        foreach ($candidate in @($previous, $current)) {
+            $cursor = $candidate
+            while ($cursor) {
+                if ((Get-Item -LiteralPath $cursor -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) {
+                    throw 'Upgrade paths must not pass through symbolic links or junctions.'
+                }
+                $parent = [IO.Directory]::GetParent($cursor)
+                $cursor = if ($parent) { $parent.FullName } else { $null }
+            }
+        }
+    }
+    $comparison = [System.StringComparison]::OrdinalIgnoreCase
+    if ($previous.Equals($current, $comparison) -or ($previous + '\').StartsWith($current + '\', $comparison) -or ($current + '\').StartsWith($previous + '\', $comparison)) {
+        throw 'Old and new folders must be separate and non-nested.'
+    }
+    if ($previous.Contains(',') -or $current.Contains(',')) { throw 'Installation paths must not contain commas.' }
+    $mounts = @('--mount',"type=bind,source=$current,target=/bundle",'--mount',"type=bind,source=$previous,target=/previous,readonly")
+    $project = & docker run --rm @mounts --entrypoint node $installerImage /bundle/setup/cli.mjs check-upgrade
+    if ($LASTEXITCODE -ne 0) { throw 'Upgrade preflight failed. Original data was not changed.' }
+    $project = ($project | Out-String).Trim()
+    if ($project -ne 'complete') {
+        if ($project -notmatch '^home-server-[a-f0-9-]{36}$') { throw 'Invalid upgrade project.' }
+        $containers = docker ps -aq --filter "label=com.docker.compose.project=$project"
+        if ($LASTEXITCODE -ne 0) { throw 'Could not inspect the source project; upgrade refused.' }
+        foreach ($container in $containers) {
+            $configFiles = docker inspect --format '{{index .Config.Labels "com.docker.compose.project.config_files"}}' $container
+            if ($LASTEXITCODE -ne 0 -or $configFiles -ne (Join-Path $previous 'compose.json')) {
+                throw 'This project uses another folder or Compose overrides; migration refused.'
+            }
+        }
+        Write-Host 'Stopping the old HOME (including optional services) before making a verified copy. Keep both folders private.'
+        docker compose --project-name $project -f (Join-Path $previous 'compose.json') --profile '*' stop
+        if ($LASTEXITCODE -ne 0) { throw 'Could not stop the old HOME; upgrade refused.' }
+        $running = docker ps -q --filter "label=com.docker.compose.project=$project"
+        if ($LASTEXITCODE -ne 0 -or $running) { throw 'Could not establish that all source containers stopped; upgrade refused.' }
+        & docker run --rm @mounts --entrypoint node $installerImage /bundle/setup/cli.mjs upgrade --confirm-stopped
+        if ($LASTEXITCODE -ne 0) { throw 'Upgrade did not complete. Preserve both folders and rerun the same upgrade action.' }
+    }
+    docker compose -f compose.json up -d --wait --wait-timeout 180 --remove-orphans
+    if ($LASTEXITCODE -ne 0) { throw 'Upgrade copied successfully but startup failed. Preserve both folders and see START-HERE.md recovery.' }
+    Write-Host 'HOME upgraded. Start and manage it from this new folder only.'
+    exit 0
 }
 $runArgs = @('run','--rm','-it')
 if ($Action -eq 'access') {

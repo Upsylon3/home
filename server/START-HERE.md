@@ -58,6 +58,7 @@ requires SSH to be enabled on the server; HOME does not enable it for you.
 | `status` | See which services are running |
 | `logs` | Inspect service errors; redact private information before sharing |
 | `stop` | Stop HOME, keeping its data |
+| `upgrade OLD-FOLDER` | Transfer a stopped managed installation into this new bundle |
 
 Containers restart when Docker starts unless stopped explicitly. On Windows
 and macOS, configure Docker Desktop to start at sign-in if desired. A sleeping
@@ -138,11 +139,51 @@ backup; it intentionally refuses to overwrite unidentified data. If failure
 occurred during a brand-new setup and there is no user data, extract a fresh
 download to a different empty folder. Do not delete an unknown data folder.
 
-This first installer has no automated upgrade/migration or uninstall wizard.
-Keep using the same folder. Do not replace an existing installation with a new
-download or run `docker compose down -v` as an upgrade. To remove the software,
-stop it first; deleting data is a separate deliberate decision. If Docker's
-image cleanup removes a needed image, run `docker load -i images.tar` here.
+## Upgrade a downloaded HOME
+
+The upgrade action is available in bundles built after 1.7.0. Run it from the
+**new download**, not from the old 1.7.0 launcher. Source-based Compose installations
+need a separate importer, which is not available yet.
+
+1. Download a compatible stable release for the same processor. Extract it into
+   a different, non-nested private folder. Do not extract over the old HOME,
+   start a new installation there, or put it inside the old data directory.
+2. Leave enough free space for another complete copy of data, configuration and
+   backups, plus the new bundle. Keep an independent protected backup.
+3. From the new folder, run one command (quote paths containing spaces):
+
+~~~text
+Windows:       home.cmd upgrade "C:\path\to\old-home-folder"
+Linux/macOS:   ./home.sh upgrade "/path/to/old-home-folder"
+~~~
+
+The launcher checks both folders, stops the old project including optional
+services, verifies no containers in that project remain running, copies and
+SHA-256 verifies every file, then starts the new services. Identity, account
+credentials, access mode, certificates, uploads and backups are retained.
+Downgrades, incompatible releases, symlinks/special files, nested folders and
+customized Compose deployments are refused. On Windows, paths through junctions
+are also refused. Other tools must not write to these folders during upgrade.
+
+Use only the new folder afterward. The original stays unchanged as an **offline
+pre-upgrade recovery copy**; do not start or delete it casually. New writes go
+to the new folder. Never run both copies or upgrade actions concurrently.
+
+If copying fails, preserve both folders and rerun the same upgrade command.
+An incomplete destination refuses to start. A retry after completion does not
+recopy older data over new writes; it only starts the transferred installation.
+
+If new services have started, the old folder is now an older snapshot: returning
+to it can lose subsequent changes or resurrect revoked background credentials.
+Preserve the new folder and follow the offline restore/revocation procedures in
+the repository deployment guide before any rollback. Older binaries may also be
+incompatible with migrated databases; automatic downgrade/rollback is not offered.
+If no new service has ever started, the untouched original remains the latest
+copy and can be restarted after ensuring the new project is stopped.
+
+To uninstall, stop HOME first; deleting data is a separate deliberate decision.
+Never use `docker compose down -v` as an upgrade. If image cleanup removes a
+needed image, run `docker load -i images.tar` in the active bundle folder.
 
 ## Components
 

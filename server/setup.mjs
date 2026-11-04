@@ -34,6 +34,10 @@ export function configure(root, access) {
 }
 
 export function initialize(root) {
+  const upgradeFile = path.join(root, 'upgrade-state.json');
+  if (fs.existsSync(upgradeFile) && JSON.parse(fs.readFileSync(upgradeFile, 'utf8')).status !== 'complete') {
+    throw new Error('Upgrade is incomplete. Run the upgrade action again with the same source; do not start either copy.');
+  }
   const stateFile = path.join(root, 'configuration', 'installation.json');
   if (fs.existsSync(stateFile)) {
     const state = readState(root);

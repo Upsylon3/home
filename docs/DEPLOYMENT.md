@@ -16,7 +16,16 @@ Persistent host data/backups/configuration are separate from images. Setup
 generates distinct credentials and a stable installation UUID, which is an
 operational identifier rather than proof of server identity. Repeated starts
 preserve data; unknown pre-existing data or partial configuration fail closed.
-Automatic upgrades and importing source Compose volumes remain unsupported.
+Bundle-to-bundle upgrades use an offline verified copy into a fresh sibling
+folder: run the new bundle's `upgrade OLD-FOLDER` action. Its release manifest
+declares the minimum compatible source version; releases must validate that
+compatibility before widening it. The source is mounted read-only and retained
+for recovery. An upgrade journal blocks startup during partial publication;
+retries resume safely and completed transfers never replay old data over writes.
+This trades disk space/downtime for an intact recovery source. It is a continuous
+stopped cutover, not permission to roll back to an older snapshot afterward.
+Use the restore/revocation steps below for that case. Source Compose imports,
+custom overrides and automatic downgrades remain unsupported.
 
 Managed Core requires a one-use 128-bit setup code expiring in 15 minutes.
 Only its SHA-256 hash is retained; consumption and account creation are atomic

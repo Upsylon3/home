@@ -14,6 +14,10 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
   validation from feature work. Setup, recovery and security requirements remain.
 
 ### Added
+- Managed-bundle upgrade action: stop and verify source writers, preserve identity/credentials/
+  access/storage in a byte-verified copy, resume interrupted transfers and refuse unsafe
+  layouts or downgrades. Keep the original offline for recovery; source Compose import
+  and automatic rollback remain separate work.
 - Standalone HomeVault client speed test using production Argon2id defaults,
   synthetic inputs, separate first/steady timings, cancellation and local JSON
   export without login, vault access or API calls. Included in server frontend

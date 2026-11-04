@@ -1,0 +1,90 @@
+# The closed event runs the trusted base-branch workflow. Never check out a PR head
+# or execute downloaded artifacts in this job: only verified static files are published.
+name: Deploy browser demo
+on:
+  pull_request_target:
+    types: [closed]
+    branches: [main]
+    paths:
+      - 'demo/**'
+      - 'apps/home/**'
+      - 'apps/homecloud/**'
+      - 'apps/homemedia/**'
+      - 'apps/homenotes/**'
+      - 'apps/hometasks/**'
+      - 'apps/homemonitor/**'
+      - 'apps/homevault/**'
+      - 'design/**'
+      - 'package*.json'
+      - 'scripts/demo-*'
+      - 'scripts/test/demo-*'
+      - '.github/workflows/demo*.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: browser-demo-pages
+  cancel-in-progress: true
+jobs:
+  scope:
+    name: Select changed demo deployment
+    if: ${{ (github.event_name == 'pull_request_target' && github.event.pull_request.merged == true) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') }}
+    runs-on: ubuntu-latest
+    outputs:
+      demo: ${{ steps.scope.outputs.demo }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+          fetch-depth: 0
+      - id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name == 'pull_request_target' && 'pull_request' || github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python3 scripts/ci-scope.py
+  deploy:
+    needs: scope
+    if: ${{ !cancelled() && needs.scope.outputs.demo == 'true' && ((github.event_name == 'pull_request_target' && github.event.pull_request.merged == true) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+      - uses: actions/github-script@v9
+        id: source
+        with:
+          script: |
+            const select = require('./scripts/demo-select-build.cjs');
+            await select({github, context, core});
+      - uses: actions/download-artifact@v8
+        with:
+          artifact-ids: ${{ steps.source.outputs.artifact }}
+          path: demo-artifact
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.source.outputs.run }}
+      - name: Verify tested source and static artifact
+        run: node scripts/demo-artifact.mjs verify
+        env:
+          SOURCE_SHA: ${{ steps.source.outputs.source }}
+          SOURCE_RUN: ${{ steps.source.outputs.run }}
+          SOURCE_ATTEMPT: ${{ steps.source.outputs.attempt }}
+          REPOSITORY_NAME: ${{ github.event.repository.name }}
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: demo-artifact/site
+      - uses: actions/deploy-pages@v5
+        id: deployment

@@ -31,12 +31,7 @@ dependencies, running services locally, and running the test suite.
 1. **Every new service gets its own isolated test suite**, run against a
    real upstream dependency (a real HomeCore instance, say) rather than a
    mock — see any existing `test/helpers/app.js` for the pattern.
-2. **Run the full test suite before opening a PR**: `npm test` from the
-   repo root runs every workspace. All of it should pass; if a change
-   touches a frontend, also run `npm run build` in that app to catch
-   build-time errors tests won't. GitHub Actions (`.github/workflows/`)
-   runs the same checks on every PR, plus a Docker boot of the whole
-   stack, so a PR isn't ready to merge until those are green.
+2. **Run the focused proof before opening a PR**: use [CI_POLICY.md](docs/CI_POLICY.md) and the tested change selector. Run affected workspace tests/builds and relevant integration checks; do not repeat unrelated full suites for demo, frontend or documentation edits. Unknown paths and CI selection-policy changes run the full gate. Full manual/weekly regressions and the release gate remain available. Wait for applicable selected PR checks before merging; deployment reuses the checked static artifact instead of testing it again.
 3. **No speculative dependencies.** Add a package only when a spec'd
    feature actually needs it, not because it might be useful later — see
    the [1.0.0] changelog entry for an example of three that had quietly

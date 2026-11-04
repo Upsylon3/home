@@ -372,8 +372,8 @@ turned into an error, and Room 2.6.1 crashing KSP2 at `kspDebugKotlin`
 
 The first API-34 emulator journey now exercises actual UI sign-in, WorkManager
 charging constraints/manual execution and a byte-verified upload into real
-Core/Sync/Cloud services. Android CI runs it on a fresh disposable emulator and
-saves reports plus a screenshot. See [device validation](HOMESYNC_DEVICE_VALIDATION.md)
+Core/Sync/Cloud services. These instrumentation tests remain in source for explicit local device testing;
+Android CI now runs APK/JVM checks only at the owner's request. See [device validation](HOMESYNC_DEVICE_VALIDATION.md)
 for the exact protocol and limits. Permissions are test-granted, periodic work
 is observed then canceled, and Activity recreation is not process death. Physical
 phones, denied permissions, Doze/reboot and six-hour delivery remain unverified.
@@ -414,12 +414,7 @@ container restart/replay are proved separately in Docker CI.
 
 ## Proportionate verification
 
-Use focused checks during implementation; see [CI_POLICY.md](CI_POLICY.md). Pull requests run affected workspace suites/builds and only relevant stack, dependency and Android jobs. Demo-only changes skip Docker and Android. Frontend-only checks skip native dependency installation. Android resources build/JVM-test without starting an emulator; runtime/backup/permission changes and actual fixture runtime dependency updates retain the full journey. Root dev-tool changes do not trigger Android.
+Use focused checks during implementation; see [CI_POLICY.md](CI_POLICY.md). Pull requests run affected workspace suites/builds and only relevant stack, dependency and Android jobs. Demo-only changes skip Docker and Android. Frontend-only checks skip native dependency installation. Android changes run APK/JVM tests only; no CI event starts an emulator. Root dev-tool changes do not trigger Android.
 
 The commit hook only checks commit-message conventions. Full regressions are available through manual workflow dispatch and run weekly. Merges do not repeat PR tests. Pages deployment reuses the checked artifact, verifying its source tree against the merged source before publishing; it does not run npm, builds, browser checks or Android again. Unknown paths and changes to the selector fail closed to full validation.
 
-The Android emulator uses an explicit 2048 MB userdata partition. Its tiny
-synthetic fixtures do not need the Pixel profile's default >7 GB allocation,
-which can exceed hosted-runner free disk after SDK/Gradle installation.
-
-Android CI readiness uses `scripts/android-network-ready.py` to validate real unmetered emulator Wi-Fi against the disposable local fixture before running WorkManager tests. It requires an observed local HTTP-204 probe and validated Wi-Fi, rather than relying on public Google connectivity-check DNS. This is a CI-only simulated LAN; production network constraints and test assertions are unchanged.

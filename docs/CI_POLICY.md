@@ -15,16 +15,16 @@ Local commits run only the existing fast commit-message check. GitHub checks pul
 | Root dev tooling/scripts | Frontend/demo checks as relevant and dependency audit; no Android fixture/emulator just for Playwright |
 | Runtime dependency/native/runtime-policy changes | Expanded Node/stack proof; Android only if its actual fixture dependencies/runtime policy changed |
 | Android presentation resources | APK build and JVM tests; no emulator |
-| Android runtime, permissions, WorkManager, upstream Core/Cloud/Sync/client | Build/JVM tests and the existing real emulator backup/permission journeys |
+| Android runtime, permissions, WorkManager, upstream Core/Cloud/Sync/client | APK build and JVM tests |
 | Unknown path, selection policy, manual/weekly run | Full regression |
 
-Test-only edits run their owner suite without starting a server stack or emulator. Android network/security XML and raw resources retain runtime validation.
+Test-only edits run their owner suite without starting a server stack or emulator. Android changes receive build/JVM validation.
 
-The selector resolves the Android fixtures' production, optional and peer dependency closure through the committed npm lockfile, including nested packages and workspace links. A transitive native/auth dependency update therefore still exercises the emulator. Changes to a frontend-only/dev package do not.
+The selector resolves the Android fixtures' production, optional and peer dependency closure through the committed npm lockfile, including nested packages and workspace links. A transitive native/auth dependency update therefore still selects Android build/JVM checks. Changes to a frontend-only/dev package do not.
 
-Frontend-only jobs install with `--ignore-scripts`; native-backend tests keep the real approved installation. Audit reads the committed dependency graph without another native installation. Existing security, ownership, migration, cryptography, gateway, backup and emulator tests are retained; their relevant paths still select them. Recurrence of hardware/independent-review limits is unchanged.
+Frontend-only jobs install with `--ignore-scripts`; native-backend tests keep the real approved installation. Audit reads the committed dependency graph without another native installation. Existing security, ownership, migration, cryptography, gateway and backup tests are retained; their relevant paths still select them. Recurrence of hardware/independent-review limits is unchanged.
 
-The emulator first validates unmetered Wi-Fi through a real HTTP-204 endpoint in the loopback-only disposable fixture. The harness refuses to run outside a GitHub API-34 emulator and keeps Android network validation enabled. It avoids public DNS/captive-portal dependencies and fails within 60 seconds with connectivity evidence when the local network is not ready. App/WorkManager charging and network constraints remain unchanged.
+Android CI never installs, boots or runs an emulator, including manual and weekly runs. Instrumentation test sources and disposable fixtures remain available for explicit local device testing. APK/JVM success does not prove Android UI, permission or WorkManager behavior. This is an explicit coverage reduction requested by the project owner to reduce CI duration.
 
 ## Pages: reuse the verified build
 

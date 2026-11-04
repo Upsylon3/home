@@ -1,21 +1,6 @@
-# Builds the HomeSync Android app and runs its unit tests on GitHub's
-# machines, so no local Android Studio, emulator or phone is needed just to
-# find out "does it still compile?".
-#
-# WHAT THIS DOES AND DOES NOT PROVE
-# A runtime/full run includes the build/JVM tests and a real API-34 emulator UI,
-# constrained WorkManager and byte-verified backup journey. It does NOT
-# establish physical-phone, selected-video or long-duration behavior.
-# Resource-only edits run build/JVM tests without starting the emulator.
-# It also gives you a downloadable debug APK
-# (see the artifact at the bottom), which is the file you would sideload
-# onto an Android phone later.
-#
-# WHY IT'S A SEPARATE FILE FROM ci.yml
-# It takes several minutes and only matters when the Android project
-# changes, so it runs for the Android project, its real upstream services,
-# fixture dependencies and CI helpers. "Run workflow" in the Actions
-# tab runs it on demand, which is how you get the first result.
+# Android CI compiles the debug APK and runs JVM tests.
+# Emulator journeys remain available in source for explicit device testing;
+# CI never installs or starts an emulator.
 
 name: Android
 
@@ -38,7 +23,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       android: ${{ steps.scope.outputs.android }}
-      emulator: ${{ steps.scope.outputs.emulator }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -105,121 +89,7 @@ jobs:
       # testDebugUnitTest = the JUnit tests (SyncLogicTest.kt, which covers
       #                     the hashing/dedup logic).
       - name: Build and test
-        run: gradle --no-daemon --console=plain :app:assembleDebug :app:testDebugUnitTest ${{ needs.scope.outputs.emulator != 'false' && ':app:assembleDebugAndroidTest' || '' }}
-
-      - uses: actions/setup-node@v7
-        if: needs.scope.outputs.emulator != 'false'
-        with:
-          node-version: 26
-          cache: npm
-
-      - name: Install fixture dependencies
-        if: needs.scope.outputs.emulator != 'false'
-        working-directory: .
-        run: npm ci
-
-      - name: Start disposable Core, Cloud and Sync
-        if: needs.scope.outputs.emulator != 'false'
-        working-directory: .
-        run: |
-          node apps/homesync-backend/test-support/android-fixture.cjs > "$RUNNER_TEMP/homesync-fixture.log" 2>&1 &
-          for i in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:18083/__fixture__/status; then exit 0; fi
-            sleep 1
-          done
-          cat "$RUNNER_TEMP/homesync-fixture.log"
-          exit 1
-
-      # Changes only the disposable GitHub runner, never a developer's host.
-      - name: Enable emulator KVM access
-        if: needs.scope.outputs.emulator != 'false'
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-
-      - name: Run real Android backup journey
-        if: needs.scope.outputs.emulator != 'false'
-        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
-        with:
-          api-level: 34
-          target: google_apis
-          arch: x86_64
-          profile: pixel_6
-          # The default Pixel userdata partition needs >7 GB; hosted runners
-          # can have <6 GB left after Gradle/SDK installation. Fixtures are tiny.
-          disk-size: 2048M
-          emulator-boot-timeout: 300
-          working-directory: apps/homesync-android
-          script: |
-            adb reverse tcp:18083 tcp:18083
-            python3 ../../scripts/android-network-ready.py
-            adb shell dumpsys battery unplug
-            adb shell dumpsys battery set status 3
-            adb shell dumpsys battery set level 100
-            gradle --no-daemon --console=plain :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.homeFixture=disposable -Pandroid.testInstrumentationRunnerArguments.class=com.homeecosystems.homesync.BackupJourneyTest
-            curl -fsS http://127.0.0.1:18083/__fixture__/verify
-            mkdir -p "$RUNNER_TEMP/homesync-proof"
-            adb pull /data/local/tmp/homesync-backup-proof.png "$RUNNER_TEMP/homesync-proof/backup.png"
-            cp -R app/build/reports/androidTests "$RUNNER_TEMP/homesync-proof/full-access-reports"
-            # UTP removes its APKs after the first run. Install without -g so
-            # the second journey must answer real runtime permission dialogs.
-            adb install -t app/build/outputs/apk/debug/app-debug.apk
-            adb install -t app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-            bash -o pipefail -c 'adb shell am instrument -w -e homeFixture disposable -e class com.homeecosystems.homesync.PermissionDeniedJourneyTest com.homeecosystems.homesync.test/androidx.test.runner.AndroidJUnitRunner | tee "$RUNNER_TEMP/homesync-proof/permission-instrumentation.txt"'
-            adb logcat -d -s System.out:I > "$RUNNER_TEMP/homesync-proof/permission-logcat.txt"
-            if adb shell test -f /data/local/tmp/homesync-launcher-anr.png; then adb pull /data/local/tmp/homesync-launcher-anr.png "$RUNNER_TEMP/homesync-proof/launcher-anr.png"; fi
-            adb pull /data/local/tmp/homesync-permission-missing.png "$RUNNER_TEMP/homesync-proof/permission-missing.png" || true
-            grep -Eq '^OK \(1 test\)' "$RUNNER_TEMP/homesync-proof/permission-instrumentation.txt"
-            curl -fsS http://127.0.0.1:18083/__fixture__/denied-verify
-            adb pull /data/local/tmp/homesync-permission-denied.png "$RUNNER_TEMP/homesync-proof/permission-denied.png"
-            adb pull /data/local/tmp/homesync-permission-recovered.png "$RUNNER_TEMP/homesync-proof/permission-recovered.png"
-            # Keep prompt recovery above and exercise permanent denial separately.
-            adb uninstall com.homeecosystems.homesync.test
-            adb uninstall com.homeecosystems.homesync
-            adb install -t app/build/outputs/apk/debug/app-debug.apk
-            adb install -t app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-            bash -o pipefail -c 'adb shell am instrument -w -e homeFixture disposable -e permissionRecovery settings -e class com.homeecosystems.homesync.PermissionDeniedJourneyTest com.homeecosystems.homesync.test/androidx.test.runner.AndroidJUnitRunner | tee "$RUNNER_TEMP/homesync-proof/settings-instrumentation.txt"'
-            adb logcat -d -s System.out:I > "$RUNNER_TEMP/homesync-proof/settings-logcat.txt"
-            if adb shell test -f /data/local/tmp/homesync-launcher-anr.png; then adb pull /data/local/tmp/homesync-launcher-anr.png "$RUNNER_TEMP/homesync-proof/launcher-anr.png"; fi
-            grep -Eq '^OK \(1 test\)' "$RUNNER_TEMP/homesync-proof/settings-instrumentation.txt"
-            curl -fsS http://127.0.0.1:18083/__fixture__/settings-verify
-            adb pull /data/local/tmp/homesync-settings-suppressed.png "$RUNNER_TEMP/homesync-proof/settings-suppressed.png"
-            adb pull /data/local/tmp/homesync-settings-permissions.png "$RUNNER_TEMP/homesync-proof/settings-permissions.png"
-            adb pull /data/local/tmp/homesync-settings-recovered.png "$RUNNER_TEMP/homesync-proof/settings-recovered.png"
-            adb uninstall com.homeecosystems.homesync.test
-            adb uninstall com.homeecosystems.homesync
-            python3 ../../scripts/android-seed-picker-media.py > "$RUNNER_TEMP/homesync-proof/picker-seed.txt"
-            adb shell dumpsys battery unplug
-            adb shell dumpsys battery set status 3
-            adb install -t app/build/outputs/apk/debug/app-debug.apk
-            adb install -t app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-            bash -o pipefail -c 'adb shell am instrument -w -e homeFixture disposable -e unselectedMediaId "$(cat "$RUNNER_TEMP/homesync-proof/picker-unselected-id.txt")" -e class com.homeecosystems.homesync.SelectedPhotosJourneyTest com.homeecosystems.homesync.test/androidx.test.runner.AndroidJUnitRunner | tee "$RUNNER_TEMP/homesync-proof/picker-instrumentation.txt"'
-            adb logcat -d -s System.out:I > "$RUNNER_TEMP/homesync-proof/picker-logcat.txt"
-            if adb shell test -f /data/local/tmp/homesync-picker-failure.png; then adb pull /data/local/tmp/homesync-picker-failure.png "$RUNNER_TEMP/homesync-proof/picker-failure.png"; fi
-            grep -Eq '^OK \(1 test\)' "$RUNNER_TEMP/homesync-proof/picker-instrumentation.txt"
-            curl -fsS http://127.0.0.1:18083/__fixture__/picker-reselection-verify
-            adb pull /data/local/tmp/homesync-picker-selection.png "$RUNNER_TEMP/homesync-proof/picker-selection.png"
-            adb pull /data/local/tmp/homesync-picker-backup.png "$RUNNER_TEMP/homesync-proof/picker-backup.png"
-            adb pull /data/local/tmp/homesync-picker-reselection.png "$RUNNER_TEMP/homesync-proof/picker-reselection.png"
-            adb pull /data/local/tmp/homesync-picker-reselection-backup.png "$RUNNER_TEMP/homesync-proof/picker-reselection-backup.png"
-
-      - name: Save emulator evidence
-        if: always() && needs.scope.outputs.emulator != 'false'
-        uses: actions/upload-artifact@v7
-        with:
-          name: homesync-emulator-evidence
-          path: |
-            apps/homesync-android/app/build/reports/androidTests/
-            apps/homesync-android/app/build/outputs/androidTest-results/
-            ${{ runner.temp }}/homesync-proof/
-            ${{ runner.temp }}/homesync-fixture.log
-          retention-days: 7
-          if-no-files-found: ignore
-
-      - name: Stop disposable fixture
-        if: always() && needs.scope.outputs.emulator != 'false'
-        run: curl --max-time 10 -fsS -X POST http://127.0.0.1:18083/__fixture__/stop || true
+        run: gradle --no-daemon --console=plain :app:assembleDebug :app:testDebugUnitTest
 
       # Keeps the APK for 14 days so you can download it from the run's page.
       # Debug-signed, contains no secrets, not suitable for publishing.

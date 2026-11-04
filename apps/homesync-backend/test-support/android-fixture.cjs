@@ -30,15 +30,7 @@ async function main() {
       hashMatches: JSON.stringify(synced.map(file => file.content_hash).sort()) === JSON.stringify(expected.map(photo => crypto.createHash("sha256").update(photo).digest("hex")).sort()) };
   }
   let stopping = false;
-  let networkProbes = 0;
   const server = http.createServer((req, res) => {
-    // Android's real NetworkMonitor validates this disposable LAN without public DNS.
-    if (req.url === "/__fixture__/network-204" && req.method === "GET") {
-      networkProbes += 1; res.writeHead(204); res.end(); return;
-    }
-    if (req.url === "/__fixture__/network-status" && req.method === "GET") {
-      res.writeHead(200, { "Content-Type": "application/json" }); res.end(JSON.stringify({ probes: networkProbes })); return;
-    }
     if (["/__fixture__/picker-selected.png", "/__fixture__/picker-unselected.png", "/__fixture__/picker-reselected.png"].includes(req.url) && req.method === "GET") {
       res.writeHead(200, { "Content-Type": "image/png" });
       res.end(req.url.endsWith("picker-selected.png") ? PHOTO : req.url.endsWith("picker-reselected.png") ? RESELECTED_PHOTO : UNSELECTED_PHOTO); return;

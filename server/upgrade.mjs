@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
-import { readState, writePrivate, configure } from './setup.mjs';
+import { readState, writePrivate, configure, managedCompose } from './setup.mjs';
 import { runtimeCompose } from './runtime.mjs';
 
 const journalName = 'upgrade-state.json';
@@ -85,7 +85,7 @@ export function planUpgrade(source, target) {
   if (process.platform !== 'win32' && fs.statSync(path.join(source, 'configuration/installation.json')).uid !== fs.statSync(target).uid) {
     throw new Error('Extract the new bundle using the same OS account that owns the old installation configuration.');
   }
-  const expected = runtimeCompose(readJson(path.join(source, 'compose-template.json')), previous.version, state.access);
+  const expected = managedCompose(source, state, readJson(path.join(source, 'compose-template.json')), previous.version);
   expected.name = 'home-server-' + state.installationId;
   plainTree(path.join(source, 'compose.json'));
   if (!isDeepStrictEqual(readJson(path.join(source, 'compose.json')), expected)) {

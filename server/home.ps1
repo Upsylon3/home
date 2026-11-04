@@ -1,4 +1,4 @@
-param([ValidateSet('start','code','access','stop','status','logs','upgrade')][string]$Action = 'start', [string]$PreviousFolder)
+param([ValidateSet('start','code','access','stop','status','logs','upgrade','import')][string]$Action = 'start', [string]$PreviousFolder)
 $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
 if (-not (Get-Command docker -ErrorAction SilentlyContinue)) { throw 'Install Docker Desktop, start it with Linux containers, then run HOME again. See START-HERE.md.' }
@@ -18,8 +18,8 @@ if ($LASTEXITCODE -ne 0) {
     docker load -i images.tar
     if ($LASTEXITCODE -ne 0) { throw 'Could not load HOME images.' }
 }
-if ($Action -eq 'upgrade') {
-    if (-not $PreviousFolder) { throw 'Usage: home.cmd upgrade "C:\path\to\old-home-folder"' }
+if ($Action -in @('upgrade','import')) {
+    if (-not $PreviousFolder) { throw 'Pass the old HOME or source checkout folder after the action.' }
     $previous = (Resolve-Path -LiteralPath $PreviousFolder).Path.TrimEnd('\','/')
     $current = (Resolve-Path -LiteralPath $PSScriptRoot).Path.TrimEnd('\','/')
     # Resolve-Path does not canonicalize every junction ancestor on Windows.
@@ -41,6 +41,65 @@ if ($Action -eq 'upgrade') {
         throw 'Old and new folders must be separate and non-nested.'
     }
     if ($previous.Contains(',') -or $current.Contains(',')) { throw 'Installation paths must not contain commas.' }
+    if ($Action -eq 'import') {
+        $OutputEncoding = [Text.UTF8Encoding]::new($false)
+        [Console]::OutputEncoding = $OutputEncoding
+        $targetMount = @('--mount',"type=bind,source=$current,target=/bundle")
+        $sourceMount = @('--mount',"type=bind,source=$previous,target=/source,readonly")
+        $resolved = docker compose --project-directory $previous -f (Join-Path $previous 'docker-compose.yml') --profile '*' config --no-path-resolution --format json
+        if ($LASTEXITCODE -ne 0) { throw 'Could not resolve the source Compose configuration.' }
+        $project = ($resolved -join "`n") | docker run --rm -i @targetMount @sourceMount --entrypoint node $installerImage /bundle/setup/cli.mjs prepare-import
+        if ($LASTEXITCODE -ne 0) { throw 'Source import preflight failed. The original was not changed.' }
+        $resolved = $null
+        $project = ($project | Out-String).Trim()
+        if ($project -ne 'complete') {
+            if ($project -notmatch '^[a-z0-9][a-z0-9_-]*$') { throw 'Invalid source project.' }
+            $containers = @(docker ps -aq --filter "label=com.docker.compose.project=$project")
+            if ($LASTEXITCODE -ne 0 -or -not $containers.Count) { throw 'Keep source containers present; use stop rather than down before import.' }
+            foreach ($container in $containers) {
+                $configFiles = docker inspect --format '{{index .Config.Labels "com.docker.compose.project.config_files"}}' $container
+                if ($LASTEXITCODE -ne 0 -or $configFiles -ne (Join-Path $previous 'docker-compose.yml')) { throw 'Source containers use another checkout or Compose overrides.' }
+            }
+            $inspected = docker inspect @containers
+            if ($LASTEXITCODE -ne 0) { throw 'Could not inspect source containers.' }
+            ($inspected -join "`n") | docker run --rm -i @targetMount --entrypoint node $installerImage /bundle/setup/cli.mjs check-import-containers
+            if ($LASTEXITCODE -ne 0) { throw 'Source container settings or storage do not match.' }
+            $inspected = $null
+            $volumes = @(docker run --rm @targetMount --entrypoint node $installerImage /bundle/setup/cli.mjs import-mounts)
+            if ($LASTEXITCODE -ne 0) { throw 'Could not read the verified source volume plan.' }
+            $available = @(docker volume ls --format '{{.Name}}')
+            if ($LASTEXITCODE -ne 0) { throw 'Could not inspect source volumes.' }
+            $importArgs = @('run','--rm') + $targetMount + $sourceMount + @('--mount',"type=bind,source=$previous/backups,target=/import-source/backups,readonly")
+            foreach ($line in $volumes) {
+                $logical, $actual = $line -split '=', 2
+                if ($available -notcontains $actual) {
+                    if ($logical -in @('caddy_data','caddy_config')) { continue }
+                    throw 'A required source volume is missing; import refused.'
+                }
+                $metadata = docker volume inspect $actual
+                if ($LASTEXITCODE -ne 0) { throw 'Could not inspect a source volume.' }
+                ($metadata -join "`n") | docker run --rm -i @targetMount --entrypoint node $installerImage /bundle/setup/cli.mjs check-import-volume $logical
+                if ($LASTEXITCODE -ne 0) { throw 'A source volume has unexpected ownership or storage options.' }
+                $importArgs += @('--mount',"type=volume,source=$actual,target=/import-source/data/$logical,readonly,volume-nocopy")
+            }
+            Write-Host 'Stopping source HOME and verifying that no other containers use its volumes.'
+            docker compose --project-name $project --project-directory $previous -f (Join-Path $previous 'docker-compose.yml') --profile '*' stop
+            if ($LASTEXITCODE -ne 0) { throw 'Could not stop source HOME.' }
+            $running = docker ps -q --filter "label=com.docker.compose.project=$project"
+            if ($LASTEXITCODE -ne 0 -or $running) { throw 'Source containers are still running; import refused.' }
+            foreach ($line in $volumes) {
+                $logical, $actual = $line -split '=', 2
+                $writers = docker ps -q --filter "volume=$actual"
+                if ($LASTEXITCODE -ne 0 -or $writers) { throw 'Another container may be using source storage; import refused.' }
+            }
+            & docker @importArgs --entrypoint node $installerImage /bundle/setup/cli.mjs import-source --confirm-stopped
+            if ($LASTEXITCODE -ne 0) { throw 'Source import did not complete. Keep both copies and rerun the same import action.' }
+        }
+        docker compose -f compose.json up -d --wait --wait-timeout 180 --remove-orphans
+        if ($LASTEXITCODE -ne 0) { throw 'Import copied successfully but startup failed. Preserve the original and follow START-HERE.md recovery.' }
+        Write-Host 'HOME imported. Sign in locally with your existing account. Keep source volumes offline for recovery.'
+        exit 0
+    }
     $mounts = @('--mount',"type=bind,source=$current,target=/bundle",'--mount',"type=bind,source=$previous,target=/previous,readonly")
     $project = & docker run --rm @mounts --entrypoint node $installerImage /bundle/setup/cli.mjs check-upgrade
     if ($LASTEXITCODE -ne 0) { throw 'Upgrade preflight failed. Original data was not changed.' }

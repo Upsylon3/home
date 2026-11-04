@@ -15,7 +15,7 @@ servers or combine their storage.
    Apple silicon or an ARM Linux machine. Windows downloads target x64.
 3. Extract the complete archive into a private folder on the disk where you
    want HOME's data. Keep its contents together; avoid commas in its path.
-   This is a new installation, not an importer for an existing Compose server.
+   For an existing source Compose server, use the import section below.
 
 Images are included, so HOME itself needs no internet connection after Docker
 and this download are installed. Initial Docker installation may need internet.
@@ -59,6 +59,7 @@ requires SSH to be enabled on the server; HOME does not enable it for you.
 | `logs` | Inspect service errors; redact private information before sharing |
 | `stop` | Stop HOME, keeping its data |
 | `upgrade OLD-FOLDER` | Transfer a stopped managed installation into this new bundle |
+| `import SOURCE-FOLDER` | Copy an existing source Compose installation into this bundle |
 
 Containers restart when Docker starts unless stopped explicitly. On Windows
 and macOS, configure Docker Desktop to start at sign-in if desired. A sleeping
@@ -143,7 +144,7 @@ download to a different empty folder. Do not delete an unknown data folder.
 
 The upgrade action is available in bundles built after 1.7.0. Run it from the
 **new download**, not from the old 1.7.0 launcher. Source-based Compose installations
-need a separate importer, which is not available yet.
+use the separate import action below.
 
 1. Download a compatible stable release for the same processor. Extract it into
    a different, non-nested private folder. Do not extract over the old HOME,
@@ -186,6 +187,53 @@ copy and can be restarted after ensuring the new project is stopped.
 To uninstall, stop HOME first; deleting data is a separate deliberate decision.
 Never use `docker compose down -v` as an upgrade. If image cleanup removes a
 needed image, run `docker load -i images.tar` in the active bundle folder.
+
+## Import an existing source installation
+
+Use a new bundle containing the import action (the original 1.7.0 download does
+not contain it). This supports a complete standard source Compose installation
+from 1.7.0 onward, within the destination release's declared compatibility range.
+Custom Compose overrides, external volumes, partial stacks and unusual service-secret
+quoting need a separate migration. Ordinary account passwords are not restricted.
+
+1. Keep the original checkout, its `homecore/.env`, Docker volumes and backups.
+   Containers must still exist so their settings and storage can be verified:
+   use `docker compose stop`, not `down`, if stopping beforehand. Do not edit
+   settings or start other writers during import.
+2. Extract the new bundle into a separate, non-nested private folder. Do not
+   start a fresh HOME there first. Allow space for a full data/backup copy.
+3. Run from that new folder:
+
+~~~text
+Windows:       home.cmd import "C:\path\to\home-source-checkout"
+Linux/macOS:   ./home.sh import "/path/to/home-source-checkout"
+~~~
+
+The launcher checks the existing containers, their effective settings and the
+identity/ownership of every required volume. It stops the source project and
+refuses to copy while another container uses that storage. The copy reads the
+original volumes read-only, verifies file bytes and retains the original volumes.
+No accounts are recreated and service signing credentials are not rotated.
+
+Sign in at **http://localhost:8080** with your existing account. Accounts,
+sessions, files, notes/tasks, encrypted Vault records, certificates and backups
+are retained. Access starts locally; verify the imported HOME, then use `access`
+to enable LAN or public HTTPS again. Never run the old and new installations
+together. The new operational installation ID is not a new account identity.
+
+`configuration/core.env` retains shared service credentials; protected
+`configuration/source-settings.json` retains the other effective service settings.
+Keep both with installation state in configuration backups. Before completion,
+`source-import-plan.json` also contains credentials: keep the entire folder private
+and never attach these files to an issue. Completion removes its credential payload.
+
+On failure, preserve the original and destination and rerun the same import
+action. Incomplete copies refuse to start; completed retries do not overwrite
+later writes. A changed source configuration requires a fresh destination.
+Once new services have started, the old volumes are a pre-import snapshot:
+follow the offline restore/revocation procedures in the repository deployment
+guide before returning to them, and preserve any new writes. No automatic
+downgrade/rollback or deletion of old volumes is performed.
 
 ## Components
 

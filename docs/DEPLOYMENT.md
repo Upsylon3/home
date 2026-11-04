@@ -24,8 +24,16 @@ for recovery. An upgrade journal blocks startup during partial publication;
 retries resume safely and completed transfers never replay old data over writes.
 This trades disk space/downtime for an intact recovery source. It is a continuous
 stopped cutover, not permission to roll back to an older snapshot afterward.
-Use the restore/revocation steps below for that case. Source Compose imports,
-custom overrides and automatic downgrades remain unsupported.
+Use the restore/revocation steps below for that case. Source Compose imports use the new bundle's `import SOURCE-FOLDER` action.
+The importer resolves the complete standard Compose topology privately, checks
+effective container settings and named-volume ownership, stops all source writers,
+and presents those volumes read-only to the verified-copy engine. Credentials
+and per-service settings are retained in protected configuration; the imported
+installation starts on loopback and gets an operational UUID without changing
+Core account IDs. Source settings remain required during subsequent bundle upgrades.
+Original volumes stay offline for recovery, not routine parallel use. Partial
+stacks, custom overrides/external volumes, unusual service-secret encodings and
+automatic downgrades remain unsupported.
 
 Managed Core requires a one-use 128-bit setup code expiring in 15 minutes.
 Only its SHA-256 hash is retained; consumption and account creation are atomic

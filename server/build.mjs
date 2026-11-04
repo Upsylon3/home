@@ -41,7 +41,7 @@ run('docker', ['compose', '-f', buildFile, '--profile', 'public', 'pull', 'tls']
 run('docker', ['image', 'tag', template.services.tls.image, runtime.services.tls.image]);
 const images = Object.values(runtime.services).map(service => service.image);
 run('docker', ['image', 'save', '-o', path.join(bundle, 'images.tar'), ...images]);
-for (const file of ['runtime.mjs', 'setup.mjs', 'upgrade.mjs', 'cli.mjs']) fs.copyFileSync(path.join(repo, 'server', file), path.join(bundle, 'setup', file));
+for (const file of ['runtime.mjs', 'setup.mjs', 'upgrade.mjs', 'source-import.mjs', 'cli.mjs']) fs.copyFileSync(path.join(repo, 'server', file), path.join(bundle, 'setup', file));
 for (const file of ['home.sh', 'home.ps1', 'home.cmd', 'START-HERE.md']) fs.copyFileSync(path.join(repo, 'server', file), path.join(bundle, file));
 fs.chmodSync(path.join(bundle, 'home.sh'), 0o755);
 fs.copyFileSync(path.join(repo, 'LICENSE'), path.join(bundle, 'LICENSE'));
@@ -49,7 +49,8 @@ fs.mkdirSync(path.join(bundle, 'configuration'));
 fs.copyFileSync(path.join(repo, 'gateway', 'Caddyfile'), path.join(bundle, 'configuration', 'Caddyfile'));
 fs.writeFileSync(path.join(bundle, 'compose-template.json'), JSON.stringify(template, null, 2));
 fs.writeFileSync(path.join(bundle, 'bundle.json'), JSON.stringify({ schema: 1, version, arch, images,
-  upgrade: { schema: 1, minimumSourceVersion: '1.7.0' } }, null, 2));
+  upgrade: { schema: 1, minimumSourceVersion: '1.7.0' },
+  sourceImport: { schema: 1, minimumSourceVersion: '1.7.0' } }, null, 2));
 fs.writeFileSync(path.join(bundle, 'installer-image.txt'), runtime.services.homecore.image + '\n');
 const targets = arch === 'x64' ? ['linux-x64', 'macos-x64', 'windows-x64'] : ['linux-arm64', 'macos-arm64'];
 const sums = [];

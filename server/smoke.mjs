@@ -6,6 +6,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { initialize, issueCode } from './setup.mjs';
 import { runtimeCompose } from './runtime.mjs';
+import { sourceImportSmoke } from './source-import-smoke.mjs';
 if (process.env.GITHUB_ACTIONS !== 'true' || process.platform !== 'linux') throw new Error('Run this smoke check only on a disposable Linux GitHub runner.');
 function docker(args, capture = false) {
   const result = spawnSync('docker', args, { stdio: capture ? ['ignore', 'pipe', 'inherit'] : 'inherit', encoding: 'utf8' });
@@ -86,7 +87,7 @@ try {
   fs.writeFileSync(path.join(upgradedRoot, 'bundle.json'), JSON.stringify({ schema: 1, version: nextVersion, arch: process.arch,
     upgrade: { schema: 1, minimumSourceVersion: '1.7.0' } }));
   fs.mkdirSync(path.join(upgradedRoot, 'setup'));
-  for (const name of ['setup.mjs', 'runtime.mjs', 'upgrade.mjs', 'cli.mjs']) {
+  for (const name of ['setup.mjs', 'runtime.mjs', 'upgrade.mjs', 'source-import.mjs', 'cli.mjs']) {
     fs.copyFileSync(bundle ? path.join(bundle, 'setup', name) : path.join('server', name), path.join(upgradedRoot, 'setup', name));
   }
   const transfer = () => docker(['run', '--rm',
@@ -121,3 +122,4 @@ try {
   }
   compose(['down']);
 }
+if (bundle) await sourceImportSmoke(path.resolve(bundle));

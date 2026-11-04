@@ -90,7 +90,9 @@ forwarded to the internet. Details: [deployment](DEPLOYMENT.md) and
 - Runtime bundles contain prebuilt services and built web UIs, with persistent
   host folders and one-time registration codes. They default to loopback access.
   The public portal remembers addresses only; it is not an identity provider.
-  Bundle upgrades preserve an offline recovery copy; source import and multi-server trust remain unfinished.
+  Bundle upgrades and standard source imports retain an offline recovery copy.
+  Imports preserve Core identity and settings, then start locally. Multi-server
+  trust remains unfinished.
 
 Use [API.md](API.md) for contracts, [DEPLOYMENT.md](DEPLOYMENT.md) for operations
 and [ROADMAP.md](ROADMAP.md) for remaining work.

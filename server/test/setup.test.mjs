@@ -27,6 +27,8 @@ test('setup persists credentials and files across repeat starts and access chang
     assert.equal(initialize(root), true);
     const env = fs.readFileSync(path.join(root, 'configuration/core.env'), 'utf8');
     const state = readState(root);
+    const project = JSON.parse(fs.readFileSync(path.join(root, 'compose.json'))).name;
+    assert.equal(project, 'home-server-' + state.installationId);
     assert.match(env, /JWT_SECRET=[a-f0-9]{64}/);
     assert.match(env, /HOMECORE_INTERNAL_SECRET=[a-f0-9]{64}/);
     const userFile = path.join(root, 'data/homecore_data/keep.txt');
@@ -35,6 +37,7 @@ test('setup persists credentials and files across repeat starts and access chang
     assert.equal(initialize(root), false);
     assert.equal(readState(root).access.mode, 'public');
     assert.equal(readState(root).installationId, state.installationId);
+    assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'compose.json'))).name, project);
     assert.equal(fs.readFileSync(path.join(root, 'configuration/core.env'), 'utf8'), env);
     assert.equal(fs.readFileSync(userFile, 'utf8'), 'existing data');
     const code = issueCode(root);
@@ -44,6 +47,15 @@ test('setup persists credentials and files across repeat starts and access chang
     assert.equal(JSON.parse(record).expiresAt - JSON.parse(record).issuedAt, 900_000);
     assert.notEqual(issueCode(root), code);
   } finally { cleanup(); }
+});
+
+test('separate installations cannot reuse each other\'s container project', () => {
+  const first = fixture(), second = fixture();
+  try {
+    initialize(first.root); initialize(second.root);
+    const project = root => JSON.parse(fs.readFileSync(path.join(root, 'compose.json'))).name;
+    assert.notEqual(project(first.root), project(second.root));
+  } finally { first.cleanup(); second.cleanup(); }
 });
 
 test('setup refuses unidentified data and missing or partial credentials', () => {

@@ -20,7 +20,9 @@ network=''
 if [ "$action" = access ]; then
   # An old public listener must stop even when the new profile is disabled.
   docker compose -f compose.json stop tls
-  network='home-server_default'
+  core=$(docker compose -f compose.json ps -q homecore)
+  [ -n "$core" ] || { echo 'Start HOME before changing access.' >&2; exit 1; }
+  network=$(docker inspect --format '{{range $name, $value := .NetworkSettings.Networks}}{{$name}}{{end}}' "$core")
 fi
 if [ -n "$network" ]; then
   docker run --rm -it --user "$(id -u):$(id -g)" --network "$network" --mount "type=bind,source=$(pwd),target=/bundle" --entrypoint node "$image" /bundle/setup/cli.mjs "$action"

@@ -16,7 +16,7 @@ export function writePrivate(file, value) {
 
 export function readState(root) {
   const state = JSON.parse(fs.readFileSync(path.join(root, 'configuration', 'installation.json'), 'utf8'));
-  if (state.schema !== 1 || typeof state.installationId !== 'string' || !state.access) throw new Error('Unrecognized installation state.');
+  if (state.schema !== 1 || !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(state.installationId) || !state.access) throw new Error('Unrecognized installation state.');
   return state;
 }
 
@@ -25,6 +25,8 @@ export function configure(root, access) {
   const manifest = JSON.parse(fs.readFileSync(path.join(root, 'bundle.json'), 'utf8'));
   const template = JSON.parse(fs.readFileSync(path.join(root, 'compose-template.json'), 'utf8'));
   const compose = runtimeCompose(template, manifest.version, access);
+  // A second extraction must not replace another installation's containers.
+  compose.name = 'home-server-' + state.installationId;
   // Write operational configuration before recording the chosen access mode.
   writePrivate(path.join(root, 'compose.json'), JSON.stringify(compose, null, 2) + '\n');
   writePrivate(path.join(root, 'configuration', 'installation.json'), JSON.stringify({ ...state, access }, null, 2) + '\n');

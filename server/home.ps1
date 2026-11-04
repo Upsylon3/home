@@ -22,7 +22,11 @@ $runArgs = @('run','--rm','-it')
 if ($Action -eq 'access') {
     docker compose -f compose.json stop tls
     if ($LASTEXITCODE -ne 0) { throw 'Start HOME before changing access.' }
-    $runArgs += @('--network','home-server_default')
+    $coreContainer = docker compose -f compose.json ps -q homecore
+    if ($LASTEXITCODE -ne 0 -or -not $coreContainer) { throw 'Start HOME before changing access.' }
+    $homeNetwork = docker inspect --format '{{range $name, $value := .NetworkSettings.Networks}}{{$name}}{{end}}' $coreContainer
+    if ($LASTEXITCODE -ne 0 -or -not $homeNetwork) { throw 'Could not find this HOME network.' }
+    $runArgs += @('--network',$homeNetwork.Trim())
 }
 $runArgs += @('--mount',"type=bind,source=$PSScriptRoot,target=/bundle",'--entrypoint','node',$installerImage,'/bundle/setup/cli.mjs',$Action)
 & docker @runArgs

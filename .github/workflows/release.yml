@@ -52,28 +52,19 @@ jobs:
             exit 1
           }
           node scripts/validate-release.mjs "$RELEASE_TAG" . > "$RUNNER_TEMP/release-notes.md"
-          RELEASE_SHA="$(git rev-parse "$RELEASE_TAG^{commit}")"
-          CI_RUNS="$(gh run list --workflow ci.yml --branch main --commit "$RELEASE_SHA" --json status,conclusion,createdAt --limit 20)"
-          node -e 'const runs=JSON.parse(process.argv[1]); const latest=runs[0]; if (!latest || latest.status !== "completed" || latest.conclusion !== "success") { console.error("The latest full CI run (including Docker) for this exact main commit must have succeeded before release."); process.exit(1); }' "$CI_RUNS"
 
-      - name: Install exact locked dependencies
-        run: npm ci
-
-      - name: Run all workspace tests
-        run: npm test
-
-      - name: Build every frontend
-        run: npm run build --workspaces --if-present
-
-      - name: Install nginx for the gateway smoke test
-        run: sudo apt-get update && sudo apt-get install -y nginx-light
-
-      - name: Test the gateway configuration
-        run: bash gateway/test/gateway-smoke.sh
+  checks:
+    name: Full regression against the validated tag
+    needs: validate
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci.yml
+    with:
+      source_ref: ${{ github.event.inputs.tag || github.ref }}
 
   prepare:
     name: Prepare a draft release
-    needs: validate
+    needs: checks
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}

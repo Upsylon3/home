@@ -8,10 +8,12 @@ release. The version authority and increment rules are in
 
 1. Merge release-bound pull requests into `main`. Do not release from
    an unreviewed feature branch.
-2. Manually dispatch the full `CI` workflow on main (ordinary merges do not repeat PR checks). Wait for it to pass on the exact commit you intend
-   to tag. If `apps/homesync-android/` changed, also wait for the
-   corresponding `Android` workflow to pass.
-3. Update the version in the **root** `package.json` only.
+2. Wait for all required PR checks on the exact release-preparation source to
+   pass and merge it. The tag workflow independently calls the complete reusable
+   CI gate against that tag before building or publishing downloads. If
+   `apps/homesync-android/` changed, also require its APK/JVM checks.
+3. Update the version in the **root** `package.json` and matching root
+   `package-lock.json` metadata; do not bump individual workspaces.
 4. Move the completed entries from `[Unreleased]` in `CHANGELOG.md`
    into a new version heading matching the root version:
    `## [X.Y.Z] — Short release summary`.
@@ -27,10 +29,12 @@ release. The version authority and increment rules are in
    bash gateway/test/gateway-smoke.sh
    ```
 
-The release workflow repeats the install, test, frontend-build and
-gateway-smoke checks against the tagged source. Before publishing, it
-also requires the latest full `CI` run for that exact commit on `main`
-to have succeeded; this includes the Docker build/stack smoke test.
+The release workflow first validates tag annotation, main ancestry and version
+metadata, then calls the complete reusable `CI` workflow with the explicit tag
+ref. That input forces the full test/build, Windows, gateway, backup, audit and
+Docker/package gate even for manual dispatch from a different branch. It does
+not depend on a separately dispatched main run or repeat a weaker subset.
+A failure prevents draft creation, package publication and final release.
 
 ## 2. Create the annotated tag
 

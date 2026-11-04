@@ -7,6 +7,8 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 
 ## [Unreleased]
 
+## [1.7.0] — Installable HOME server · 2026-11-04
+
 ### Added
 
 - Installable HOME server runtime packaging for Linux x64/arm64, Windows x64

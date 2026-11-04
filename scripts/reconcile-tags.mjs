@@ -82,14 +82,14 @@ function runSelfTest() {
   console.log("Git ancestry checks passed (true and false cases).");
 }
 
-function requireVersionConsistency() {
+function requireVersionConsistency(version = VERSION) {
   const pkg = JSON.parse(readFileSync("package.json", "utf8"));
   const lock = JSON.parse(readFileSync("package-lock.json", "utf8"));
-  if (pkg.version !== VERSION) fail(`root package.json is ${pkg.version}, expected ${VERSION}`);
-  if (lock.version !== VERSION || lock.packages?.[""]?.version !== VERSION) {
+  if (pkg.version !== version) fail(`root package.json is ${pkg.version}, expected ${version}`);
+  if (lock.version !== version || lock.packages?.[""]?.version !== version) {
     fail("root package-lock.json version fields do not match package.json");
   }
-  execFileSync("node", ["scripts/validate-release.mjs", RELEASE_TAG, "."], { stdio: "ignore" });
+  execFileSync("node", ["scripts/validate-release.mjs", `v${version}`, "."], { stdio: "ignore" });
 }
 
 const pkg = JSON.parse(readFileSync("package.json", "utf8"));
@@ -98,7 +98,7 @@ if (process.argv[2] === "--self-test") {
   process.exit(0);
 }
 if (process.argv[2] === "--verify-only") {
-  requireVersionConsistency();
+  requireVersionConsistency(pkg.version);
   console.log("Release baseline, package lock and changelog metadata are consistent.");
   process.exit(0);
 }

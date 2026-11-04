@@ -39,6 +39,7 @@ jobs:
 
       - name: Validate the current release metadata
         run: |
+          node --test scripts/test/release-metadata.test.mjs
           VERSION="$(node -p "require('./package.json').version")"
           node scripts/validate-release.mjs "v$VERSION" . > /dev/null
           node scripts/reconcile-tags.mjs --verify-only

@@ -2,7 +2,7 @@
 
 HOME uses **one Semantic Versioning number for the whole ecosystem**.
 The root `package.json` version is the sole release authority. The
-normalized current release baseline is **`1.6.2`**.
+current ecosystem release is **`1.7.0`** (normalized historical baseline: `1.6.2`).
 
 ## The authoritative version
 

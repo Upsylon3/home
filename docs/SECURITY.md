@@ -2,7 +2,7 @@
 
 HOME is intended for user-controlled personal/family installations.
 **HomeVault has not received independent security/cryptography review. Do not
-store real passwords or secrets in it yet.** [Review handoff](HOMEVAULT_REVIEW.md).
+store real passwords or secrets in it yet.** [Review handoff](VALIDATION.md#vault-review).
 
 ## Access and authentication
 
@@ -91,8 +91,8 @@ Important boundaries:
 Vault keys are kept in tab memory, not persistent web storage. HomeAI and
 server-side search must never receive decrypted Vault content. Review must
 address format validation, resource bounds, key lifecycle, async races and
-the limits above before real use. [The review packet](HOMEVAULT_REVIEW.md)
-contains the detailed scope; [the optional benchmark](HOMEVAULT_BENCHMARK.md)
+the limits above before real use. [The review packet](VALIDATION.md#vault-review)
+contains the detailed scope; [the optional benchmark](VALIDATION.md#vault-performance)
 measures client performance, not security.
 
 ## Internal services and optional automation
@@ -103,9 +103,9 @@ prove a trusted caller. Monitor has no Docker socket, gets read-only backup
 access, and is not given the JWT signing key.
 
 Bridge search forwards only the live user's token to configured Notes/Tasks
-APIs and retains no search index or browser token. [Search boundary](decisions/001-homebridge-search.md).
+APIs and retains no search index or browser token. [Search boundary](ARCHITECTURE.md#cross-app-search).
 
-[Monitor follow-up automation](decisions/002-scheduled-monitor-followup.md) is
+[Monitor follow-up automation](#automation-contract) is
 off by default and requires operator setup plus owner consent:
 
 - Core issues hash-only 256-bit, action/audience-bound 30-day capabilities.
@@ -127,7 +127,9 @@ off by default and requires operator setup plus owner consent:
   cross-service exactly-once recovery is not guaranteed. Never prune receipts
   without a replacement duplicate-prevention design.
 
-[Task reminders](decisions/006-hometasks-reminders.md) use a separate external
+## Task reminders
+
+Task reminders use a separate external
 32-byte producer key mounted only into Core/Tasks. Browser tokens and the
 general internal secret cannot authenticate that route. Missing/invalid keys
 fail closed. Core bounds enabled-user notices to 100/user and 1000 globally
@@ -137,8 +139,89 @@ pending work but cannot retract in-flight/delivered notices. Restore both
 services consistently; exact-time and cross-service restore delivery are not
 guaranteed. Keep keys separate and follow [operational restore steps](DEPLOYMENT.md).
 
+A reminder is one explicit UTC instant per task occurrence, at most 366 days
+ahead. Due dates keep their calendar semantics. Completing clears the reminder;
+reopening/repeating does not rearm it. Editing a time gets a new delivery UUID;
+workers acknowledge only their original generation. Core retains delivery receipts
+and refuses rebinding a UUID to another owner/task; the first accepted title wins.
+A compromised producer key can still spam bounded notices, so protect it separately.
+
 ## Reporting a vulnerability
 
 Use private GitHub vulnerability reporting if available, or contact the
 maintainer privately. Do not post secrets, personal data or exploit details
 in a public issue.
+
+## Administrator Vault reset
+
+Home Settings calls Vault directly using the administrator's normal session.
+Vault checks live Core authority on every destructive request, without the normal
+five-second positive cache. Status returns only existence/current vault ID.
+Reset requires that exact ID and typed `DELETE <account id>` confirmation:
+a delayed request must not delete a replacement vault.
+
+Deletion and a local bounded audit record commit in one Vault transaction.
+Reset deletes the current envelope, active items and Trash; it cannot decrypt
+secrets, revoke unlocked copies or erase backups/exports. The audit covers
+successful resets through this route, not all destructive paths, and is not
+tamper-resistant against the operator. Restoring a database can restore old IDs.
+Deploy the backend before its controls; an absent/older backend leaves reset
+unavailable without breaking other Settings actions.
+
+## Automation contract
+
+Monitor follow-up is one opt-in integration, not a generic scheduler. Only an
+enabled administrator can enroll their own account. Explain the source,
+destination, five-minute polling, 15-minute qualification, 20-task daily cap,
+30-day expiry and manual task management before consent. Normal browser sign-out
+does not cancel an enrolled grant; Disable, password change, Sign out everywhere,
+role loss, account disable and expiry do. Renewal requires a fresh owner action
+and does not reset receipts or daily limits.
+
+Core issues two distinct opaque credentials under one grant: Monitor
+`monitor.alerts.read` and Tasks `tasks.automation.create-once`. Each is restricted
+to its audience/action and subject; neither is a session, pending-2FA token or
+general internal secret. Keep the two route verifiers separate. Use Authorization
+headers, never URLs, and introspect live Core/registry authority before each action.
+Issuance stays private; neither browser nor Bridge receives Core's signing/internal key.
+
+Monitor commits incident identity, alert state, freshness and notification intent
+atomically. Unknown/missing readings preserve the incident identity and never
+mean resolved. Pin its instance UUID at enrollment; a changed/restored instance
+pauses the rule for owner confirmation.
+
+Qualification requires four distinct critical evaluations spanning at least
+15 minutes, with no gap above ten minutes. Evaluations must be at most two minutes
+old and no more than 30 seconds in the future. Warnings, unknown/disappeared
+conditions, stale/duplicate clocks, disabled apps and worker restart reset
+incomplete qualification. Before a write/retry, revalidate the fresh source and
+grant; positive resolution cancels further attempts, including uncertain ones.
+
+The task is a bounded personal inbox summary with the fixed `/monitor/` link,
+not raw diagnostics, assignment or automatic escalation. Completing/deleting it
+acknowledges that incident; recovery never edits/reopens/deletes it.
+The deterministic create-once key includes integration, subject, Monitor instance
+and incident UUID, not grant, title or retry time. Persist the exact payload/key
+before first delivery and reuse both on retry. A changed replay conflicts; an
+identical replay returns the original receipt, including after response loss.
+Manual deletion retires the receipt instead of allowing recreation.
+
+Bridge persists encrypted credentials and a disabled rule before enabling.
+Failed enrollment revokes the grant. Disable pauses dispatch before I/O and
+persists pending revocation across restart; Core's owner grant controls remain
+available when Bridge is down. Use one leased cycle per rule, four global action
+slots, bounded requests/responses and fixed origins without redirects. Retry
+timeouts/5xx at the next tick after revalidation, honoring bounded Retry-After;
+validation/conflict failures need visible attention. Discard delivered payloads,
+retain bounded receipts, never raw snapshots.
+
+A compromised running Bridge can still read its permitted alert projection and
+create up to 20 arbitrary bounded summaries per opted-in subject/integration/day.
+Tasks enforces the capability and quota; it cannot attest that the summary
+actually came from Monitor. Encryption at rest does not fix a compromised worker.
+
+Restore/rollback must revoke Core grants, rotate Monitor identity and pause
+Bridge offline before traffic, then require fresh consent. Keep Tasks receipts
+and counts with its database; an older snapshot can lose deduplication history.
+Never drop receipts or user tasks as automatic rollback/cleanup. Search and
+Tier 1 apps remain usable with automation absent.

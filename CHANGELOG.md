@@ -8,6 +8,8 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 ## [Unreleased]
 
 ### Changed
+- Consolidated documentation into four root documents and six flat guides,
+  folding current decision details and review evidence into their owning guides.
 - Simplified project guides, removed completed roadmap steps and separated open
   validation from feature work. Setup, recovery and security requirements remain.
 

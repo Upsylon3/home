@@ -7,7 +7,7 @@ import { initialize, configure, readState } from '../setup.mjs';
 import { planUpgrade, upgradeBundle } from '../upgrade.mjs';
 
 function fixture(t) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'home-upgrade-'));
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'home-upgrade-')));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const source = path.join(root, 'old bundle'), target = path.join(root, 'new bundle');
   const template = {

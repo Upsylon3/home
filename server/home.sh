@@ -29,7 +29,9 @@ if [ "$action" = upgrade ]; then
     containers=$(docker ps -aq --filter "label=com.docker.compose.project=$project")
     for container in $containers; do
       config_files=$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project.config_files"}}' "$container")
-      [ "$config_files" = "$previous/compose.json" ] || { echo 'This project uses another folder or Compose overrides; migration refused.' >&2; exit 1; }
+      case "$config_files" in *,*|'') echo 'Compose overrides cannot be migrated automatically.' >&2; exit 1 ;; esac
+      config_dir=$(CDPATH= cd -P -- "$(dirname -- "$config_files")" && pwd -P)
+      [ "$config_dir" = "$previous" ] && [ "$(basename -- "$config_files")" = compose.json ] || { echo 'This project uses another folder or Compose overrides; migration refused.' >&2; exit 1; }
     done
     echo 'Stopping the old HOME (including optional services) before making a verified copy. Keep both folders private.'
     docker compose --project-name "$project" -f "$previous/compose.json" --profile '*' stop

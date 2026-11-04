@@ -6,7 +6,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 test('Unix launcher stops and verifies writers before copying, with safe failure exits', { skip: process.platform === 'win32' }, t => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'home-unix-launcher-'));
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'home-unix-launcher-')));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const previous = path.join(root, 'old folder'), current = path.join(root, 'new folder'), bin = path.join(root, 'bin');
   for (const dir of [previous, current, bin]) fs.mkdirSync(dir);
@@ -57,7 +57,7 @@ if (args.includes('upgrade') && scenario === 'copy-fail') process.exit(1);
 // No real Docker daemon is contacted: these exercise the actual host launcher's
 // stop/copy/start ordering and failure exits. Real storage/API proof is in smoke.mjs.
 test('Windows launcher never copies from running writers or starts after a failed copy', t => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'home-launcher-'));
+  const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'home-launcher-')));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const previous = path.join(root, 'old folder'), current = path.join(root, 'new folder');
   fs.mkdirSync(previous); fs.mkdirSync(current);

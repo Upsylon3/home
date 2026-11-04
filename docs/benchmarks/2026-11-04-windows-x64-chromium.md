@@ -1,3 +1,8 @@
+# Raw desktop benchmark report
+
+The unmodified exported JSON is retained below. This is a desktop headless observation, not minimum-device certification.
+
+```json
 {
   "schema": 1,
   "source": {
@@ -130,3 +135,4 @@
     }
   ]
 }
+```

@@ -5,7 +5,7 @@ security certifications. See [the protocol](../HOMEVAULT_BENCHMARK.md).
 
 ## 2026-11-04 — local Windows x64, headless Chromium
 
-[Raw JSON](2026-11-04-windows-x64-chromium.json) records source revision
+[Raw JSON report](2026-11-04-windows-x64-chromium.md) records source revision
 `7d9f944114960ce31a55cec1375c1fad4cc828f5`, with a clean source tree when
 measured. Host-reported hardware: Intel Core i7-4790K, eight logical processors,
 16 GiB RAM. Chromium 145.0.7632.6 ran headlessly without CPU throttling.

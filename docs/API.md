@@ -535,3 +535,15 @@ Every backend exposes an unauthenticated `GET .../health` returning
 `{status: "ok", homecoreUrl: "..."}` (HomeCloud's backend also reports
 its own storage-write check). Use these for container healthchecks or
 uptime monitoring — see each service's `docker-compose.yml` entry.
+
+## Managed installation registration
+
+`GET /api/core/auth/registration` (also `/api/auth/registration`) returns
+`{ requiresSetupCode, ownerCreated }` with `Cache-Control: no-store`, without
+authentication. It exposes no code or account identity. On managed bundles,
+`POST /api/core/auth/register` (also `/api/auth/register`) additionally requires
+`setupCode`; absent, expired, consumed or invalid codes return 403. Consumption
+and account insertion share one transaction; invalid account fields do not
+consume a valid code. Existing source installs keep the optional field and
+existing registration behavior. Codes are generated on the server, never by
+the public portal; see [decision 008](decisions/008-installable-home-server.md).

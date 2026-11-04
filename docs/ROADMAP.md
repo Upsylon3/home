@@ -32,6 +32,18 @@ dedicated key, persistent retries and receipt-based replay protection. See
 Assignment is still unbuilt; email/web push and inherited repeating reminders
 are outside this first release.
 
+## Installable server milestone
+
+The first server-runtime foundation is implemented: prebuilt-container release
+bundles, Windows/Linux/macOS launchers, protected one-time account setup,
+persistent installation folders, opt-in LAN/public HTTPS configuration and a
+browser-local public address launcher. See [decision 008](decisions/008-installable-home-server.md).
+Docker is still a prerequisite. Router setup and dynamic DNS updates remain
+user-configured; there is no automated upgrade/import, remote reachability
+certification or multi-server account trust yet. Physical OS/router validation,
+signed multi-server pairing with revocation/recovery and off-machine backups
+are follow-ups. Source-only historical releases remain unchanged.
+
 ## Near-term backlog
 
 **Reliability progress from the November 2026 audit:** backups now use SQLite

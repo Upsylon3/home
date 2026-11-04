@@ -6,6 +6,15 @@ been checked since.
 
 ## Part A — implemented today
 
+- **Managed server downloads require one-time registration codes.** Setting
+  `HOME_SETUP_REQUIRED=true` makes both Core registration aliases require a
+  server-issued 128-bit, 15-minute code. Core records consumption atomically
+  with account creation. Another code is required for each household member;
+  code hashes never authorize login or password recovery. The installer binds
+  HTTP to loopback initially and requires a local owner before public HTTPS.
+  Source/development installs retain their previous open-registration behavior.
+  See [decision 008](decisions/008-installable-home-server.md).
+
 - **HomeBridge v0 is optional and read-only.** It authenticates through the
   shared HomeCore client and forwards only the live user's token to selected,
   enabled Notes/Tasks public APIs, whose ownership checks remain authoritative.

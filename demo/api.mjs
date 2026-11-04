@@ -47,6 +47,7 @@ async function route(s, request, base) {
   const event = action => s.activity.unshift({ id: s.nextId++, action, eventType: action, applicationSlug: p.split('/')[1], createdAt: now, metadata: {} });
   if (p === '/demo/status') return json({ demo: true });
   if (p === '/demo/reset' && method === 'POST') { Object.assign(s, seed(base)); return json({ ok: true }); }
+  if (p === '/auth/registration' && method === 'GET') return json({ requiresSetupCode: false, ownerCreated: true });
   if (['/auth/login', '/auth/register'].includes(p) && method === 'POST') {
     // Credentials are never stored. All sign-ins enter the same local sandbox.
     valid(body.username, 'Demo name');

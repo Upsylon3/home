@@ -10,6 +10,7 @@ const { asyncHandler } = require("./asyncHandler");
 // HomeCore v0 session adapter — see homecore/sessions.js for why auth.js
 // calls into it directly instead of through a hook.
 const { recordSession, revokeAllSessions } = require("./homecore/sessions");
+const { requiresSetupCode, consumeSetupCode } = require("./registrationSetup");
 
 const router = express.Router();
 
@@ -95,8 +96,9 @@ async function tryConsumeRecoveryCode(userId, candidate) {
 // Decide first-account privileges only after it completes, under the same
 // SQLite write lock as insertion. Otherwise concurrent requests can all
 // observe an empty user table and each grant themselves the admin role.
-const createAccount = db.transaction((username, passwordHash) => {
+const createAccount = db.transaction((username, passwordHash, setupCode) => {
   if (db.prepare("SELECT id FROM users WHERE username = ?").get(username)) return null;
+  if (!consumeSetupCode(setupCode)) return { setupDenied: true };
   const role = db.prepare("SELECT COUNT(*) AS n FROM users").get().n === 0 ? "admin" : "user";
   const info = db
     .prepare("INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)")
@@ -104,11 +106,18 @@ const createAccount = db.transaction((username, passwordHash) => {
   return { id: info.lastInsertRowid, username, role, token_version: 0 };
 });
 
+router.get("/registration", (req, res) => {
+  res.set("Cache-Control", "no-store").json({
+    requiresSetupCode: requiresSetupCode(),
+    ownerCreated: db.prepare("SELECT COUNT(*) AS n FROM users").get().n > 0
+  });
+});
+
 router.post(
   "/register",
   authLimiter,
   asyncHandler(async (req, res) => {
-    const { username, password } = req.body || {};
+    const { username, password, setupCode } = req.body || {};
 
     if (typeof username !== "string" || typeof password !== "string" || !username || !password) {
       return res.status(400).json({ error: "Username and password are required." });
@@ -128,7 +137,8 @@ router.post(
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
-    const user = createAccount.immediate(username, passwordHash);
+    const user = createAccount.immediate(username, passwordHash, setupCode);
+    if (user?.setupDenied) return res.status(403).json({ error: "A valid, unused setup code is required. Generate one on the server with the HOME launcher. Codes expire after 15 minutes." });
     // Another request may have claimed this username while bcrypt yielded.
     if (!user) return res.status(409).json({ error: "That username is already taken." });
 

@@ -53,3 +53,6 @@ demo-dist/
 demo-*.png
 
 demo-artifact/
+
+# Runtime download builds and disposable packaging proof.
+server-dist/

@@ -17,6 +17,13 @@
 
 ## 1. The vision
 
+The installable runtime packages this topology as prebuilt containers, built
+web interfaces and cross-platform launchers. Managed installations require
+one-time registration codes and default to loopback-only access. The public
+portal is an optional browser-local address launcher, not an identity service.
+See [decision 008](decisions/008-installable-home-server.md) and the
+[installation guide](../server/START-HERE.md). Multi-server trust is future work.
+
 Build a coherent, self-hosted personal/family software ecosystem called
 **Home** — not a pile of unrelated web apps that happen to share a login.
 At the center is **HomeCore**, a shared platform providing identity,

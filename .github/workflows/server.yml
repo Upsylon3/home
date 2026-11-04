@@ -1,0 +1,33 @@
+name: Server installer
+on:
+  pull_request:
+    paths:
+      - 'server/**'
+      - '.github/workflows/server.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  setup:
+    name: Setup on ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+      - name: Test configuration and address validation
+        run: node --test server/test/setup.test.mjs server/test/package.test.mjs
+      - name: Parse the Windows launcher
+        shell: pwsh
+        run: |
+          $tokens = $null; $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PWD 'server/home.ps1'), [ref]$tokens, [ref]$errors) > $null
+          if ($errors.Count) { throw ($errors | Out-String) }
+      - name: Check Unix launcher syntax
+        if: runner.os != 'Windows'
+        run: sh -n server/home.sh

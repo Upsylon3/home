@@ -91,6 +91,9 @@ jobs:
       # what catches a Dependabot PR that edited one but not the other.
       - run: npm ci ${{ needs.scope.outputs.native == 'false' && '--ignore-scripts' || '' }}
 
+      - name: Test server configuration and portal address validation
+        run: node --test server/test/setup.test.mjs server/test/package.test.mjs
+
       # Run only the selected suites; each backend suite still uses its real upstream fixtures.
       - run: node scripts/run-selected-checks.mjs test
         env:
@@ -186,9 +189,12 @@ jobs:
     needs: scope
     if: ${{ !cancelled() && needs.scope.outputs.docker != 'false' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
 
       # docker-compose.yml reads ./homecore/.env, which is git-ignored (it
       # holds secrets), so a fresh checkout doesn't have one. Create it from
@@ -381,6 +387,12 @@ jobs:
           restarts=$(docker inspect -f '{{.RestartCount}}' "$(docker compose ps -q gateway)")
           [ "$restarts" = "0" ] || { echo "the gateway restarted $restarts times"; exit 1; }
           echo "ok  the gateway never restarted"
+
+      - name: Verify the installable runtime topology and persistence
+        run: |
+          docker compose stop gateway
+          node server/build.mjs "$RUNNER_TEMP/home-server-download-proof"
+          node server/smoke.mjs "$RUNNER_TEMP/home-server-download-proof/home-server"
 
       # Only runs if something above failed. Shows each container's output
       # so you can see WHY, instead of just "step failed".

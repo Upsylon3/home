@@ -87,7 +87,7 @@ try {
   fs.writeFileSync(path.join(upgradedRoot, 'bundle.json'), JSON.stringify({ schema: 1, version: nextVersion, arch: process.arch,
     upgrade: { schema: 1, minimumSourceVersion: '1.7.0' } }));
   fs.mkdirSync(path.join(upgradedRoot, 'setup'));
-  for (const name of ['setup.mjs', 'runtime.mjs', 'upgrade.mjs', 'source-import.mjs', 'cli.mjs']) {
+  for (const name of ['setup.mjs', 'runtime.mjs', 'upgrade.mjs', 'source-import.mjs', 'diagnose.mjs', 'cli.mjs']) {
     fs.copyFileSync(bundle ? path.join(bundle, 'setup', name) : path.join('server', name), path.join(upgradedRoot, 'setup', name));
   }
   const transfer = () => docker(['run', '--rm',
@@ -99,6 +99,12 @@ try {
   assert.equal(fs.readFileSync(path.join(upgradedRoot, 'configuration/core.env'), 'utf8'), before);
   const upgradedCompose = args => docker(['compose', '-f', path.join(upgradedRoot, 'compose.json'), ...args]);
   upgradedCompose(['up', '-d', '--wait', '--wait-timeout', '180', '--remove-orphans']);
+  const stateBeforeDiagnostics = fs.readFileSync(path.join(upgradedRoot, 'configuration/installation.json'));
+  const diagnosticOutput = docker(['run', '--rm', '--read-only', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
+    '--mount', `type=bind,source=${upgradedRoot},target=/bundle,readonly`, '--entrypoint', 'node',
+    nextRuntime.services.homecore.image, '/bundle/setup/cli.mjs', 'diagnose'], true);
+  assert.match(diagnosticOutput, /Public HTTPS is not enabled/);
+  assert.deepEqual(fs.readFileSync(path.join(upgradedRoot, 'configuration/installation.json')), stateBeforeDiagnostics);
   assert.equal((await request('/api/auth/login', account)).status, 200);
   assert.equal(await (await request(`/api/homecloud/files/${file.id}/download`, undefined, token)).text(), 'installer persistence proof');
   const nextForm = new FormData();

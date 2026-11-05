@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline/promises';
 import { initialize, configure, readState, issueCode } from './setup.mjs';
 import { validateDomain } from './runtime.mjs';
+import { diagnoseAccess } from './diagnose.mjs';
 import { planUpgrade, upgradeBundle } from './upgrade.mjs';
 import fs from 'node:fs';
 import { prepareSourceImport, readSourceImportPlan, validateSourceContainers, validateSourceVolume, importSource, parseImportJson } from './source-import.mjs';
@@ -48,6 +49,10 @@ try {
     const copied = upgradeBundle('/previous', root, { confirmStopped: process.argv[3] === '--confirm-stopped' });
     console.log(copied ? 'Upgrade copied and verified. Identity, credentials and files are preserved.' : 'This upgrade is already complete; existing destination data was kept.');
     console.log('The old folder is an offline recovery copy. Start HOME from this new folder only.');
+  } else if (action === 'diagnose') {
+    const result = await diagnoseAccess(readState(root).access);
+    console.log(result.lines.join('\n'));
+    if (!result.ok) process.exitCode = 1;
   } else if (action === 'start') {
     const fresh = initialize(root);
     console.log(fresh ? '\nYour HOME is prepared. Accounts and files stay on this computer.' : '\nUsing your existing HOME configuration and data.');

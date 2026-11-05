@@ -46,6 +46,10 @@ public mode requires an existing owner, keeps raw HTTP on loopback and uses a
 user-controlled hostname. Changing modes stops an existing TLS listener first.
 The launcher cannot establish router reachability, CGNAT avoidance or certificate
 issuance; test outside the house. Direct bare-IP certificate automation is deferred.
+Managed bundles provide a read-only `diagnose` action for A/AAAA DNS records,
+private/shared address warnings and local TLS certificate verification. It uses
+bounded probes without credentials or an external public-IP service. A passing
+check does not prove outside reachability; see START-HERE for router/IPv6 checks.
 
 The public `/connect/` portal stores names/origins only in that browser, never
 fetches server APIs or handles credentials/setup codes, and opens HOME without

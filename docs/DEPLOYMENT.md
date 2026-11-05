@@ -116,8 +116,8 @@ HomeCloud remains the protected storage foundation. These controls manage the
 bundled app registry: services remain deployed, and saved direct URLs/APIs keep
 their normal authentication/ownership rules. Core has no Docker socket, package
 download or remote-manifest fetch capability. No third-party app installer is
-introduced. Custom metadata registrations remain available through the legacy
-administrator API.
+introduced. Explicit metadata registration/re-registration remains compatible
+through the legacy administrator API, including its default enabled state.
 
 Deploy the new Core before the new Home frontend. The migration only adds an
 installed flag; it neither deletes app rows nor touches sibling databases. Older

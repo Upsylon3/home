@@ -93,6 +93,12 @@ test("uninstall permanently revokes existing automation consent across reinstall
   assert.equal((await admin.client.post("/api/core/apps/hometasks/install", {})).status, 201);
   assert.equal((await admin.client.patch("/api/core/apps/hometasks", { enabled: true })).status, 200);
   assert.equal(store.verify(cap.token, cap.audience, cap.action), null);
+  assert.equal((await admin.client.delete("/api/core/apps/hometasks")).status, 200);
+  const legacy = await admin.client.post("/api/core/apps", { slug: "hometasks", name: "My Tasks", baseUrl: "/tasks/" });
+  assert.equal(legacy.status, 201);
+  assert.equal(legacy.body.application.enabled, true);
+  assert.equal(legacy.body.application.baseUrl, "/tasks/");
+  assert.equal(store.verify(cap.token, cap.audience, cap.action), null);
 });
 
 test("legacy registrations migrate without changes or recreating missing apps", t => {

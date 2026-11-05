@@ -176,8 +176,10 @@ existing registrations are adopted unchanged.
 
 Existing list/detail routes preserve their response shapes with additive installed
 and dependencies fields. Uninstalled details return `404`, including enable
-attempts. Legacy `POST /api/core/apps` remains administrator metadata registration
-for custom integrations; bundled slugs use the catalog installer. These operations
+attempts. Legacy `POST /api/core/apps` preserves explicit administrator metadata
+registration/re-registration, including bundled slugs and its enabled-by-default
+response; dependencies must be enabled. New clients use the two-step catalog
+installer. These operations
 do not install server packages or restrict direct application URLs/APIs. Ordinary
 caller-application authorization remains a separate boundary.
 

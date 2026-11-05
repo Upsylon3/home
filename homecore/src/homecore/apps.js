@@ -108,13 +108,12 @@ router.post("/", requireAdmin, (req, res) => {
   if (existing?.installed) {
     return res.status(409).json(errorBody(req, "APP_EXISTS", "An application with that slug is already registered."));
   }
-  if (lifecycle.catalog().some(app => app.slug === slug)) {
-    return res.status(409).json(errorBody(req, "USE_CATALOG", "Install bundled applications from the catalog."));
-  }
-
   const row = db.transaction(() => {
     const existing = db.prepare("SELECT * FROM hc_applications WHERE slug = ?").get(slug);
     if (existing?.installed) throw Object.assign(new Error("An application with that slug is already registered."), { status: 409, code: "APP_EXISTS" });
+    // Preserve the explicit legacy registration API's enabled-by-default
+    // response while enforcing dependencies. New clients use catalog install.
+    lifecycle.requireDependencies(slug, true);
     const info = existing ? { lastInsertRowid: existing.id } : db
       .prepare(
         `INSERT INTO hc_applications (slug, name, description, version, icon, base_url, health_url, enabled)

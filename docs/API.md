@@ -1,5 +1,8 @@
 # API reference
 
+Multi-server pairing and guest routes are not implemented. Proposed protocol
+boundaries live in the [pairing design](PAIRING-DESIGN.md), not this API contract.
+
 All routes require `Authorization: Bearer <token>` unless noted
 otherwise. Get a token from `POST /api/core/auth/login` (and, if 2FA is
 enabled, `POST /api/core/auth/2fa/verify`). Admin routes additionally require

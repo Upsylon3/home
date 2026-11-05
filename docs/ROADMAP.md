@@ -5,8 +5,10 @@ Only unfinished work is listed here. Completed changes belong in
 
 ## Application work
 
-- Design signed multi-server pairing, revocation and recovery before accepting
-  another HOME's accounts. Storage replication is a separate feature.
+- Implement [signed multi-server pairing](PAIRING-DESIGN.md), starting with
+  durable identities and pairing/revocation state without foreign user access.
+  Guest access follows the design's isolated-origin, resource-grant, recovery
+  and independent-review gates. Storage replication remains a separate design.
 
 ## Open validation
 

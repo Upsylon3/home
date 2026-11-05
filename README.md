@@ -56,6 +56,7 @@ Shared visual assets: `design/`. Runtime packaging: `server/`.
 
 - [Deployment and recovery](docs/DEPLOYMENT.md)
 - [Architecture, product and design](docs/ARCHITECTURE.md)
+- [Multi-server pairing design (implementation pending)](docs/PAIRING-DESIGN.md)
 - [API reference](docs/API.md)
 - [Security](docs/SECURITY.md)
 - [Roadmap](docs/ROADMAP.md)

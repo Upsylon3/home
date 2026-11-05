@@ -49,9 +49,17 @@ if (args.includes('import-source') && scenario === 'copy-fail') process.exit(1);
 if (args.includes('prepare-import') || args.includes('check-import-containers') || args.includes('check-import-volume')) {
   let input = ''; process.stdin.setEncoding('utf8');
   process.stdin.on('data', chunk => input += chunk).on('end', () => {
-    try { JSON.parse(input); } catch { process.exitCode = 1; return; }
+    let parsed;
+    try { parsed = JSON.parse(input); } catch {
+      console.error('Mock import received invalid JSON; initial character code:', input.codePointAt(0));
+      process.exitCode = 1; return;
+    }
     if (args.includes('prepare-import')) {
-      if (!input.includes(sensitive) || !input.includes('Δ雪🚀') || scenario === 'invalid') { process.exitCode = 1; return; }
+      if (!input.includes(sensitive) || !input.includes('Δ雪🚀') || scenario === 'invalid') {
+        // These are fixture-only Unicode values, never real configuration data.
+        console.error('Mock import fixture Unicode codes:', Array.from(parsed.unicode || '').map(c => c.codePointAt(0)));
+        process.exitCode = 1; return;
+      }
       console.log(scenario === 'complete' ? 'complete' : 'home');
     }
     if (args.includes('check-import-containers') && scenario === 'settings') process.exitCode = 1;
@@ -64,6 +72,7 @@ if (args.includes('prepare-import') || args.includes('check-import-containers') 
   if (process.platform === 'win32') fs.writeFileSync(path.join(bin, 'docker.cmd'), '@"%HOME_IMPORT_NODE%" "%HOME_IMPORT_FAKE%" %*\r\n');
   const driver = path.join(root, 'driver.ps1');
   fs.writeFileSync(driver, `
+${shell === 'legacy' ? '$OutputEncoding = [Text.Encoding]::ASCII; [Console]::InputEncoding = [Console]::OutputEncoding = [Text.Encoding]::GetEncoding(437)' : ''}
 & $env:HOME_IMPORT_SCRIPT import $env:HOME_IMPORT_PREVIOUS
 `);
   const scenarios = shell === 'legacy' ? ['success'] : ['success', 'invalid', 'settings', 'ownership', 'missing', 'source-running', 'external-writer', 'copy-fail', 'complete'];

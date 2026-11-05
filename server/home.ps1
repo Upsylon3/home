@@ -1,6 +1,13 @@
 param([ValidateSet('start','code','access','stop','status','logs','upgrade','import')][string]$Action = 'start', [string]$PreviousFolder)
 $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
+if ($Action -eq 'import') {
+    # Establish both directions before the first native command; legacy
+    # PowerShell otherwise inherits the host console's older code page.
+    $OutputEncoding = [Text.UTF8Encoding]::new($false)
+    [Console]::InputEncoding = $OutputEncoding
+    [Console]::OutputEncoding = $OutputEncoding
+}
 if (-not (Get-Command docker -ErrorAction SilentlyContinue)) { throw 'Install Docker Desktop, start it with Linux containers, then run HOME again. See START-HERE.md.' }
 docker info *> $null
 if ($LASTEXITCODE -ne 0) { throw 'Start Docker Desktop with Linux containers, then try again.' }
@@ -42,8 +49,6 @@ if ($Action -in @('upgrade','import')) {
     }
     if ($previous.Contains(',') -or $current.Contains(',')) { throw 'Installation paths must not contain commas.' }
     if ($Action -eq 'import') {
-        $OutputEncoding = [Text.UTF8Encoding]::new($false)
-        [Console]::OutputEncoding = $OutputEncoding
         $targetMount = @('--mount',"type=bind,source=$current,target=/bundle")
         $sourceMount = @('--mount',"type=bind,source=$previous,target=/source,readonly")
         # With --no-path-resolution, Compose reads relative env_file entries

@@ -77,6 +77,8 @@ def verify(archive, work):
         if not databases:
             raise ValueError("source has no root-level SQLite database")
         for name in databases:
+            if '\\' in name or ':' in name:
+                raise ValueError('unsafe database restore filename')
             if any(name + suffix in members for suffix in ("-wal", "-shm", "-journal")):
                 raise ValueError("archive contains live SQLite sidecars")
             target = work / name

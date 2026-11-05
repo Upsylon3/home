@@ -58,6 +58,10 @@ is not an authorization boundary. Set explicit origins where appropriate.
   portal is only an address launcher; it does not authenticate or secure servers.
 - Local backup copies do not protect against disk/machine loss. SQLite integrity
   checks do not certify all cross-service references or historical file content.
+  Mounted-storage exports add checksums and restore validation, not encryption,
+  authentication of hostile storage or proof of physical off-machine placement.
+  Exported archives omit installation credentials/configuration and remain private
+  operator data; destination access, encryption and retention are operator-managed.
 - Hardware/browser measurements and AI self-review do not constitute physical
   device validation or independent security approval.
 

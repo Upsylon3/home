@@ -134,6 +134,39 @@ fresh disposable target first, keep the original volumes, and never test over
 the only copy of real data. Restore all related services consistently and apply
 the following offline credential maintenance before resuming traffic.
 
+### Verified exports to mounted storage
+
+The export tool copies all published archives into a new immutable-by-convention
+export folder with a versioned inventory and SHA-256 checksums. It rereads each
+copy, validates the compressed stream and reuses SQLite/Cloud restore checks.
+It publishes only after all selected archives pass and never prunes destination
+history. Failed copies preserve older exports. Partial/unrecognized filenames
+are ignored; corrupt or legacy-format published archives fail the export.
+
+Managed bundles expose `export-backups DESTINATION` and `verify-backups EXPORT-FOLDER`;
+see [START-HERE](../server/START-HERE.md#export-archives-to-separate-storage).
+For a source checkout with Python 3.11+:
+
+~~~bash
+python3 services/backup/export.py ./backups /mnt/backup-nas/HOME
+python3 services/backup/export.py --verify /mnt/backup-nas/HOME/home-backup-export-...
+~~~
+
+Use an existing private destination on storage you control. Paths must be
+separate and non-nested. The operator mounts/authenticates the share or drive;
+HOME has no remote-storage credentials, provider integration or transfer schedule.
+Bundle exports run with networking disabled and mount published backups read-only.
+Docker must be able to access the host destination. The tool cannot establish
+that a path is physically off-machine, still mounted, encrypted or durable.
+Keep enough space for all retained archives plus restore scratch. Verification
+checks integrity, not adversarial authenticity or physical disaster recovery.
+
+This exports history already present, not a fresh/coordinated snapshot or proof
+of service coverage/freshness. Configuration/credentials/certificates are excluded
+and still need a separate protected backup. Ordinary app data is not encrypted
+by the exporter. Real off-machine storage and restore drills remain operator
+validation; follow the offline restore requirements below before reopening traffic.
+
 **Core restore exception:** when restoring `home_homecore_data`, do not restart
 services until restored delegations have been revoked. Keep Core,
 HomeBridge, the gateway and application traffic offline. With the current Core

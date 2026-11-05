@@ -10,7 +10,9 @@ Only unfinished work is listed here. Completed changes belong in
   check DNS and local TLS with `diagnose`; outside reachability and hands-on
   router/provider validation remain open.
 - **Backups:** add off-machine copies and coordinated cross-service snapshots.
-  Existing per-database restore checks do not provide either guarantee.
+  Verified archive exports to operator-mounted storage are implemented. Physical
+  off-machine/restore validation and coordinated cross-service snapshots remain;
+  per-database restore checks do not establish either guarantee.
 - **Application installation:** replace pre-seeded registry entries with an
   install/register/enable flow. Uninstall must not silently delete data.
 

@@ -142,7 +142,7 @@ def select(paths, before=None, after=None, event='pull_request'):
                 result['android'] = result['emulator'] = True
     result['tests'], result['builds'] = sorted(tests), sorted(builds)
     result['node'] = bool(tests or builds or result['backup'])
-    result['native'] = bool(tests & set(BACKENDS))
+    result['native'] = bool(tests & set(BACKENDS)) or result['backup']
     result['reasons'] = reasons or ['Checks selected from changed apps and runtime dependencies']
     return result
 

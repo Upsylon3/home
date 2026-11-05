@@ -2,7 +2,7 @@
 set -eu
 cd -- "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 action=${1:-start}
-case "$action" in start|code|access|diagnose|stop|status|logs|upgrade|import) ;; *) echo 'Usage: ./home.sh [start|code|access|diagnose|stop|status|logs|upgrade OLD-FOLDER|import SOURCE-FOLDER]' >&2; exit 1 ;; esac
+case "$action" in start|code|access|diagnose|export-backups|verify-backups|stop|status|logs|upgrade|import) ;; *) echo 'Usage: ./home.sh [start|code|access|diagnose|export-backups DESTINATION|verify-backups EXPORT-FOLDER|stop|status|logs|upgrade OLD-FOLDER|import SOURCE-FOLDER]' >&2; exit 1 ;; esac
 command -v docker >/dev/null 2>&1 || { echo 'Install Docker Engine with Compose (Linux) or Docker Desktop (macOS), then run HOME again. See START-HERE.md.' >&2; exit 1; }
 docker info >/dev/null 2>&1 || { echo 'Start Docker, select Linux containers if applicable, and try again.' >&2; exit 1; }
 docker compose version >/dev/null 2>&1 || { echo 'Docker Compose v2 is required. See START-HERE.md.' >&2; exit 1; }
@@ -11,6 +11,28 @@ case "$action" in
   status) docker compose -f compose.json ps; exit ;;
   logs) docker compose -f compose.json logs --tail 100; exit ;;
 esac
+if [ "$action" = export-backups ] || [ "$action" = verify-backups ]; then
+  [ "$#" -eq 2 ] || { echo 'Pass an existing mounted destination folder, or an export folder to verify.' >&2; exit 1; }
+  destination=$(CDPATH= cd -P -- "$2" && pwd -P)
+  current=$(pwd -P)
+  [ "$destination" != / ] || { echo 'Backup storage must not contain the installation.' >&2; exit 1; }
+  case "$destination/" in "$current/"*) echo 'Backup storage must be outside the installation.' >&2; exit 1 ;; esac
+  case "$current/" in "$destination/"*) echo 'Backup storage must not contain the installation.' >&2; exit 1 ;; esac
+  case "$destination$current" in *,*) echo 'Backup paths must not contain commas.' >&2; exit 1 ;; esac
+  backup_image=$(docker compose -f compose.json images -q backup)
+  image_hash=${backup_image#sha256:}
+  case "$image_hash" in ''|*[!a-f0-9]*) echo 'Start HOME once so its backup image is available.' >&2; exit 1 ;; esac
+  [ "${#image_hash}" -ge 12 ] && [ "${#image_hash}" -le 64 ] || { echo 'Invalid backup image identifier.' >&2; exit 1; }
+  if [ "$action" = export-backups ]; then
+    docker run --rm --network none --cap-drop ALL --cap-add DAC_OVERRIDE --cap-add CHOWN --security-opt no-new-privileges \
+      --mount "type=bind,source=$current/backups,target=/backups,readonly" --mount "type=bind,source=$destination,target=/destination" \
+      --entrypoint python3 "$backup_image" /export.py /backups /destination
+  else
+    docker run --rm --network none --cap-drop ALL --cap-add DAC_OVERRIDE --security-opt no-new-privileges \
+      --mount "type=bind,source=$destination,target=/export,readonly" --entrypoint python3 "$backup_image" /export.py --verify /export
+  fi
+  exit
+fi
 image=$(cat installer-image.txt)
 if [ "$action" = diagnose ]; then
   core=$(docker compose -f compose.json ps -q homecore)

@@ -56,6 +56,8 @@ requires SSH to be enabled on the server; HOME does not enable it for you.
 | `code` | Issue one account-creation code; invalidate the previous unconsumed code |
 | `access` | Choose this computer, trusted LAN, or public HTTPS |
 | `diagnose` | Check configured public DNS and the local HTTPS certificate without changing access |
+| `export-backups DESTINATION` | Copy and verify published archives to an existing mounted storage folder |
+| `verify-backups EXPORT-FOLDER` | Recheck an export's inventory, checksums and restorable databases |
 | `status` | See which services are running |
 | `logs` | Inspect service errors; redact private information before sharing |
 | `stop` | Stop HOME, keeping its data |
@@ -154,6 +156,66 @@ backups off the machine. To make a coordinated full copy, run `stop`, copy
 `data/`, `configuration/`, `compose.json` and `backups/` to protected storage,
 then `start`. Preserve credentials: replacing them can break existing services
 and sessions. Do not run two copies of the same installation concurrently.
+
+### Export archives to separate storage
+
+HOME cannot supply another machine or decide where your private backups belong.
+Mount storage you control first: for example a NAS share, a folder shared by
+another computer, or a removable drive. Create a private destination folder there
+and make it accessible to Docker. A different folder on the server's own disk
+does not protect against disk failure. HOME cannot prove the physical location
+of a mounted path or detect every disconnected-share fallback; check the mount.
+
+After HOME has started and produced successful backups, run one command from
+the installation folder. These examples assume the destination already exists:
+
+~~~text
+Windows:       home.cmd export-backups "Z:\HOME backups"
+Linux:         ./home.sh export-backups "/mnt/backup-nas/HOME"
+macOS:         ./home.sh export-backups "/Volumes/Backup/HOME"
+~~~
+
+The command copies every published archive currently in `backups/` into a new
+`home-backup-export-...` folder. It rereads destination bytes, checks SHA-256,
+validates the full compressed stream and restore-checks SQLite databases and
+Cloud file references before publishing that folder. A manifest records the
+inventory. Failures return a nonzero exit code, leave earlier exports alone and
+do not publish a successful export. If local retention removed a selected
+archive during export, retry after the backup cycle finishes.
+
+Exports are manual. HOME does not mount shares, save storage credentials, contact
+a cloud provider, schedule transfers or delete old destination exports. Leave
+space for all retained archives plus scratch for the largest database. Remove
+old exports yourself only after checking your recovery needs and another good copy.
+Exporting the same history twice creates two complete exports.
+
+Run `verify-backups` with the **specific exported folder**, for example:
+
+~~~text
+Windows:       home.cmd verify-backups "Z:\HOME backups\home-backup-export-..."
+Linux/macOS:   ./home.sh verify-backups "/mnt/backup-nas/HOME/home-backup-export-..."
+~~~
+
+Verification reads the export without changing it and needs local scratch space.
+The commands use the installed backup image with networking disabled; they do
+not stop HOME or mount installation credentials. Destination paths inside or
+containing the installation are refused. Docker must support and have permission
+to access the chosen host path; physical network/removable storage still needs
+hands-on validation on your platform.
+The helper reads existing private, root-owned archives and assigns new export
+files to the destination folder's Unix owner. Share permissions must permit this;
+Unix mode/ownership settings do not establish Windows ACLs.
+
+These are the existing **per-service snapshots**, with their original timestamps.
+An export does not take a new backup, establish a shared cross-service point in
+time, or guarantee that every service has a recent archive. Inspect the manifest
+and backup logs for coverage/freshness. Configuration, service credentials,
+certificates and unarchived live files are excluded: keep their separate protected
+backup. Ordinary app data remains unencrypted in these archives; use private,
+encrypted destination storage. Checksums detect accidental changes, not a hostile
+party changing both an archive and its manifest. Before restoring real data,
+perform a disposable restore and follow the repository deployment guide's offline
+Core delegation revocation and Monitor identity-reset procedures.
 
 Repeat starts preserve configuration, credentials and data. If setup reports
 incomplete state, keep the folder and restore the matching configuration from

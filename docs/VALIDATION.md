@@ -3,6 +3,24 @@
 Outstanding review/device evidence and reproduction notes live here. Run fixtures
 only against disposable data; never equate CI with independent or physical testing.
 
+## Backup exports
+
+The mounted-storage exporter has disposable tests for archive byte preservation,
+SQLite restore checks, corrupted/truncated streams, failed writes/readback,
+tampered inventories, unsafe paths and earlier-export preservation. Container
+fixtures export all eight real-service archives and check owner-readable output
+from a packaged installation with networking disabled. Launcher tests cover
+Windows and Unix arguments, path boundaries and failure exits.
+
+These checks use local disposable filesystems. Actual NAS/removable-drive mounts,
+Windows/macOS Docker file-sharing permissions, network disconnects, full external
+disks, filesystem durability and recovery on another physical machine remain
+unvalidated. An existing destination path is not proof that the intended share
+is still mounted or physically separate. Before relying on an export, verify
+the real destination and rehearse a disposable restore with the offline credential
+maintenance in [deployment](DEPLOYMENT.md#backups). Coordinated cross-service
+snapshots and configuration backup remain separate requirements.
+
 ## Vault review
 
 **Independent review remains open. Do not store real secrets yet.** Automated

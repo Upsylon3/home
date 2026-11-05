@@ -13,7 +13,18 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 - Simplified project guides, removed completed roadmap steps and separated open
   validation from feature work. Setup, recovery and security requirements remain.
 
+### Fixed
+- Install the reviewed native SQLite binding when CI selects backup tests;
+  backup-only changes previously selected an install with scripts disabled.
+
 ### Added
+- Manual verified backup exports to operator-mounted storage, with bundle
+  `export-backups`/`verify-backups` actions, an inventory, SHA-256 readback,
+  compressed-stream and SQLite/Cloud restore checks, and failure-safe publication.
+  Keep earlier exports, refuse nested storage and unsafe archive paths, and run
+  bundle transfer containers without networking or installation credentials.
+  No provider, schedule, encryption, configuration export or coordinated snapshot
+  is implied; physical off-machine storage and recovery still need validation.
 - Read-only server `diagnose` action on Windows/Linux/macOS: bounded A/AAAA
   lookups, private/shared address warnings and local HTTPS certificate validation,
   with DNS, router, IPv6 and CGNAT guidance. No credentials, public-IP discovery

@@ -86,7 +86,9 @@ forwarded to the internet. Details: [deployment](DEPLOYMENT.md) and
 - Vault's bounded administrator reset calls Vault's API; Core supplies live
   authority, while deletion/audit remain in Vault's own database.
 - Backups are per-database consistent, not coordinated cross-service snapshots.
-  Off-machine copying and real restore drills still matter.
+  Manual verified exports copy published archives to operator-mounted storage;
+  they do not include configuration or establish physical off-machine placement.
+  Real off-machine copying and restore drills still matter.
 - Runtime bundles contain prebuilt services and built web UIs, with persistent
   host folders and one-time registration codes. They default to loopback access.
   The public portal remembers addresses only; it is not an identity provider.

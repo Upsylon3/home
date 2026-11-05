@@ -56,6 +56,8 @@ ensureColumn("users", "quota_override INTEGER");
 ensureColumn("users", "totp_secret TEXT");
 ensureColumn("users", "totp_enabled INTEGER NOT NULL DEFAULT 0");
 
+require('./homecore/accountSubjects').ensureAccountSubjects(db);
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS recovery_codes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

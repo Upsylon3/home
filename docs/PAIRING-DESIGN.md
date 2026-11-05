@@ -1,8 +1,18 @@
 # Multi-server pairing design
 
-Status: design accepted for implementation planning; no federation endpoints,
-foreign accounts or guest sessions are implemented by this document. Independent
-protocol/security review and the gates below are required before enablement.
+Status: offline identity preparation and pending/suspended/revoked peer records
+are implemented. No signed handshake, federation endpoints, foreign accounts or
+guest sessions are enabled. Independent protocol/security review and the gates
+below remain required before enablement. See [operator commands](DEPLOYMENT.md#offline-peer-identity-preparation).
+
+Core assigns durable account subject UUIDs while preserving numeric local IDs
+and existing sessions. The offline tool creates an independent server UUID,
+Ed25519 key and instance generation in a separate protected authority database.
+Its public descriptors are unsigned preparation metadata, not proof of key
+possession or completed pairing. Manual fingerprint confirmation only stages a
+pending record. The database cannot represent an active pair in this foundation.
+Later handshake work must validate these staged pins through both-owner approval
+and the signed transcript; it must not promote pending records automatically.
 
 ## First use case and boundaries
 
@@ -214,8 +224,10 @@ Do not mount a generic peer proxy or extend the existing local JWT validator.
 
 Implement in these bounded slices, default off throughout:
 
-1. Durable identities, protected key/restore state, peer state machine and signed
-   pairing/status/revoke operations. No foreign user access in this slice.
+1. Durable identities and protected offline peer records are complete. Implement
+   the remaining signed pairing/status/revoke operations, replay ledger and
+   transport before the state machine can represent active pairs. No foreign
+   user access in this slice.
 2. Reviewed OIDC/JOSE library integration, typed guest principals, isolated guest
    origin and explicit Tasks foreign-subject ACLs. No general foreign login.
 3. Revocation/rotation/restore integration across both source and managed runtime

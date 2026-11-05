@@ -108,6 +108,7 @@ export default function Layout({ user, onLogout }) {
             </li>
           </ul>
 
+          <NavLink to="/assigned" className={linkClass}><TaskGlyph size={15} /> Assigned to me</NavLink>
           <hr className="nav-divider" />
 
           <div className="nav-heading">

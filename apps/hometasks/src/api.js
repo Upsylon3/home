@@ -75,6 +75,8 @@ export const api = {
     // person's own today (it never guesses a time zone).
     complete: (id, today) => request(`/hometasks/tasks/${id}/complete${qs({ today })}`, { method: "POST" }),
     reopen: (id) => request(`/hometasks/tasks/${id}/reopen`, { method: "POST" }),
-    remove: (id) => request(`/hometasks/tasks/${id}`, { method: "DELETE" })
+    remove: (id) => request(`/hometasks/tasks/${id}`, { method: "DELETE" }),
+    assign: (id, username, version) => request(`/hometasks/tasks/${id}/assignment`, { method: 'POST', body: json({ username, version }) }),
+    decline: id => request(`/hometasks/tasks/${id}/assignment`, { method: 'DELETE' })
   }
 };

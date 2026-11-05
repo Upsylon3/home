@@ -10,6 +10,17 @@ const { errorBody } = require("./errors");
 const { listSessions } = require("./sessions");
 
 const router = express.Router();
+const { createRateLimiter } = require('../rateLimiter');
+router.post('/lookup', createRateLimiter({ windowMs: 60000, limit: 30, standardHeaders: 'draft-7', legacyHeaders: false }), (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  if (!req.body || Array.isArray(req.body) || Object.keys(req.body).length !== 1 ||
+      typeof req.body.username !== 'string' || !/^[a-zA-Z0-9_.-]{3,32}$/.test(req.body.username) || Object.keys(req.query).length) {
+    return res.status(400).json(errorBody(req, 'INVALID_USERNAME', 'An exact username is required.'));
+  }
+  const user = db.prepare('SELECT id, username FROM users WHERE username=? AND disabled=0').get(req.body.username);
+  if (!user) return res.status(404).json(errorBody(req, 'USER_NOT_FOUND', 'Account not available.'));
+  res.json({ user });
+});
 
 function serializeSelf(row) {
   return {

@@ -419,9 +419,10 @@ work independently of HomeBridge. HomeNotes links use `/notes/notes/<id>`.
 
 ## HomeTasks backend (`/api/hometasks`)
 
-Tasks and projects. Browser routes except `health` need a login, and every
-query is scoped to the person asking, so nobody can see or change anyone
-else's tasks. Due dates are plain `YYYY-MM-DD` strings. The browser sends its own
+Tasks and projects. Browser routes except `health` need a login. Tasks remain
+owner-controlled; explicit assignment additionally permits one assignee to read,
+complete or decline that task. Projects and other tasks stay private, including
+from administrators. Due dates are plain `YYYY-MM-DD` strings. The browser sends its own
 date as `?today=` for the date filters, because the server cannot know a
 person's time zone.
 
@@ -430,6 +431,9 @@ person's time zone.
 | GET | `/api/hometasks/health` | *(no auth)* |
 | GET | `/api/hometasks/reminders/status` | Authenticated local configuration check: `{ available }`; does not guarantee Core connectivity or matching keys |
 | GET | `/api/hometasks/summary?today=` | Counts: `open`, `overdue`, `dueToday` |
+| GET | `/api/hometasks/tasks?scope=assigned&status=all` | Tasks explicitly assigned to the caller; ordinary lists default to `scope=owned` |
+| POST | `/api/hometasks/tasks/:id/assignment` | Owner only; exact `{username: "local-name" \| null, version: assignmentVersion}`; `{task}` |
+| DELETE | `/api/hometasks/tasks/:id/assignment` | Current assignee only; decline without deleting the owner's task; `{ok: true}` |
 | GET | `/api/hometasks/projects` | List projects, each with its `openCount` |
 | POST | `/api/hometasks/projects` | Create a project `{ name }` |
 | PATCH | `/api/hometasks/projects/:id` | Rename `{ name }` |
@@ -442,6 +446,34 @@ person's time zone.
 | POST | `/api/hometasks/tasks/:id/reopen` | Un-tick (safe to repeat). Removes the still-open next copy it created; answers `409` if that copy was already completed |
 | DELETE | `/api/hometasks/tasks/:id` | Delete permanently (there is no Trash for tasks) |
 | POST | `/api/hometasks/automation/tasks` | `hometasks` / `tasks.automation.create-once` capability only; scoped create-once inbox task |
+
+### Task assignment
+
+`POST /api/core/users/lookup` requires a full session and exact `{username}`.
+It returns only `{user: {id, username}}` for an enabled account, `404` for an
+unavailable account, or `400` for malformed/wildcard/extra-field requests.
+There is no prefix search or directory listing. Lookup is limited to 30/IP/minute and uses
+`no-store`; Tasks calls Core with the owner's token and a five-second deadline,
+bounded response and no redirects. No task title/notes cross this boundary.
+
+Task JSON adds `access: owner|assignee`, `assignee: {id,username}|null`,
+`assignmentVersion`, and an owner identity label populated during assignment.
+Assignees receive `projectId: null` and null reminder fields. Personal lists,
+project filters, summary counts and existing Bridge search remain owner-only;
+assigned scope has its own list and cannot filter by private project. It supports
+normal status/due/search filters. Unauthorized task actions return `404`.
+
+An owner chooses one enabled username or clears assignment with null. The current
+`assignmentVersion` is mandatory; stale requests return `409` without a write.
+The backend rechecks ownership/version after Core lookup in an immediate
+transaction and audits sharing changes. Task edits/completion/reopening also
+advance the version, so pending sharing consent cannot apply to changed content.
+Self-assignment is `400`. Assignment is
+per task/occurrence and shares subsequent owner edits until removed. Assignees
+cannot edit/reassign/reopen/delete; they can complete or decline their current
+assignment. Completion creates at most one next repeat, retaining the original
+owner and assignee while clearing reminders. Only owners can undo completion.
+Default personal ownership and existing session/automation contracts are unchanged.
 
 ### Personal reminders
 

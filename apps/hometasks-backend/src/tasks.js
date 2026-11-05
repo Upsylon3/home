@@ -1,23 +1,14 @@
 // Routes for TASKS: create, list (with filters), edit, tick off, un-tick,
 // delete, plus a small summary of counts.
 //
-// As in projects.js, every route sits behind `requireAuth` and every query
-// is scoped with `user_id = req.user.id`, so people only ever touch their own
-// tasks.
-//
-// REPEATING TASKS: ticking one off keeps it in Done and creates the next copy
-// with the next due date (the date maths lives in src/recurrence.js).
-//
-// Reminders use Core notifications via a dedicated producer credential.
-// NOT BUILT YET (see docs/ROADMAP.md):
-// assigning a task to another family member, and
-// emitting events like "hometasks.task.completed" to the shared event bus.
-// Assignment in particular needs the multi-user sharing model HomeCloud
-// doesn't have yet, so it waits for that rather than being faked here.
+// Personal lists/projects remain owner-only. Explicit task assignment shares
+// just that task with one assignee, who may read, complete or decline it.
+// Only owners may edit, reopen, delete or change assignment.
 const express = require("express");
 const { randomUUID } = require("node:crypto");
 const { readKey, validateReminder } = require("./reminders");
 const { db } = require("./db");
+const { lookupRecipient, auditAssignment } = require("./assignment");
 const { nextDueDate } = require("./recurrence");
 const { asyncHandler } = require("./asyncHandler");
 const {
@@ -33,22 +24,28 @@ const {
 } = require("./validation");
 
 const router = express.Router();
+router.use((req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 router.get("/reminders/status", (req, res) => res.json({ available: Boolean(readKey()) }));
 
 // Database row -> the JSON shape the API promises (see projects.js for why
 // this lives in one function).
-function serializeTask(row) {
+function serializeTask(row, viewer = row.user_id) {
+  const owner = viewer === row.user_id;
   return {
     id: row.id,
     title: row.title,
     notes: row.notes,
     priority: priorityToName(row.priority),
-    reminderAt: row.reminder_at,
-    reminderSentAt: row.reminder_sent_at,
-    reminderState: !row.reminder_at ? null : row.reminder_sent_at ? "sent" : row.reminder_error ? "suppressed" : "scheduled",
+    reminderAt: owner ? row.reminder_at : null,
+    reminderSentAt: owner ? row.reminder_sent_at : null,
+    reminderState: !owner || !row.reminder_at ? null : row.reminder_sent_at ? "sent" : row.reminder_error ? "suppressed" : "scheduled",
     dueDate: row.due_date, // "YYYY-MM-DD" or null
     repeat: row.repeat_rule, // "none", "daily", "weekdays", "weekly", "monthly" or "yearly"
-    projectId: row.project_id, // number or null
+    projectId: owner ? row.project_id : null, // number or null
+    access: owner ? 'owner' : 'assignee',
+    owner: row.owner_username ? { id: row.user_id, username: row.owner_username } : null,
+    assignee: row.assignee_id ? { id: row.assignee_id, username: row.assignee_username } : null,
+    assignmentVersion: row.assignment_version,
     isDone: row.completed_at !== null,
     completedAt: row.completed_at,
     createdAt: row.created_at,
@@ -58,6 +55,10 @@ function serializeTask(row) {
 
 function findOwnTask(id, userId) {
   return db.prepare("SELECT * FROM tasks WHERE id = ? AND user_id = ?").get(id, userId);
+}
+
+function findVisibleTask(id, userId) {
+  return db.prepare('SELECT * FROM tasks WHERE id=? AND (user_id=? OR assignee_id=?)').get(id, userId, userId);
 }
 
 function ownsProject(projectId, userId) {
@@ -70,6 +71,51 @@ function ownsProject(projectId, userId) {
 function escapeLike(text) {
   return text.replace(/[\\%_]/g, (character) => `\\${character}`);
 }
+
+router.post('/tasks/:id/assignment', asyncHandler(async (req, res) => {
+  const task = findOwnTask(parseId(req.params.id), req.user.id);
+  if (!task) return res.status(404).json({ error: 'Task not found.' });
+  const body = req.body;
+  if (!body || Array.isArray(body) || Object.keys(body).length !== 2 || !Object.hasOwn(body, 'username') ||
+      !Number.isSafeInteger(body.version) || body.version < 0 || Object.keys(req.query).length ||
+      !(body.username === null || (typeof body.username === 'string' && /^[a-zA-Z0-9_.-]{3,32}$/.test(body.username)))) {
+    return res.status(400).json({ error: 'An exact username (or null) and assignment version are required.' });
+  }
+  if (body.version !== task.assignment_version) return res.status(409).json({ error: 'Assignment changed. Reload the task.' });
+  let recipient = null;
+  if (body.username !== null) {
+    try { recipient = await lookupRecipient(req.token, body.username); }
+    catch (error) { return res.status(error.status || 502).json({ error: error.message }); }
+  }
+  if (recipient?.id === req.user.id) return res.status(400).json({ error: 'This is already your task. Use no assignee for personal tasks.' });
+  const changed = db.transaction(() => {
+    const current = findOwnTask(task.id, req.user.id);
+    if (!current) return 'missing';
+    if (current.assignment_version !== body.version) return 'stale';
+    db.prepare(`UPDATE tasks SET assignee_id=?, assignee_username=?, owner_username=?,
+      assignment_version=assignment_version+1, updated_at=datetime('now') WHERE id=? AND user_id=?`)
+      .run(recipient?.id ?? null, recipient?.username ?? null, req.user.username, task.id, req.user.id);
+    auditAssignment(current, req.user.id, recipient ? 'assigned' : 'unassigned', recipient?.id ?? current.assignee_id);
+    return findOwnTask(task.id, req.user.id);
+  }).immediate();
+  if (changed === 'missing') return res.status(404).json({ error: 'Task not found.' });
+  if (changed === 'stale') return res.status(409).json({ error: 'Assignment changed. Reload the task.' });
+  res.json({ task: serializeTask(changed) });
+}));
+
+router.delete('/tasks/:id/assignment', asyncHandler(async (req, res) => {
+  const id = parseId(req.params.id);
+  const removed = db.transaction(() => {
+    const task = id && db.prepare('SELECT * FROM tasks WHERE id=? AND assignee_id=?').get(id, req.user.id);
+    if (!task) return false;
+    db.prepare(`UPDATE tasks SET assignee_id=NULL, assignee_username=NULL, assignment_version=assignment_version+1,
+      updated_at=datetime('now') WHERE id=? AND assignee_id=?`).run(id, req.user.id);
+    auditAssignment(task, req.user.id, 'declined');
+    return true;
+  }).immediate();
+  if (!removed) return res.status(404).json({ error: 'Assigned task not found.' });
+  res.json({ ok: true });
+}));
 
 // GET /api/hometasks/summary?today=YYYY-MM-DD
 // Three numbers for a dashboard badge: open tasks, overdue ones, due today.
@@ -109,7 +155,9 @@ router.get(
     // fragments and `params` holds the values for each "?" in them, in order.
     // Values ALWAYS go through "?" placeholders, never glued into the SQL
     // text. That is what prevents "SQL injection".
-    const conditions = ["user_id = ?"];
+    const scope = req.query.scope ?? 'owned';
+    if (!['owned', 'assigned'].includes(scope)) return res.status(400).json({ error: 'scope must be owned or assigned.' });
+    const conditions = [scope === 'assigned' ? 'assignee_id = ?' : 'user_id = ?'];
     const params = [req.user.id];
 
     if (status === "open") conditions.push("completed_at IS NULL");
@@ -120,6 +168,7 @@ router.get(
       if (!projectId || !ownsProject(projectId, req.user.id)) {
         return res.status(404).json({ error: "Project not found." });
       }
+      if (scope === 'assigned') return res.status(400).json({ error: 'Assigned tasks do not expose projects.' });
       conditions.push("project_id = ?");
       params.push(projectId);
     }
@@ -162,7 +211,7 @@ router.get(
         : "due_date IS NULL, due_date ASC, priority DESC, id ASC";
 
     const rows = db.prepare(`SELECT * FROM tasks WHERE ${conditions.join(" AND ")} ORDER BY ${orderBy}`).all(...params);
-    res.json({ tasks: rows.map(serializeTask) });
+    res.json({ tasks: rows.map(row => serializeTask(row, req.user.id)) });
   })
 );
 
@@ -213,9 +262,9 @@ router.get(
   "/tasks/:id",
   asyncHandler(async (req, res) => {
     const id = parseId(req.params.id);
-    const task = id && findOwnTask(id, req.user.id);
+    const task = id && findVisibleTask(id, req.user.id);
     if (!task) return res.status(404).json({ error: "Task not found." });
-    res.json({ task: serializeTask(task) });
+    res.json({ task: serializeTask(task, req.user.id) });
   })
 );
 
@@ -298,7 +347,7 @@ router.patch(
       db.prepare(
         `UPDATE tasks
             SET title = ?, notes = ?, priority = ?, due_date = ?, project_id = ?,
-                repeat_rule = ?, repeat_anchor = ?, updated_at = datetime('now')
+                repeat_rule = ?, repeat_anchor = ?, assignment_version=assignment_version+1, updated_at = datetime('now')
           WHERE id = ? AND user_id = ?`
       ).run(title, notes, priority, dueDate, projectId, repeat, anchor, task.id, req.user.id);
       if (reminderChange) db.prepare("UPDATE tasks SET reminder_at = ?, reminder_key = ?, reminder_sent_at = NULL, reminder_error = NULL, reminder_retry_at = NULL WHERE id = ? AND user_id = ?")
@@ -323,42 +372,28 @@ router.post(
   "/tasks/:id/complete",
   asyncHandler(async (req, res) => {
     const id = parseId(req.params.id);
-    const task = id && findOwnTask(id, req.user.id);
-    if (!task) return res.status(404).json({ error: "Task not found." });
-
-    let nextId = null;
-
-    if (task.completed_at === null) {
-      // A transaction makes "mark done" and "create the next copy" succeed or
-      // fail TOGETHER, so a crash in between can't leave a repeating task
-      // finished with nothing coming after it.
-      const completeTask = db.transaction(() => {
-        db.prepare("UPDATE tasks SET completed_at = datetime('now'), reminder_at = NULL, reminder_key = NULL, reminder_sent_at = NULL, reminder_error = NULL, reminder_retry_at = NULL, updated_at = datetime('now') WHERE id = ? AND user_id = ?").run(
-          task.id,
-          req.user.id
-        );
-
-        if (task.repeat_rule !== "none" && task.due_date) {
-          const today = resolveToday(req.query.today);
-          const nextDue = nextDueDate(task.repeat_rule, task.due_date, task.repeat_anchor || task.due_date, today);
-          const info = db
-            .prepare(
-              `INSERT INTO tasks (user_id, project_id, title, notes, priority, due_date, repeat_rule, repeat_anchor)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-            )
-            .run(req.user.id, task.project_id, task.title, task.notes, task.priority, nextDue, task.repeat_rule, task.repeat_anchor);
-          nextId = info.lastInsertRowid;
-          // Remember which copy this one created, so un-ticking can remove it.
-          db.prepare("UPDATE tasks SET spawned_task_id = ? WHERE id = ? AND user_id = ?").run(nextId, task.id, req.user.id);
+    const result = db.transaction(() => {
+      const task = id && findVisibleTask(id, req.user.id);
+      if (!task) return null;
+      let next = null;
+      if (task.completed_at === null) {
+        db.prepare("UPDATE tasks SET completed_at=datetime('now'), reminder_at=NULL, reminder_key=NULL, reminder_sent_at=NULL, reminder_error=NULL, reminder_retry_at=NULL, assignment_version=assignment_version+1, updated_at=datetime('now') WHERE id=? AND user_id=?")
+          .run(task.id, task.user_id);
+        if (task.repeat_rule !== 'none' && task.due_date) {
+          const nextDue = nextDueDate(task.repeat_rule, task.due_date, task.repeat_anchor || task.due_date, resolveToday(req.query.today));
+          const info = db.prepare(`INSERT INTO tasks (user_id,project_id,title,notes,priority,due_date,repeat_rule,repeat_anchor,assignee_id,assignee_username,owner_username)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?)`).run(task.user_id, task.project_id, task.title, task.notes, task.priority, nextDue,
+              task.repeat_rule, task.repeat_anchor, task.assignee_id, task.assignee_username, task.owner_username);
+          const child = findOwnTask(info.lastInsertRowid, task.user_id);
+          if (child.assignee_id) auditAssignment(child, req.user.id, 'repeated');
+          db.prepare('UPDATE tasks SET spawned_task_id=? WHERE id=? AND user_id=?').run(child.id, task.id, task.user_id);
+          next = serializeTask(child, req.user.id);
         }
-      });
-      completeTask();
-    }
-
-    res.json({
-      task: serializeTask(findOwnTask(task.id, req.user.id)),
-      next: nextId ? serializeTask(findOwnTask(nextId, req.user.id)) : null
-    });
+      }
+      return { task: serializeTask(findVisibleTask(task.id, req.user.id), req.user.id), next };
+    }).immediate();
+    if (!result) return res.status(404).json({ error: 'Task not found.' });
+    res.json(result);
   })
 );
 
@@ -380,10 +415,13 @@ router.post(
         if (task.spawned_task_id) {
           const spawned = findOwnTask(task.spawned_task_id, req.user.id);
           if (spawned && spawned.completed_at !== null) return "blocked";
-          if (spawned) db.prepare("DELETE FROM tasks WHERE id = ? AND user_id = ?").run(spawned.id, req.user.id);
+          if (spawned) {
+            if (spawned.assignee_id) auditAssignment(spawned, req.user.id, 'repeat_removed');
+            db.prepare("DELETE FROM tasks WHERE id = ? AND user_id = ?").run(spawned.id, req.user.id);
+          }
         }
         db.prepare(
-          "UPDATE tasks SET completed_at = NULL, spawned_task_id = NULL, updated_at = datetime('now') WHERE id = ? AND user_id = ?"
+          "UPDATE tasks SET completed_at = NULL, spawned_task_id = NULL, assignment_version=assignment_version+1, updated_at = datetime('now') WHERE id = ? AND user_id = ?"
         ).run(task.id, req.user.id);
         return "ok";
       });
@@ -406,7 +444,10 @@ router.delete(
     const task = id && findOwnTask(id, req.user.id);
     if (!task) return res.status(404).json({ error: "Task not found." });
 
-    db.prepare("DELETE FROM tasks WHERE id = ? AND user_id = ?").run(task.id, req.user.id);
+    db.transaction(() => {
+      if (task.assignee_id) auditAssignment(task, req.user.id, 'deleted');
+      db.prepare("DELETE FROM tasks WHERE id = ? AND user_id = ?").run(task.id, req.user.id);
+    })();
     res.json({ ok: true });
   })
 );

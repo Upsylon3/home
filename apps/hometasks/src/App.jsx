@@ -61,6 +61,7 @@ export default function App() {
         <Route path="/" element={<Tasks key="today" view="today" />} />
         <Route path="/upcoming" element={<Tasks key="upcoming" view="upcoming" />} />
         <Route path="/all" element={<Tasks key="all" view="all" />} />
+        <Route path="/assigned" element={<Tasks key="assigned" view="assigned" />} />
         <Route path="/done" element={<Tasks key="done" view="done" />} />
         <Route path="/projects/:projectId" element={<Tasks key="project" view="project" />} />
         <Route path="/settings" element={<Settings />} />

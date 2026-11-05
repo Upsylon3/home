@@ -5,7 +5,6 @@ Only unfinished work is listed here. Completed changes belong in
 
 ## Application work
 
-- Add HomeTasks assignment after defining its sharing and ownership model.
 - Design signed multi-server pairing, revocation and recovery before accepting
   another HOME's accounts. Storage replication is a separate feature.
 

@@ -78,7 +78,10 @@ forwarded to the internet. Details: [deployment](DEPLOYMENT.md) and
 - Bundled applications use an explicit catalog/install/enable lifecycle. Core
   manages registry availability, not package downloads or container processes.
 - Manifest permissions are declarative for normal browser sessions. Separate
-  action/audience checks for background capabilities do not solve that gap.
+  owner-consented application keys enforce declared file-permission subsets at
+  Cloud routes; they never become general sessions. Shared-origin browser apps
+  remain trusted peers. Hosting untrusted browser code would require a separate
+  origin/identity design; an app-name header cannot establish that boundary.
 - Cloud data is owner-only. Public share links do not implement shared folders
   or general household ACLs.
 - Account disable is the supported lifecycle; there is no cross-service account
@@ -143,7 +146,10 @@ external providers and integrations are optional.
 - Core owns identity, sessions, roles, preferences, registry, activity and
   notifications. Use canonical `/api/core/` routes and preserve compatible aliases.
 - Validate inputs, ownership, quotas and authorization in backends. Registry
-  permission declarations are not caller-application isolation.
+  declarations alone are not authorization. New external application consumers
+  must use owner-consented scoped keys, never the user's full browser session.
+  Add further route/audience permissions only for a concrete consumer; unsupported
+  key permissions and session-only routes fail closed.
 - Failed activity/event delivery must not undo a successful primary operation.
   Optional cross-app reactions belong in Bridge.
 - Vault encrypts titles/content in the browser, never gives usable keys to the

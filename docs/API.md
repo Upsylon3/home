@@ -57,6 +57,58 @@ prefix; current clients already use it. Any future removal or error-contract
 change requires an explicit versioned migration with caller and security proof.
 Internal service endpoints are not aliased under these public prefixes.
 
+### Application access keys
+
+Use Home Settings → Application access to grant a registered application limited
+access to your own Cloud data. Full sessions remain required for management.
+New application consumers must use these keys rather than receiving the user's
+full session. There is one current key per user/application; revoke an active key
+before replacing it. The 256-bit opaque `hc_app_...` value is returned only once,
+stored hash-only, never a URL parameter, and expires after 30 days. At most 100
+application grants per account are retained. All responses are `no-store`.
+
+| Method | Path | Contract |
+|---|---|---|
+| GET | `/api/core/application-access` | Full session; own `{access: [...]}` metadata, never key/hash |
+| POST | `/api/core/application-access` | Full session; exact `{applicationSlug, permissions: [...], consent: true}`; `201 {access, token}` |
+| DELETE | `/api/core/application-access/:id` | Full session; revoke own key; idempotent `204`; foreign/missing `404` |
+| POST | `/api/core/application-access/verify` | Key bearer; exact `{audience: "homecloud", permission}`; `{application}` or `403` |
+
+Only `files.read`, `files.write`, `files.delete` and `files.share` are issuable.
+No wildcard, implicit permission, subject override or caller-selected expiry is
+accepted. Every permission must also appear in the enabled app's manifest, and
+HomeCloud must be installed/enabled. Other catalog permissions remain unissuable.
+
+Cloud private routes require independent permissions before parsing uploads or
+touching data; ordinary sessions retain existing owner/role checks:
+
+| Permission | Cloud routes |
+|---|---|
+| `files.read` | File/quota/folder listings (including Trash), download, thumbnail, POST download-batch |
+| `files.write` | Upload; file/folder move; folder create/rename; file restore |
+| `files.delete` | File trash/permanent delete and folder delete |
+| `files.share` | List/create/revoke public file links; read does not reveal share tokens |
+
+Keys never authenticate session-only routes, other apps, Core management or
+scheduled-delegation APIs. The verified principal is `kind: application`, with
+credential ID, caller application slug, fixed audience/permission, expiry and
+the owner's limited `{id, username, role: "user", quotaOverride}` identity. No administrator
+authority is delegated. The shared client exposes `requirePermission` and a
+bounded verifier with no successful cache/coalescing. Core refusal is `403`;
+outages/malformed replies are retryable `502`, capacity `503`, deadlines `504`.
+Checks cover account epoch/role/disable, both live app states, declarations,
+consented subset, expiry and revocation. App disable/uninstall or permission
+edits permanently revoke keys. Re-enablement/reinstallation does not revive them.
+An explicit administrator `PATCH /api/core/apps/:id` permission array now
+replaces the declaration set rather than accumulating permissions; omission
+preserves it. This makes reductions effective for subsequent consent requests.
+
+Browser sessions and bundled browser apps still share an origin and login.
+These scoped consumer credentials do not sandbox scripts with that full session.
+An app-name header, origin or manifest declaration alone is never caller proof.
+Further audiences/permissions require explicit backend route policies first;
+Vault plaintext is never an integration scope.
+
 ### Scheduled-delegation authority
 
 Decision 002's authority, action APIs and opt-in worker/controls are implemented.

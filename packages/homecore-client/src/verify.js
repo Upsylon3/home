@@ -65,6 +65,7 @@ function createVerifier({
   }
 
   return async function verifyUser(token) {
+    if (typeof token !== 'string' || token.startsWith('hc_app_')) return null;
     const startedAt = now();
     for (const [key, entry] of cache) {
       if (entry.expiresAt <= startedAt) cache.delete(key);

@@ -33,6 +33,7 @@ router.use(attachRequestId);
 // Public, unauthenticated — see health.js for why.
 router.use("/health", healthRoutes);
 router.use("/delegations", delegationRoutes);
+router.use('/application-access', require('./applicationAccess'));
 router.use("/auth", authRoutes);
 router.use("/admin", adminRoutes);
 // The existing /activity and /activity/me are cross-application views.

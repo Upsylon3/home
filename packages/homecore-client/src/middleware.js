@@ -14,6 +14,7 @@ async function requireAuth(req, res, next) {
   const header = req.headers.authorization || "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : null;
   if (!token) return res.status(401).json({ error: "Sign in required." });
+  if (token.startsWith('hc_app_')) return res.status(403).json({ error: 'Application keys are not accepted by this route.' });
 
   try {
     const user = await verifyUser(token);

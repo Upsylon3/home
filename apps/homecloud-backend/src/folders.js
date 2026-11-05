@@ -1,5 +1,6 @@
+const { requirePermission } = require('@home/homecore-client');
 // Folder create/rename/move/delete, tree, and breadcrumbs. Auth is
-// applied at mount time in app.js, not with `router.use(requireAuth)`
+// applied to each route below with a fixed file permission
 // here — see files.js's header comment for why.
 const express = require("express");
 const { db, logActivity } = require("./db");
@@ -45,7 +46,7 @@ function buildBreadcrumb(folderId, userId) {
 // The full folder tree in one flat list (id/name/parentId), used by the
 // frontend to build a "move to folder" picker without needing to navigate
 // level by level.
-router.get("/all", (req, res) => {
+router.get("/all", requirePermission("files.read"), (req, res) => {
   const rows = db
     .prepare(
       `SELECT id, name, parent_id AS parentId FROM folders
@@ -57,7 +58,7 @@ router.get("/all", (req, res) => {
 
 // List the subfolders directly inside a given parent (or the root, if
 // parentId is omitted). Used by the main file-browser view.
-router.get("/", (req, res) => {
+router.get("/", requirePermission("files.read"), (req, res) => {
   const parentId = req.query.parentId ? Number(req.query.parentId) : null;
 
   if (parentId !== null) {
@@ -77,7 +78,7 @@ router.get("/", (req, res) => {
   res.json({ folders: rows, breadcrumb });
 });
 
-router.post("/", (req, res) => {
+router.post("/", requirePermission("files.write"), (req, res) => {
   const { name, parentId } = req.body || {};
   if (typeof name !== "string") {
     return res.status(400).json({ error: "Folder name is required." });
@@ -109,7 +110,7 @@ router.post("/", (req, res) => {
   res.status(201).json({ folder: { id: info.lastInsertRowid, name: trimmed, parentId: parent ? parent.id : null } });
 });
 
-router.patch("/:id", (req, res) => {
+router.patch("/:id", requirePermission("files.write"), (req, res) => {
   const folder = getFolder(req.params.id, req.user.id);
   if (!folder) return res.status(404).json({ error: "Folder not found." });
 
@@ -134,7 +135,7 @@ router.patch("/:id", (req, res) => {
 });
 
 // Move a folder under a new parent (or to the root, if parentId is null).
-router.post("/:id/move", (req, res) => {
+router.post("/:id/move", requirePermission("files.write"), (req, res) => {
   const folder = getFolder(req.params.id, req.user.id);
   if (!folder) return res.status(404).json({ error: "Folder not found." });
 
@@ -158,7 +159,7 @@ router.post("/:id/move", (req, res) => {
 // subfolder) still contains files, ?force=true is required, and those
 // files are moved to Trash rather than being immediately, permanently
 // deleted — consistent with how deleting a single file works elsewhere.
-router.delete("/:id", (req, res) => {
+router.delete("/:id", requirePermission("files.delete"), (req, res) => {
   const folder = getFolder(req.params.id, req.user.id);
   if (!folder) return res.status(404).json({ error: "Folder not found." });
 

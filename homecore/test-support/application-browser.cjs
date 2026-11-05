@@ -71,8 +71,39 @@ async function main() {
     await memberPage.goto(origin + "/apps");
     await memberPage.getByRole("heading", { name: "HomeCloud", exact: true }).waitFor();
     assert.equal(await memberPage.getByRole("button", { name: /^(Install|Uninstall|Enable|Disable)$/ }).count(), 0);
+    await memberPage.goto(origin + '/settings');
+    const access = memberPage.getByRole('region', { name: 'Application access', exact: true });
+    await memberPage.route('**/api/core/application-access', route => route.fulfill({ status: 503, contentType: 'application/json', body: '{"error":"Access service unavailable."}' }));
+    await access.getByRole('button', { name: 'Manage application access', exact: true }).click();
+    await access.getByRole('alert').waitFor();
+    await memberPage.unroute('**/api/core/application-access');
+    await access.getByRole('button', { name: 'Retry', exact: true }).click();
+    await access.getByLabel('Application', { exact: true }).selectOption('homenotes');
+    await access.getByRole('checkbox', { name: /Read my Cloud files/ }).check();
+    assert.equal(await access.getByRole('checkbox', { checked: true }).count(), 1);
+    await access.getByRole('button', { name: 'Allow selected access and create key', exact: true }).press('Enter');
+    const key = access.getByLabel('New access key', { exact: true });
+    await key.waitFor();
+    const credential = await key.inputValue();
+    assert.ok(/^hc_app_[A-Za-z0-9_-]{43}$/.test(credential));
+    assert.ok(!(await memberPage.evaluate(() => JSON.stringify({ ...localStorage }))).includes(credential));
+    await memberPage.setViewportSize({ width: 390, height: 844 });
+    assert.ok(await memberPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), 'Application access must fit a narrow screen');
+    await access.getByRole('button', { name: 'Hide key', exact: true }).click();
+    await memberPage.reload();
+    await memberPage.getByRole('button', { name: 'Manage application access', exact: true }).click();
+    assert.equal(await memberPage.getByLabel('New access key', { exact: true }).count(), 0);
+    const revoke = memberPage.getByRole('button', { name: 'Revoke HomeNotes access', exact: true });
+    await revoke.waitFor();
+    memberPage.once('dialog', dialog => dialog.accept());
+    await revoke.click();
+    await memberPage.getByText('Application access revoked.', { exact: true }).waitFor();
+    const refused = await fetch(core.baseUrl + '/api/core/application-access/verify', { method: 'POST',
+      headers: { Authorization: 'Bearer ' + credential, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ audience: 'homecloud', permission: 'files.read' }) });
+    assert.equal(refused.status, 403);
     assert.deepEqual(errors, []);
-    console.log("Verified unavailable/retry, fresh catalog, keyboard install, enable/dependencies, uninstall/reload/reinstall, sidebar refresh, member controls and narrow layout.");
+    console.log("Verified application lifecycle, member controls and application-key consent, one-time display, no persistent storage, revocation, unavailable/retry and narrow layout.");
   } finally {
     if (browser) await browser.close();
     if (proxy) { proxy.closeAllConnections(); await new Promise(resolve => proxy.close(resolve)); }

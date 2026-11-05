@@ -16,8 +16,9 @@ function fixture(t, launcher) {
 }
 function verify(result, log, action, scenario) {
   assert.ifError(result.error);
-  assert.equal(result.status, scenario === 'success' ? 0 : 1, result.stderr);
   const calls = fs.readFileSync(log, 'utf8').trim().split(/\r?\n/).filter(Boolean).map(JSON.parse);
+  assert.equal(result.status, scenario === 'success' ? 0 : 1,
+    `${action}/${scenario}: ${result.stderr}\n${JSON.stringify(calls)}`);
   assert.ok(!calls.some(args => ['stop', 'up', 'load'].some(value => args.includes(value))));
   const run = calls.find(args => args[0] === 'run');
   if (['nested', 'ancestor', 'filesystem-root', 'missing-image'].includes(scenario)) { assert.equal(run, undefined); return; }

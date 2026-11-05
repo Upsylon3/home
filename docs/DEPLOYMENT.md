@@ -205,7 +205,10 @@ Compose layout and mounts, and refuses an active capture worker or new writers.
 
 Capture requires every canonical database, checks complete source fingerprints
 before/after, validates archives and Cloud file references, and atomically renames
-one new set only after all eight pass. Failure preserves earlier sets. The manifest
+one new set only after all eight pass. Stopped SQLite databases and their WAL/
+rollback journals are copied into private writable scratch for recovery before
+the existing standalone snapshotter reads them; original sources stay read-only.
+Failure preserves earlier sets. The manifest
 uses schema 1, `consistency: coordinated-offline`, `quiescedAt`, `createdAt`, a
 source fingerprint and each archive's size/SHA-256. `verify-backups` (or
 `export.py --verify SET-FOLDER`) rejects incomplete sets, altered files and invalid

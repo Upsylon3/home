@@ -120,7 +120,7 @@ def add_files(tar, source, relative, excluded):
             raise ValueError(f"unsupported source entry (links/devices are not archived): {name}")
 
 
-def create(source, archive, work):
+def create(source, archive, work, *, database_source=None):
     if source.is_symlink():
         raise ValueError("source volume must not be a symlink")
     databases = sorted(source.glob("*.db"))
@@ -130,7 +130,9 @@ def create(source, archive, work):
     for db in databases:
         if not stat.S_ISREG(db.lstat().st_mode):
             raise ValueError("application database must be a regular file")
-        snapshot(db, work / db.name)
+        # Offline callers may provide recovered private copies. Live callers
+        # keep reading the original database through SQLite's backup API.
+        snapshot((database_source or source) / db.name, work / db.name)
         excluded.update(db.name + suffix for suffix in ("", "-wal", "-shm", "-journal"))
     with tarfile.open(archive, "w:gz", dereference=True) as tar:
         for db in databases:

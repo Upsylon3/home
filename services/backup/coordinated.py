@@ -5,17 +5,20 @@ The managed host launcher proves its container barrier. Direct callers must
 establish the same offline precondition themselves. No Docker socket is used.
 """
 import argparse
+from contextlib import closing
 from datetime import datetime, timezone
 import hashlib
 import json
 import os
 from pathlib import Path
 import signal
+import shutil
+import sqlite3
 import stat
 import tempfile
 import uuid
 
-from snapshot import create, interrupted
+from snapshot import create, interrupted, check_database
 from export import COORDINATED_SOURCES, directory, open_archive, checksum, restore_check, publish_export
 
 
@@ -47,6 +50,21 @@ def fingerprint(root):
     return digest.hexdigest()
 
 
+def offline_databases(source, target):
+    # Stopped WAL databases can lack a usable SHM file. Recover only disposable
+    # copies in writable scratch, never grant writes to source mounts. The full
+    # before/after fingerprint protects this copy under the offline precondition.
+    for database in sorted(source.glob('*.db')):
+        for suffix in ('', '-wal', '-journal'):
+            file = database.with_name(database.name + suffix)
+            if suffix and not file.exists():
+                continue
+            with open_archive(file) as src, (target / file.name).open('xb') as dst:
+                shutil.copyfileobj(src, dst)
+        with closing(sqlite3.connect(target / database.name)) as db:
+            check_database(db)
+
+
 def capture(source, destination, *, confirm_offline=False, quiesced_at=None):
     if not confirm_offline:
         raise ValueError('Stop and verify every source writer before capturing; use the host snapshot action')
@@ -71,9 +89,9 @@ def capture(source, destination, *, confirm_offline=False, quiesced_at=None):
         with tempfile.TemporaryDirectory(prefix='.restore-', dir=stage) as scratch:
             for source_name in COORDINATED_SOURCES:
                 target = stage / f'{source_name}-backup-{stamp}.tar.gz'
-                # The existing snapshotter produces standalone databases and
-                # validates Cloud references without granting source writes.
-                create(source / source_name, target, Path(scratch))
+                with tempfile.TemporaryDirectory(prefix='.offline-', dir=scratch) as offline:
+                    offline_databases(source / source_name, Path(offline))
+                    create(source / source_name, target, Path(scratch), database_source=Path(offline))
                 os.chmod(target, 0o600)
                 with target.open('r+b') as stream:
                     os.fsync(stream.fileno())

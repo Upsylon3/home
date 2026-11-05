@@ -4,6 +4,7 @@ from contextlib import closing
 import importlib
 import json
 import sqlite3
+import subprocess
 import sys
 import tarfile
 import tempfile
@@ -82,8 +83,8 @@ class CoordinatedChecks(unittest.TestCase):
         previous = self.capture()
         real_create = coordinated.create
 
-        def mutate(source, target, scratch):
-            real_create(source, target, scratch)
+        def mutate(source, target, scratch, **options):
+            real_create(source, target, scratch, **options)
             if source.name == 'homenotes':
                 (self.source / 'homecore/late-write').write_text('external writer')
 
@@ -108,6 +109,22 @@ class CoordinatedChecks(unittest.TestCase):
                 export.verify_export(target)
         file.write_text(json.dumps(original))
         self.assertEqual(export.verify_export(target), 8)
+
+    def test_stopped_wal_without_shm_is_recovered_only_in_private_scratch(self):
+        database = self.source / 'homecore/homecore.db'
+        script = "import sqlite3,sys,os; db=sqlite3.connect(sys.argv[1]); db.execute('PRAGMA journal_mode=WAL'); db.execute(\"INSERT INTO example VALUES ('WAL-only')\"); db.commit(); os._exit(0)"
+        subprocess.run([sys.executable, '-c', script, str(database)], check=True, timeout=15)
+        database.with_name(database.name + '-shm').unlink(missing_ok=True)
+        self.assertTrue(database.with_name(database.name + '-wal').exists())
+        before = coordinated.fingerprint(self.source)
+        target = self.capture()
+        self.assertEqual(coordinated.fingerprint(self.source), before)
+        restored = self.root / 'restored.db'
+        with tarfile.open(next(target.glob('homecore-backup-*.tar.gz'))) as archive:
+            with archive.extractfile('./homecore.db') as stream:
+                restored.write_bytes(stream.read())
+        with closing(sqlite3.connect(restored)) as db:
+            self.assertIn(('WAL-only',), db.execute('SELECT value FROM example').fetchall())
 
 
 if __name__ == '__main__':

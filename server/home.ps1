@@ -31,6 +31,30 @@ if ($Action -in @('export-backups','verify-backups')) {
             $cursor = if ($parent) { $parent.FullName } else { $null }
         }
     }
+    if ($env:OS -eq 'Windows_NT') {
+        # Resolve-Path can retain 8.3 aliases in ancestors. Expand both paths
+        # before comparing, without treating an alias as separate storage.
+        if (-not ('HomeExportPaths' -as [type])) {
+            Add-Type @'
+using System;
+using System.IO;
+using System.Text;
+using System.Runtime.InteropServices;
+public static class HomeExportPaths {
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern uint GetLongPathName(string source, StringBuilder target, uint size);
+    public static string Expand(string source) {
+        var target = new StringBuilder(32768);
+        uint length = GetLongPathName(source, target, (uint)target.Capacity);
+        if (length == 0 || length >= target.Capacity) throw new IOException("Could not normalize the backup storage path.");
+        return target.ToString();
+    }
+}
+'@
+        }
+        $destination = [HomeExportPaths]::Expand($destination)
+        $current = [HomeExportPaths]::Expand($current).TrimEnd('\','/')
+    }
     $comparison = [StringComparison]::OrdinalIgnoreCase
     $boundary = $destination.TrimEnd('\','/')
     if (($boundary + '\').StartsWith($current + '\', $comparison) -or ($current + '\').StartsWith($boundary + '\', $comparison) -or

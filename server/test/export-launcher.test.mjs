@@ -21,7 +21,7 @@ function verify(result, log, action, scenario) {
     `${action}/${scenario}: ${result.stderr}\n${JSON.stringify(calls)}`);
   assert.ok(!calls.some(args => ['stop', 'up', 'load'].some(value => args.includes(value))));
   const run = calls.find(args => args[0] === 'run');
-  if (['nested', 'ancestor', 'filesystem-root', 'missing-image'].includes(scenario)) { assert.equal(run, undefined); return; }
+  if (['nested', 'short-nested', 'ancestor', 'filesystem-root', 'missing-image'].includes(scenario)) { assert.equal(run, undefined); return; }
   assert.equal(run[run.indexOf('--network') + 1], 'none');
   assert.ok(run.includes('no-new-privileges'));
   assert.ok(!run.some(arg => arg.includes('configuration') || arg.includes('target=/bundle')));
@@ -48,16 +48,20 @@ function global:docker {
   if ($args -contains 'images' -and $env:HOME_EXPORT_CASE -ne 'missing-image') { Write-Output '${image}' }
   if ($args[0] -eq 'run' -and $env:HOME_EXPORT_CASE -eq 'copy-fail') { $global:LASTEXITCODE = 1 }
 }
-& $env:HOME_EXPORT_LAUNCHER $env:HOME_EXPORT_ACTION $env:HOME_EXPORT_DESTINATION
+$chosenPath = $env:HOME_EXPORT_DESTINATION
+if ($env:OS -eq 'Windows_NT' -and $env:HOME_EXPORT_CASE -eq 'short-nested') {
+  $chosenPath = (New-Object -ComObject Scripting.FileSystemObject).GetFolder($chosenPath).ShortPath
+}
+& $env:HOME_EXPORT_LAUNCHER $env:HOME_EXPORT_ACTION $chosenPath
 exit $LASTEXITCODE
 `);
   for (const action of ['export-backups', 'verify-backups']) {
-    for (const scenario of ['success', 'copy-fail', 'nested', 'ancestor', 'filesystem-root', 'missing-image']) {
+    for (const scenario of ['success', 'copy-fail', 'nested', 'short-nested', 'ancestor', 'filesystem-root', 'missing-image']) {
       fs.writeFileSync(f.log, '');
       const result = spawnSync(process.env.HOME_TEST_PWSH || 'pwsh', ['-NoProfile', '-File', driver], {
         encoding: 'utf8', timeout: 15_000, env: { ...process.env, HOME_EXPORT_LOG: f.log, HOME_EXPORT_CASE: scenario,
           HOME_EXPORT_ACTION: action, HOME_EXPORT_LAUNCHER: path.join(f.installation, 'home.ps1'),
-          HOME_EXPORT_DESTINATION: scenario === 'nested' ? path.join(f.installation, 'backups') :
+          HOME_EXPORT_DESTINATION: ['nested', 'short-nested'].includes(scenario) ? path.join(f.installation, 'backups') :
             scenario === 'ancestor' ? f.root : scenario === 'filesystem-root' ? path.parse(f.installation).root : f.destination }
       });
       verify(result, f.log, action, scenario);

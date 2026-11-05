@@ -6,6 +6,13 @@ spec = importlib.util.spec_from_file_location('scope', Path(__file__).parents[1]
 scope = importlib.util.module_from_spec(spec); spec.loader.exec_module(scope)
 
 class ScopeTests(unittest.TestCase):
+    def test_backup_proof_installs_the_native_sqlite_binding(self):
+        selected = scope.select(['services/backup/export.py'])
+        self.assertTrue(selected['backup'])
+        self.assertTrue(selected['native'])
+        self.assertTrue(selected['node'])
+        self.assertFalse(selected['android'])
+
     def test_server_portal_and_runtime_have_separate_checks(self):
         portal = scope.select(['server/portal/portal.mjs'])
         self.assertTrue(portal['demo']); self.assertFalse(portal['docker']); self.assertFalse(portal['android'])

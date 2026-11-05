@@ -1,4 +1,4 @@
-param([ValidateSet('start','code','access','diagnose','stop','status','logs','upgrade','import')][string]$Action = 'start', [string]$PreviousFolder)
+param([ValidateSet('start','code','access','diagnose','export-backups','verify-backups','stop','status','logs','upgrade','import')][string]$Action = 'start', [string]$PreviousFolder)
 $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
 if ($Action -eq 'import') {
@@ -16,6 +16,38 @@ if ($LASTEXITCODE -ne 0) { throw 'Docker Compose v2 is required.' }
 if ($Action -in @('stop','status','logs')) {
     $command = @{stop='stop'; status='ps'; logs='logs'}[$Action]
     docker compose -f compose.json $command
+    exit $LASTEXITCODE
+}
+if ($Action -in @('export-backups','verify-backups')) {
+    if (-not $PreviousFolder) { throw 'Pass an existing mounted destination folder, or an export folder to verify.' }
+    $destination = (Resolve-Path -LiteralPath $PreviousFolder).Path
+    $current = (Resolve-Path -LiteralPath $PSScriptRoot).Path.TrimEnd('\','/')
+    if (-not (Test-Path -LiteralPath $destination -PathType Container)) { throw 'Backup destination must be an existing directory.' }
+    foreach ($candidate in @($destination, $current)) {
+        $cursor = $candidate
+        while ($cursor) {
+            if ((Get-Item -LiteralPath $cursor -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Backup paths must not pass through links or junctions.' }
+            $parent = [IO.Directory]::GetParent($cursor)
+            $cursor = if ($parent) { $parent.FullName } else { $null }
+        }
+    }
+    $comparison = [StringComparison]::OrdinalIgnoreCase
+    $boundary = $destination.TrimEnd('\','/')
+    if (($boundary + '\').StartsWith($current + '\', $comparison) -or ($current + '\').StartsWith($boundary + '\', $comparison) -or
+        ($boundary + '/').StartsWith($current + '/', $comparison) -or ($current + '/').StartsWith($boundary + '/', $comparison) -or $destination.Contains(',')) {
+        throw 'Backup storage must be outside the installation, non-nested, and use a path without commas.'
+    }
+    $backupImage = @(docker compose -f compose.json images -q backup)
+    if ($LASTEXITCODE -ne 0 -or $backupImage.Count -ne 1 -or $backupImage[0] -notmatch '^(sha256:)?[a-f0-9]{12,64}$') { throw 'Start HOME once so its backup image is available.' }
+    $exportArgs = @('run','--rm','--network','none','--cap-drop','ALL','--cap-add','DAC_OVERRIDE','--security-opt','no-new-privileges')
+    if ($Action -eq 'export-backups') {
+        $exportArgs += @('--cap-add','CHOWN')
+        $exportArgs += @('--mount',"type=bind,source=$PSScriptRoot/backups,target=/backups,readonly",'--mount',"type=bind,source=$destination,target=/destination")
+        $exportArgs += @('--entrypoint','python3',$backupImage[0],'/export.py','/backups','/destination')
+    } else {
+        $exportArgs += @('--mount',"type=bind,source=$destination,target=/export,readonly",'--entrypoint','python3',$backupImage[0],'/export.py','--verify','/export')
+    }
+    & docker @exportArgs
     exit $LASTEXITCODE
 }
 $installerImage = (Get-Content -LiteralPath installer-image.txt -Raw).Trim()

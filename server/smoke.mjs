@@ -106,6 +106,26 @@ try {
     nextRuntime.services.homecore.image, '/bundle/setup/cli.mjs', 'diagnose'], true);
   assert.match(diagnosticOutput, /Public HTTPS is not enabled/);
   assert.deepEqual(fs.readFileSync(path.join(upgradedRoot, 'configuration/installation.json')), stateBeforeDiagnostics);
+  upgradedCompose(['stop', 'backup']);
+  upgradedCompose(['run', '--rm', 'backup', '--once']);
+  const exportDestination = fs.mkdtempSync(path.join(os.tmpdir(), 'home-backup-export-smoke-'));
+  const exportContainer = ['run', '--rm', '--network', 'none', '--cap-drop', 'ALL',
+    '--cap-add', 'DAC_OVERRIDE', '--security-opt', 'no-new-privileges'];
+  const exportOutput = docker([...exportContainer, '--cap-add', 'CHOWN',
+    '--mount', `type=bind,source=${upgradedRoot}/backups,target=/backups,readonly`,
+    '--mount', `type=bind,source=${exportDestination},target=/destination`,
+    '--entrypoint', 'python3', nextRuntime.services.backup.image, '/export.py', '/backups', '/destination'], true);
+  assert.match(exportOutput, /Verified export:/);
+  const exported = fs.readdirSync(exportDestination);
+  assert.equal(exported.length, 1);
+  assert.equal(fs.statSync(path.join(exportDestination, exported[0])).uid, process.getuid());
+  for (const entry of fs.readdirSync(path.join(exportDestination, exported[0]))) {
+    assert.equal(fs.statSync(path.join(exportDestination, exported[0], entry)).uid, process.getuid());
+  }
+  const verifiedExport = docker([...exportContainer,
+    '--mount', `type=bind,source=${path.join(exportDestination, exported[0])},target=/export,readonly`,
+    '--entrypoint', 'python3', nextRuntime.services.backup.image, '/export.py', '--verify', '/export'], true);
+  assert.match(verifiedExport, /exported archives: checksums, SQLite integrity and file references/);
   assert.equal((await request('/api/auth/login', account)).status, 200);
   assert.equal(await (await request(`/api/homecloud/files/${file.id}/download`, undefined, token)).text(), 'installer persistence proof');
   const nextForm = new FormData();

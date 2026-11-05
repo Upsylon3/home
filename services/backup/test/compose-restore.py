@@ -7,6 +7,7 @@ import tarfile
 import tempfile
 
 from snapshot import verify
+from export import export_archives, verify_export
 
 
 root = Path("/backups/ci-restore-check")
@@ -40,3 +41,9 @@ with tempfile.TemporaryDirectory() as tmp:
                 db.commit()
             target.unlink()
 print("ok  restored account, uploaded bytes and writable databases")
+with tempfile.TemporaryDirectory(prefix='ci-export-', dir='/backups') as destination:
+    exported = export_archives(root, Path(destination))
+    assert verify_export(exported) == len(sources)
+    for original in root.glob('*.tar.gz'):
+        assert (exported / original.name).read_bytes() == original.read_bytes()
+print('ok  all eight real-service archives exported and restore-checked with exact bytes')

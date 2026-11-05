@@ -124,6 +124,24 @@ installed flag; it neither deletes app rows nor touches sibling databases. Older
 Core binaries ignore this flag and can show uninstalled entries as disabled, so
 do not rely on newer lifecycle visibility while running an older Core.
 
+## Application access deployment
+
+Deploy Core and the shared-client/Cloud backend before exposing the new Home
+Settings application-access controls. Core adds only `hc_application_access`;
+existing accounts, sessions and files are unchanged. There are no pre-created
+keys, service-secret settings or default grants. Users explicitly choose an
+enabled registered app and file permissions in Settings, then privately deliver
+the one-time key to that app. Never substitute their full session token.
+Unsupported/older APIs fail closed; the UI exposes an unavailable/retry state.
+Rolling back Core/Cloud makes the opaque keys unusable while normal sessions
+remain compatible. Preserve the additive table when rolling back.
+
+Keys belong in private consumer configuration, never URLs/logs/repositories.
+The existing offline `revoke-restored-delegations.js` maintenance now also revokes
+application keys atomically, and its `{revoked:N}` counts both credential classes.
+Run it on every Core restore before serving traffic; normal restarts do not
+revoke keys. Existing pre-feature databases remain supported by that script.
+
 ## Backups
 
 The backup service writes per-app archives to `backups/` daily, retaining

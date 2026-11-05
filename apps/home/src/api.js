@@ -47,6 +47,13 @@ async function request(path, options = {}) {
 }
 
 export const api = {
+  applicationAccess: {
+    list: () => request('/core/application-access'),
+    create: (applicationSlug, permissions) => request('/core/application-access', {
+      method: 'POST', body: JSON.stringify({ applicationSlug, permissions, consent: true })
+    }),
+    revoke: id => request(`/core/application-access/${encodeURIComponent(id)}`, { method: 'DELETE' })
+  },
   vaultAdmin: {
     users: () => request("/core/admin/users"),
     status: id => request(`/homevault/admin/users/${encodeURIComponent(id)}/vault`),

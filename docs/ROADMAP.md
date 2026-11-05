@@ -5,8 +5,6 @@ Only unfinished work is listed here. Completed changes belong in
 
 ## Application work
 
-- Enforce caller-application permissions before adding HomeAI or other consumers
-  that need this boundary. Browser sessions currently identify users, not apps.
 - Add HomeTasks assignment after defining its sharing and ownership model.
 - Design signed multi-server pairing, revocation and recovery before accepting
   another HOME's accounts. Storage replication is a separate feature.

@@ -53,16 +53,38 @@ is not an authorization boundary. Set explicit origins where appropriate.
 
 ## Known limits
 
+Application access keys are separate 256-bit opaque bearer credentials, stored
+hash-only in Core. A full current user session explicitly consents to a subset
+of an enabled registered application's declared `files.*` permissions. Cloud
+verifies each route's fixed audience/permission live in Core without a positive
+cache, retains owner/quota checks, and grants no administrator authority. An
+arbitrary caller-app header is ignored. Session APIs, other application APIs,
+Vault and background capabilities do not accept these keys. Public health/share
+links retain their separate intentionally public authentication model.
+
+Keys expire after 30 days; explicit revocation, password/sign-out epoch changes,
+account disable/role change, app disable/uninstall and manifest permission edits
+invalidate access. Disable/uninstall/permission edits permanently revoke affected
+keys, so re-enablement cannot revive them. Restoring Core requires offline
+revocation of both application keys and scheduled delegations before traffic.
+Already-authorized in-flight transfers may finish; revocation refuses subsequent
+permission checks, without rolling back successful writes.
+Only the issuance response shows a key; Home keeps it in component memory until
+hidden/navigation, never persistent browser storage. Anyone holding a key can
+act as that granted application: it is not executable-code attestation. Never
+give an external consumer the user's full login token instead.
+
 - Cloud, Notes, Tasks and other ordinary app data are server-readable. Vault is
   the client-encrypted exception; HOME does not automatically encrypt disks or backups.
 
 - App-manifest permissions do not isolate ordinary browser applications:
-  sessions identify users, not the calling app. Scoped background capabilities
-  are a separate enforced mechanism, not a fix for this generic gap.
-  Install/enable/uninstall controls manage registry availability, not direct
-  URL/API access or service processes. All mutations require a live administrator
-  session; uninstall preserves data and atomically revokes affected automation
-  grants with audits. Reinstall does not revive revoked authority.
+  sessions identify users, not the calling app. Scoped application keys and
+  background capabilities are enforced separate credential types. They do not
+  sandbox code running inside the existing shared browser origin.
+  Install/enable/uninstall controls do not restrict direct browser-session URLs
+  or control service processes. Registry changes require a live administrator;
+  uninstall preserves data and atomically revokes affected application keys and
+  automation grants with audits. Reinstall does not revive revoked authority.
 - A disabled-account login response reveals that the account exists and is
   disabled. This is the current usability tradeoff.
 - Account disable and administrator password reset are supported; full

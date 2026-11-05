@@ -88,6 +88,7 @@ require("./delegationStore").ensureSchema(db);
 // Existing registrations are adopted as installed without changing their IDs,
 // enabled state, routes, permissions or history. New installations start empty.
 ensureColumn("hc_applications", "installed INTEGER NOT NULL DEFAULT 1 CHECK (installed IN (0, 1))");
+require('./applicationAccessStore').ensureSchema(db);
 
 // §7.1 adds display_name, updated_at, and last_login_at to the users table
 // on top of what HomeCloud already has. Nothing currently populates

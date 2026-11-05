@@ -15,6 +15,7 @@ const { requireAdmin } = require("../middleware/authMiddleware");
 const { errorBody } = require("./errors");
 const lifecycle = require("./catalog");
 const delegations = require("./delegationStore").createDelegationStore(db);
+const applicationAccess = require('./applicationAccessStore').createApplicationAccessStore(db);
 
 const router = express.Router();
 
@@ -170,8 +171,10 @@ router.patch("/:id", requireAdmin, (req, res) => {
     );
 
     if (Array.isArray(permissions)) {
+      db.prepare('DELETE FROM hc_application_permissions WHERE application_id=?').run(row.id);
       linkPermissions(row.id, permissions.filter((p) => typeof p === "string"));
     }
+    if (enabled === false || Array.isArray(permissions)) applicationAccess.revokeApplication(row.slug, req.user.id);
     if (typeof enabled === "boolean" && enabled !== Boolean(row.enabled)) lifecycle.audit(req.user.id, row.slug, enabled ? "enabled" : "disabled");
   }).immediate();
 
@@ -195,6 +198,7 @@ router.delete("/:id", requireAdmin, (req, res) => {
     db.prepare("UPDATE hc_applications SET installed=0, enabled=0, updated_at=datetime('now') WHERE id=?").run(row.id);
     // Uninstall must not make old automation authority usable after reinstall.
     delegations.revokeApplication(row.slug, req.user.id);
+    applicationAccess.revokeApplication(row.slug, req.user.id);
     lifecycle.audit(req.user.id, row.slug, "uninstalled");
   }).immediate();
   res.json({ ok: true, dataPreserved: true });

@@ -77,3 +77,23 @@ test('inventory parsing and Docker Desktop paths reject malformed identities wit
   assert.throws(() => parseInventory('private fixture value'), /No metadata values/);
   assert.throws(() => parseInventory(JSON.stringify([{ id: 'short', running: true, mounts: [] }])));
 });
+
+test('recovery waits for an original container restart without accepting a new restarting writer', t => {
+  const { root, host, rows } = fixture(t);
+  beginSnapshot(root, host, rows);
+  rows.forEach(row => { row.running = false; });
+  checkSnapshotBarrier(root, rows);
+  const ids = originalIds(root, rows);
+  rows.forEach(row => { row.running = ids.includes(row.id); });
+  const original = rows.find(row => row.running);
+  original.restarting = true;
+  assert.deepEqual(resumeSnapshot(root, rows), ids);
+  assert.throws(() => finishSnapshot(root, rows), error => error.exitCode === 2);
+  assert.ok(fs.existsSync(snapshotMarker(root)));
+  const backup = rows.find(row => row.service === 'backup');
+  backup.running = true; backup.restarting = true;
+  assert.throws(() => resumeSnapshot(root, rows), /restarting|writer/);
+  backup.running = false; backup.restarting = false; original.restarting = false;
+  finishSnapshot(root, rows);
+  assert.ok(!fs.existsSync(snapshotMarker(root)));
+});

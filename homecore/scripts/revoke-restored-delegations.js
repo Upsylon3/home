@@ -18,7 +18,9 @@ if (args.length !== 3 || args[0] !== "--database" || !path.isAbsolute(args[1]) |
       if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(table)) throw new Error("Not a Core database.");
     }
     const exists = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'hc_delegation_grants'").get();
-    const revoked = exists ? createDelegationStore(db).revokeRestored() : 0;
+    const hasAccess = db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='hc_application_access'").get();
+    const revoked = db.transaction(() => (exists ? createDelegationStore(db).revokeRestored() : 0) +
+      (hasAccess ? require('../src/homecore/applicationAccessStore').createApplicationAccessStore(db).revokeRestored() : 0)).immediate();
     console.log(JSON.stringify({ revoked }));
   } catch {
     console.error("Could not invalidate restored delegations. Keep services offline and check the database.");

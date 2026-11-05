@@ -14,10 +14,18 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
   validation from feature work. Setup, recovery and security requirements remain.
 
 ### Fixed
+- Wait for originally running containers that transiently restart during
+  snapshot recovery; retain strict preflight and foreign-writer checks.
 - Install the reviewed native SQLite binding when CI selects backup tests;
   backup-only changes previously selected an install with scripts disabled.
 
 ### Added
+- Revocable application access keys in Home Settings, with explicit per-user
+  consent and a declared-permission ceiling. Cloud enforces independent read,
+  write, delete and share permissions with live Core verification and ownership
+  checks. Keys expire in 30 days, cannot become browser sessions or access other
+  apps, and are invalidated by account/app changes and offline restore maintenance.
+  Bundled browser apps retain their shared-origin trust boundary.
 - Manual coordinated snapshots for managed installations: stop all project
   containers, verify one complete eight-source set, then restore only the
   previously running containers. Reject changed sources and overlapping writers;

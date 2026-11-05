@@ -5,7 +5,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 
 const { db } = require("./db"); // ensures the data directory + db file exist before anything else runs
-const { requireAuth, HOMECORE_URL } = require("@home/homecore-client");
+const { HOMECORE_URL } = require("@home/homecore-client");
 const filesRoutes = require("./files");
 const foldersRoutes = require("./folders");
 const publicShareRoutes = require("./publicShare");
@@ -40,19 +40,18 @@ app.get("/api/homecloud/health", (req, res) => {
   res.json({ status: "ok", homecoreUrl: HOMECORE_URL });
 });
 
-// requireAuth applied once, here, at mount time — not inside files.js/
-// folders.js themselves (they used to call router.use(requireAuth)
-// directly, back when they were part of homecore's own process and could
-// check sessions locally). Same pattern HomeMedia/HomeSync/HomeNotes
-// already use: this service has no identity of its own, so every request
-// past this point has already been verified against HomeCore.
+// Files/folders authenticate and authorize each declared route through Core.
+// Full sessions and application keys are distinct credentials; an app key is
+// accepted only for the route's fixed permission, never as a general session.
 //
 // Routes live under /api/homecloud/... to match the sibling apps'
 // /api/<app>/... convention (HomeMedia, HomeSync, HomeNotes), rather
 // than bare /api/files, /api/folders paths — see gateway/nginx.conf for
 // how the gateway routes this prefix here.
-app.use("/api/homecloud/files", requireAuth, filesRoutes);
-app.use("/api/homecloud/folders", requireAuth, foldersRoutes);
+// Every private route declares a fixed permission before parsing uploads or
+// touching storage. Full browser sessions retain their existing ownership checks.
+app.use("/api/homecloud/files", filesRoutes);
+app.use("/api/homecloud/folders", foldersRoutes);
 
 // Deliberately NOT under /api/homecloud/ and deliberately NOT behind
 // requireAuth — see publicShare.js's header comment. A share link is a

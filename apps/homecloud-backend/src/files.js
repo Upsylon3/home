@@ -1,10 +1,10 @@
+const { requirePermission } = require('@home/homecore-client');
 // File upload/list/download/trash/share/move routes. This service has no
-// identity of its own, so requireAuth (from @home/homecore-client,
-// delegating to HomeCore) is applied once, at mount time, in app.js —
-// the same pattern HomeMedia/HomeSync/HomeNotes use.
+// identity of its own. Each route authenticates through the shared Core client
+// and declares the permission required for application keys.
 //
 // The per-user quota limit comes off `req.user.quotaOverride`, which
-// requireAuth already populated from HomeCore's /api/auth/me response
+// Core verification populates for both sessions and application keys
 // (there's no local `users` table here to query it from). Usage
 // (`usedBytes`) is a local query against this service's own `files`
 // table.
@@ -97,13 +97,13 @@ const upload = multer({
 // files table it would need lives entirely in this separate service and
 // database. This route is the real source of truth for it;
 // apps/homecloud's StorageGauge.jsx calls this, not /api/auth/me.
-router.get("/quota", (req, res) => {
+router.get("/quota", requirePermission("files.read"), (req, res) => {
   res.json({ usedBytes: usedBytes(req.user.id), quotaBytes: quotaBytesFor(req.user) });
 });
 
 // List active (non-trashed) files inside a given folder (or the root,
 // if folderId is omitted).
-router.get("/", (req, res) => {
+router.get("/", requirePermission("files.read"), (req, res) => {
   const folderId = req.query.folderId ? Number(req.query.folderId) : null;
 
   if (folderId !== null) {
@@ -135,7 +135,7 @@ router.get("/", (req, res) => {
 const ALL_FILES_TYPE_FILTERS = ["image", "video", "audio", "text", "application"];
 const ALL_FILES_LIMIT = 5000; // a personal/family library sanity cap, not real pagination — see README
 
-router.get("/all", (req, res) => {
+router.get("/all", requirePermission("files.read"), (req, res) => {
   const type = req.query.type;
   if (type !== undefined && !ALL_FILES_TYPE_FILTERS.includes(type)) {
     return res.status(400).json({ error: `type must be one of: ${ALL_FILES_TYPE_FILTERS.join(", ")}` });
@@ -160,7 +160,7 @@ router.get("/all", (req, res) => {
 });
 
 // List trashed files, most recently deleted first.
-router.get("/trash", (req, res) => {
+router.get("/trash", requirePermission("files.read"), (req, res) => {
   const rows = db
     .prepare(
       `SELECT id, original_name AS name, size, mimetype, created_at AS createdAt, deleted_at AS deletedAt,
@@ -178,7 +178,7 @@ router.get("/trash", (req, res) => {
 // List every share link the current user has created (across all their
 // files) that hasn't been revoked or expired, so they can find and manage
 // them in one place instead of hunting file-by-file.
-router.get("/shares", (req, res) => {
+router.get("/shares", requirePermission("files.share"), (req, res) => {
   const rows = db
     .prepare(
       `SELECT s.id, s.token, s.expires_at AS expiresAt, s.created_at AS createdAt,
@@ -195,7 +195,7 @@ router.get("/shares", (req, res) => {
   res.json({ shares: rows });
 });
 
-router.post("/upload", (req, res) => {
+router.post("/upload", requirePermission("files.write"), (req, res) => {
   upload.single("file")(req, res, async (err) => {
     if (err) {
       if (err.code === "LIMIT_FILE_SIZE") {
@@ -271,7 +271,7 @@ router.post("/upload", (req, res) => {
 
 // Move a file into a different folder (or back to the root, if folderId
 // is omitted/null).
-router.post("/:id/move", (req, res) => {
+router.post("/:id/move", requirePermission("files.write"), (req, res) => {
   const row = db
     .prepare("SELECT id, original_name FROM files WHERE id = ? AND user_id = ? AND deleted_at IS NULL")
     .get(req.params.id, req.user.id);
@@ -291,7 +291,7 @@ router.post("/:id/move", (req, res) => {
 // Download several files at once as a single zip archive. Files that don't
 // belong to the requester (or don't exist) are silently skipped rather than
 // failing the whole batch.
-router.post("/download-batch", (req, res) => {
+router.post("/download-batch", requirePermission("files.read"), (req, res) => {
   const rawIds = Array.isArray(req.body?.ids) ? req.body.ids : [];
   if (rawIds.length === 0) {
     return res.status(400).json({ error: "No file ids provided." });
@@ -349,7 +349,7 @@ router.post("/download-batch", (req, res) => {
   zipfile.end();
 });
 
-router.get("/:id/download", (req, res) => {
+router.get("/:id/download", requirePermission("files.read"), (req, res) => {
   const row = db
     .prepare("SELECT * FROM files WHERE id = ? AND user_id = ?")
     .get(req.params.id, req.user.id);
@@ -369,7 +369,7 @@ router.get("/:id/download", (req, res) => {
 // Serves the small generated preview image for a file, if it has one.
 // Unlike /download, this has no Content-Disposition: attachment — it's
 // meant to be displayed inline (e.g. in an <img> tag) rather than saved.
-router.get("/:id/thumbnail", (req, res) => {
+router.get("/:id/thumbnail", requirePermission("files.read"), (req, res) => {
   const row = db
     .prepare("SELECT thumbnail_name FROM files WHERE id = ? AND user_id = ?")
     .get(req.params.id, req.user.id);
@@ -389,7 +389,7 @@ router.get("/:id/thumbnail", (req, res) => {
 
 // Create a shareable link for a file. expiresInDays: a whole number of
 // days (1-365), or 0/omitted for a link that never expires.
-router.post("/:id/share", (req, res) => {
+router.post("/:id/share", requirePermission("files.share"), (req, res) => {
   const row = db
     .prepare("SELECT * FROM files WHERE id = ? AND user_id = ? AND deleted_at IS NULL")
     .get(req.params.id, req.user.id);
@@ -433,7 +433,7 @@ router.post("/:id/share", (req, res) => {
 // Revoke a share link. Note: this route is registered before the generic
 // "/:id" routes further down would ever conflict, since "/shares/:shareId"
 // is a distinct two-segment path.
-router.delete("/shares/:shareId", (req, res) => {
+router.delete("/shares/:shareId", requirePermission("files.share"), (req, res) => {
   const row = db
     .prepare(
       `SELECT s.id, f.original_name FROM shares s
@@ -454,7 +454,7 @@ router.delete("/shares/:shareId", (req, res) => {
 // Move a file to trash (soft delete). It stays on disk and counts against
 // quota, but disappears from the main file list, until it's restored,
 // permanently deleted, or auto-purged after the retention window.
-router.delete("/:id", (req, res) => {
+router.delete("/:id", requirePermission("files.delete"), (req, res) => {
   const row = db
     .prepare("SELECT id, original_name FROM files WHERE id = ? AND user_id = ? AND deleted_at IS NULL")
     .get(req.params.id, req.user.id);
@@ -469,7 +469,7 @@ router.delete("/:id", (req, res) => {
 });
 
 // Bring a trashed file back to the main file list.
-router.post("/:id/restore", (req, res) => {
+router.post("/:id/restore", requirePermission("files.write"), (req, res) => {
   const row = db
     .prepare("SELECT id, original_name FROM files WHERE id = ? AND user_id = ? AND deleted_at IS NOT NULL")
     .get(req.params.id, req.user.id);
@@ -486,7 +486,7 @@ router.post("/:id/restore", (req, res) => {
 // Permanently delete a trashed file right now, instead of waiting for it to
 // auto-purge. This is the only route that actually removes bytes from disk
 // and frees up quota.
-router.delete("/:id/permanent", (req, res) => {
+router.delete("/:id/permanent", requirePermission("files.delete"), (req, res) => {
   const row = db
     .prepare("SELECT * FROM files WHERE id = ? AND user_id = ? AND deleted_at IS NOT NULL")
     .get(req.params.id, req.user.id);

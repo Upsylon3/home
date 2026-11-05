@@ -17,7 +17,7 @@ if [ "$action" = diagnose ]; then
   [ -n "$core" ] || { echo 'Start HOME before running diagnostics.' >&2; exit 1; }
   network=$(docker inspect --format '{{range $name, $value := .NetworkSettings.Networks}}{{$name}}{{end}}' "$core")
   [ -n "$network" ] || { echo 'Could not find this HOME network.' >&2; exit 1; }
-  docker run --rm --read-only --cap-drop ALL --security-opt no-new-privileges --network "$network" --mount "type=bind,source=$(pwd),target=/bundle,readonly" --entrypoint node "$image" /bundle/setup/cli.mjs diagnose
+  docker run --rm --user "$(id -u):$(id -g)" --read-only --cap-drop ALL --security-opt no-new-privileges --network "$network" --mount "type=bind,source=$(pwd),target=/bundle,readonly" --entrypoint node "$image" /bundle/setup/cli.mjs diagnose
   exit
 fi
 if ! docker image inspect "$image" >/dev/null 2>&1; then

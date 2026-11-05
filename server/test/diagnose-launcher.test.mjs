@@ -12,7 +12,7 @@ function fixture(t) {
   return root;
 }
 
-function verify(result, calls, scenario) {
+function verify(result, calls, scenario, unix = false) {
   assert.equal(result.error, undefined);
   assert.equal(result.status, scenario === 'success' ? 0 : 1, result.stderr);
   assert.ok(!calls.some(args => args.includes('stop') || args.includes('up') || args.includes('load')));
@@ -26,6 +26,7 @@ function verify(result, calls, scenario) {
     assert.ok(run.some(arg => arg.endsWith('target=/bundle,readonly')));
     assert.equal(run.at(-1), 'diagnose');
     assert.ok(!run.includes('-it'));
+    if (unix) assert.equal(run[run.indexOf('--user') + 1], `${process.getuid()}:${process.getgid()}`);
   }
 }
 
@@ -72,6 +73,6 @@ if (args[0] === 'run' && scenario === 'probe-fail') process.exit(1);
       encoding: 'utf8', timeout: 15_000,
       env: { ...process.env, PATH: bin + path.delimiter + process.env.PATH, HOME_DIAG_LOG: log, HOME_DIAG_CASE: scenario }
     });
-    verify(result, fs.readFileSync(log, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse), scenario);
+    verify(result, fs.readFileSync(log, 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse), scenario, true);
   }
 });

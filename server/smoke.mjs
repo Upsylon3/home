@@ -100,7 +100,8 @@ try {
   const upgradedCompose = args => docker(['compose', '-f', path.join(upgradedRoot, 'compose.json'), ...args]);
   upgradedCompose(['up', '-d', '--wait', '--wait-timeout', '180', '--remove-orphans']);
   const stateBeforeDiagnostics = fs.readFileSync(path.join(upgradedRoot, 'configuration/installation.json'));
-  const diagnosticOutput = docker(['run', '--rm', '--read-only', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
+  const diagnosticOutput = docker(['run', '--rm', '--user', `${process.getuid()}:${process.getgid()}`,
+    '--read-only', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
     '--mount', `type=bind,source=${upgradedRoot},target=/bundle,readonly`, '--entrypoint', 'node',
     nextRuntime.services.homecore.image, '/bundle/setup/cli.mjs', 'diagnose'], true);
   assert.match(diagnosticOutput, /Public HTTPS is not enabled/);

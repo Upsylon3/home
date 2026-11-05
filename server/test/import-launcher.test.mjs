@@ -24,8 +24,9 @@ const args = process.argv.slice(2), scenario = process.env.HOME_IMPORT_CASE;
 fs.appendFileSync(process.env.HOME_IMPORT_LOG, JSON.stringify(args) + '\\n');
 const sensitive = 'disposable-service-secret-never-in-argv';
 if (args[0] === 'compose' && args.includes('config')) {
-  if (require('node:path').relative(fs.realpathSync(process.cwd()), fs.realpathSync(process.env.HOME_IMPORT_PREVIOUS))) {
-    console.error('Mock Compose ran outside the source directory:', process.cwd()); process.exit(1);
+  const actualDirectory = fs.statSync(process.cwd()), expectedDirectory = fs.statSync(process.env.HOME_IMPORT_PREVIOUS);
+  if (actualDirectory.dev !== expectedDirectory.dev || actualDirectory.ino !== expectedDirectory.ino) {
+    console.error('Mock Compose ran outside the source directory:', process.cwd(), process.env.HOME_IMPORT_PREVIOUS); process.exit(1);
   }
   console.log(JSON.stringify({ fakeSecret: sensitive, unicode: 'Δ雪🚀' }));
 }

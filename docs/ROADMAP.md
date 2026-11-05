@@ -5,10 +5,14 @@ Only unfinished work is listed here. Completed changes belong in
 
 ## Application work
 
-- Implement [signed multi-server pairing](PAIRING-DESIGN.md), starting with
-  durable identities and pairing/revocation state without foreign user access.
-  Guest access follows the design's isolated-origin, resource-grant, recovery
-  and independent-review gates. Storage replication remains a separate design.
+- Implement the signed two-owner handshake, replay ledger, live peer status and
+  protected HTTPS transport from the [pairing design](PAIRING-DESIGN.md).
+  Offline identities and pending/suspended/revoked peer records are implemented;
+  staging a descriptor does not authenticate or activate a peer.
+- Add typed guest authentication and explicit Tasks resource grants only after
+  pairing works. Complete source/runtime restore integration, isolated guest
+  origins, two-server drills and independent protocol review before enablement.
+  Storage replication remains a separate design.
 
 ## Open validation
 

@@ -100,8 +100,9 @@ forwarded to the internet. Details: [deployment](DEPLOYMENT.md) and
   The public portal remembers addresses only; it is not an identity provider.
   Bundle upgrades and standard source imports retain an offline recovery copy.
   Imports preserve Core identity and settings, then start locally. Multi-server
-  trust is not implemented; the [pairing design](PAIRING-DESIGN.md) defines its
-  identity, limited guest-access and recovery boundaries.
+  identities and offline peer records are prepared separately from local sessions.
+  Active trust is not implemented; the [pairing design](PAIRING-DESIGN.md) defines
+  the signed handshake, limited guest-access and recovery boundaries.
 
 Use [API.md](API.md) for contracts, [DEPLOYMENT.md](DEPLOYMENT.md) for operations
 and [ROADMAP.md](ROADMAP.md) for remaining work.

@@ -15,9 +15,14 @@ store real passwords or secrets in it yet.** [Review handoff](VALIDATION.md#vaul
 
 ## Access and authentication
 
-Foreign accounts are not accepted today. The [pairing design](PAIRING-DESIGN.md)
-defines future peer pins, limited guest grants, live revocation and restore gates;
-these are design requirements, not existing security controls.
+Foreign accounts are not accepted today. Core assigns durable account subject
+UUIDs; the [offline preparation tool](DEPLOYMENT.md#offline-peer-identity-preparation)
+stores separate server keys and pending/suspended/revoked peer records outside
+application data. Public descriptors are not credentials or signed proof of
+possession. Staging grants no access and cannot activate trust. Windows directory
+ACL protection is an operator prerequisite, not a verified tool guarantee.
+The [pairing design](PAIRING-DESIGN.md) defines remaining signed handshake,
+limited guest grants, live revocation and integrated restore gates.
 
 - Core hashes login passwords with bcrypt, supports TOTP/recovery codes and
   signs revocable JWT sessions. Password changes, disable and sign-out-everywhere

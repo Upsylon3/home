@@ -60,6 +60,73 @@ pairing and recovery; implementation is pending. It requires explicit HTTPS and
 guest-origin configuration, not automatic networking changes. Storage replication
 needs a separate design and is not backup.
 
+## Offline peer identity preparation
+
+This is an operator foundation, not working server-to-server pairing. Core now
+assigns immutable account subject UUIDs separately from numeric local IDs and
+retains subject tombstones when an account is deleted. Local login is unchanged.
+No peer network calls, foreign login, active trust or guest routes are enabled.
+
+After running the upgraded Core once, stop Core before using the offline tool.
+Use the account that owns the protected configuration. Create a dedicated private
+directory outside Core's data directory and ordinary data backups. On Unix it
+must be owned by that account with mode 0700; the authority file uses mode 0600.
+On Windows, restrict the directory ACL to the operator/service account before
+use; the tool cannot establish or verify Windows ACL isolation. Keep the private
+configuration on protected/encrypted storage. Do not put it in a repository,
+shared folder, public descriptor export or application backup.
+
+Run from the source checkout with absolute paths (substitute your own paths):
+
+~~~bash
+node homecore/scripts/peer-state.js init --database /srv/home-core/homecore.db --state-dir /srv/home-peer-authority --origin https://home.example.com --confirm-offline
+node homecore/scripts/peer-state.js identity --database /srv/home-core/homecore.db --state-dir /srv/home-peer-authority --confirm-offline
+~~~
+
+`init` explicitly creates `peer-authority.sqlite` with a server UUID, Ed25519
+key and instance generation, bound to that Core database's namespace. Repeating
+it preserves identity; another origin, different Core namespace, missing/corrupt
+state or a partial initialization never silently replaces keys. `identity`
+prints only a compact public descriptor. Preserve that exact output as a file
+for the other owner; it contains no private key or credential. Source examples
+do not configure a container mount or change a managed runtime installation.
+The script is included in Core images, but managed launcher integration remains
+future work; do not improvise mounts on a real running installation.
+
+To record another server's descriptor, independently compare its full `keyId`
+fingerprint with that owner, then use the unmodified compact export:
+
+~~~bash
+node homecore/scripts/peer-state.js stage --database /srv/home-core/homecore.db --state-dir /srv/home-peer-authority --peer /srv/peer-public.json --fingerprint FULL_KEY_ID --confirm-offline
+node homecore/scripts/peer-state.js list --database /srv/home-core/homecore.db --state-dir /srv/home-peer-authority --confirm-offline
+node homecore/scripts/peer-state.js revoke --database /srv/home-core/homecore.db --state-dir /srv/home-peer-authority --pair PAIR_UUID --confirm-offline
+~~~
+
+Staging produces a `pending` pair ID and grants no access. Repeating the same
+stage returns the existing pending/suspended record. `suspend --pair PAIR_UUID`
+blocks progression; `revoke` permanently tombstones that pair ID. Repeating
+revocation is harmless. Staging again after revocation creates a new pending
+pair ID, never revives the old one. Changes to an existing server's key or origin
+are refused: rotation is not implemented. A changed remote instance generation
+requires revoking its old pair before explicitly staging the recovered descriptor.
+The private audit records the operating-system account, operation, pair ID, time
+and local generation; immutable peer records retain the corresponding public pins.
+
+Before using prepared identity after a Core restore/import/clone, run `recover`
+with the same common options while offline. It atomically revokes all pending
+and suspended pairs and generates a new instance generation, preserving the
+server UUID/key and audit/tombstones. Distribute the new public descriptor and
+stage fresh records explicitly. Clock rollback persists a recovery gate: repair
+the clock to at least the recorded high-water time, then run `recover`.
+
+Never restore the authority database from an old application snapshot. Losing it
+requires a new identity in a new protected directory and revocation of the old
+identity by every peer. A partial initialization requires operator inspection;
+the tool does not erase or overwrite the partial file. Rolling back all private
+control state cannot be detected from that same state. Full automatic restore
+gating, signed notifications and managed/source lifecycle integration remain
+unfinished; no active federation may be added until those gates are implemented.
+
 ## Requirements and first-time setup
 
 Install Docker with Compose and keep enough disk space for uploads and backups.

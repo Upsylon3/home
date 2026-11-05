@@ -8,6 +8,10 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 ## [Unreleased]
 
 ### Added
+- Core account subject UUIDs and an offline peer identity tool with independent
+  Ed25519 server keys, private authority storage, explicit fingerprint staging,
+  durable suspension/revocation records and recovery generation changes. Preserve
+  existing local sessions; no signed handshake or foreign account access is enabled.
 - Multi-server pairing design covering signed peer approval, explicit foreign
   subject/task grants, revocation and restore recovery, with implementation and
   security-review gates. Federation and foreign login remain unimplemented.

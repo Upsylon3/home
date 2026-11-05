@@ -24,7 +24,9 @@ const args = process.argv.slice(2), scenario = process.env.HOME_IMPORT_CASE;
 fs.appendFileSync(process.env.HOME_IMPORT_LOG, JSON.stringify(args) + '\\n');
 const sensitive = 'disposable-service-secret-never-in-argv';
 if (args[0] === 'compose' && args.includes('config')) {
-  if (fs.realpathSync(process.cwd()) !== fs.realpathSync(process.env.HOME_IMPORT_PREVIOUS)) process.exit(1);
+  if (require('node:path').relative(fs.realpathSync(process.cwd()), fs.realpathSync(process.env.HOME_IMPORT_PREVIOUS))) {
+    console.error('Mock Compose ran outside the source directory:', process.cwd()); process.exit(1);
+  }
   console.log(JSON.stringify({ fakeSecret: sensitive, unicode: 'Δ雪🚀' }));
 }
 if (args[0] === 'ps' && args.includes('-aq')) console.log('source-core');
@@ -56,16 +58,11 @@ if (args.includes('prepare-import') || args.includes('check-import-containers') 
   });
 }
 `, { mode: 0o755 });
+  // Invoke a native command shim, so PowerShell itself supplies the working
+  // directory and pipeline encoding instead of a global mock function's scope.
+  if (process.platform === 'win32') fs.writeFileSync(path.join(bin, 'docker.cmd'), '@"%HOME_IMPORT_NODE%" "%HOME_IMPORT_FAKE%" %*\r\n');
   const driver = path.join(root, 'driver.ps1');
   fs.writeFileSync(driver, `
-function global:docker {
-  # A global mock function has its own encoding scope in Windows PowerShell.
-  # Match the real native executable's UTF-8 pipeline, including legacy PS5.
-  $OutputEncoding = [Console]::OutputEncoding
-  if ($MyInvocation.ExpectingInput) { (@($input) -join "\u0060n") | & $env:HOME_IMPORT_NODE $env:HOME_IMPORT_FAKE @args }
-  else { & $env:HOME_IMPORT_NODE $env:HOME_IMPORT_FAKE @args }
-  $global:LASTEXITCODE = $LASTEXITCODE
-}
 & $env:HOME_IMPORT_SCRIPT import $env:HOME_IMPORT_PREVIOUS
 `);
   const scenarios = shell === 'legacy' ? ['success'] : ['success', 'invalid', 'settings', 'ownership', 'missing', 'source-running', 'external-writer', 'copy-fail', 'complete'];

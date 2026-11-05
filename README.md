@@ -2,6 +2,10 @@
 
 A self-hosted personal and family cloud. Accounts, files and configuration stay
 on your hardware. Local use needs no third-party account or internet connection.
+HOME brings files, memories, writing, plans and phone backups into one calm,
+personal environment. [Application maturity and direction](docs/ARCHITECTURE.md#application-maturity-and-direction)
+and the [app roadmap](docs/ROADMAP.md#next-application-work) distinguish today's
+working features from the original vision still to build.
 
 ## Get started
 

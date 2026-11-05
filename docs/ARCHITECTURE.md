@@ -2,9 +2,17 @@
 
 ## 1. The vision
 
-A self-hosted family/personal environment with shared identity and a consistent
-interface. Core operation has no mandatory third-party cloud dependency.
-See the [product contract](#product-contract).
+HOME is a private digital place for a person's or family's everyday life:
+their files, memories, writing, plans and phone backups. The user owns and
+operates it. Shared identity and familiar behavior make the applications feel
+like capabilities of one personal environment. Local operation has no mandatory
+third-party cloud dependency. See the [product contract](#product-contract).
+
+Home is the quiet entrance, Cloud the storage foundation, and Core the shared
+platform working behind the scenes. Useful daily applications lead the product;
+remote access, automation and multi-server connections support them as optional
+capabilities. Building infrastructure does not make an application's intended
+feature set complete.
 
 ## 2. Product principles
 
@@ -178,6 +186,34 @@ external providers and integrations are optional.
 | Bridge | Optional cross-app search and explicitly consented automation |
 | AI (future) | Optional consumer of authorized data; no bypass of ownership or Vault access |
 
+### Application maturity and direction
+
+"Built" means the listed baseline exists, not that the original application
+vision is exhausted. A v0 label describes a bounded first iteration; it is not
+permission to forget remaining work. This source audit distinguishes implemented
+behavior from retained targets; it does not certify every browser/device journey.
+The [roadmap](ROADMAP.md) owns unfinished work and its order.
+
+| App | Current implemented baseline | Retained direction / limits |
+|---|---|---|
+| Home | Greeting, installed-app launcher, Cloud quota, Core health/activity, notifications, settings and administration | A useful personal daily overview; preserve hierarchy and quiet working space as more apps become useful |
+| Core | Local identity/2FA/sessions, preferences, registry lifecycle, events/notifications, scoped Cloud application keys and fixed-purpose delegations | Current permission scopes are bounded; future AI/other consumers need explicit consent and appropriate audience/resource enforcement |
+| Cloud | Owned files/folders, multiple-file uploads, search/sort, ZIP downloads, share links and Trash; storage APIs for apps | Folder-tree uploads, versioning and designed encryption at rest; public links are not same-HOME shared-folder ACLs |
+| Media | Cloud-backed gallery/timeline, albums/favorites/search, EXIF, image thumbnails, browser uploads and image/video/audio playback | Video posters, duplicate review and local-family shared albums; retain Cloud as the single file store |
+| Notes | Markdown preview, folders/tags/search/favorites, debounced autosave, versions/restore and Cloud attachments | Save/draft safety, templates, designed offline editing and local collaboration; history is not conflict resolution |
+| Sync | Android media categories and optional Downloads scanning, WorkManager scheduling/retry, hash dedup and aggregate backup summary | Live run/queue feedback, changed-file detection and chosen document/folder access; physical/background validation remains open |
+| Tasks | Personal projects/dates/priorities/search, completion history, fixed repeats, opt-in reminders and local task assignment | Richer recurrence; keep owner control and distinguish individual assignments from collaborative projects |
+| Vault | v0 encrypted login/note/card items, create/unlock/recover, Trash, password/recovery-key changes, administrator reset and client benchmark | Independent review is still required before real secrets; broader structured secret workflows remain design targets |
+| Monitor | v0 read-only CPU/memory/network/disk, application health, backup freshness, storage forecast and alerts | Preserve read-only scope; Docker Desktop metrics describe its VM, and health/freshness checks do not certify physical disks or recoverability |
+| Bridge | Optional Notes/Tasks search and separately consented Monitor-to-Tasks automation | Additional personal summaries/search/workflows require concrete source APIs and consent; no mandatory cross-app coupling |
+| AI | Not started | Optional private assistant for authorized data, with a first use case and consent/retrieval design; no decrypted Vault access |
+
+The original Sync-to-Cloud-to-Media flow is already represented in the code:
+phone media uses Cloud storage and Media browses those files without a second
+original-file silo. Reuse that foundation. Similarly, Notes history/attachments,
+Media EXIF/playback, Monitor networking/forecasting and Tasks reminders/assignment
+must not be relisted as absent merely because a short app description omits them.
+
 This guide replaces `HOME_MASTER_SPECIFICATION.md` (product contract),
 `HOME_ARTISTIC_DIRECTION.md` and `DESIGN_SYSTEM.md` (design). Historical section
 numbers in source comments identify their original rationale, not current headings.
@@ -231,6 +267,17 @@ explicit. Search-only operation needs no database or automation credentials.
 
 HOME uses warm Atari-era materials with modern, accessible layouts. Keep daily
 work calm and readable. The room metaphor gives each application a familiar purpose.
+Shared identity and individual personality are equally important: each room
+should be recognizable and suited to its work. Personal content, useful status
+and clear actions lead; decorative effects and technical details stay secondary.
+The product should feel owned, familiar and dependable rather than demanding
+attention. Preserve HomeCloud's established conventions while the suite grows.
+
+Use the original five-second test when reviewing a screen: can the person
+recognize their own things, find the useful capability, understand the next action
+and see an honest account of its state? The dashboard needs hierarchy for useful
+recent information, apps, activity and status; it should stay useful without
+turning into a wall of monitoring controls. Keep each app's working interface.
 
 ### Source of truth
 

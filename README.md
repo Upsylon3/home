@@ -12,7 +12,7 @@ on your hardware. Local use needs no third-party account or internet connection.
 
 The [public portal](https://upsylon3.github.io/home/connect/) remembers server
 addresses in your browser; it does not host accounts. Outside access is optional
-and needs network configuration. Automatic bundle upgrades/import are not built.
+and needs network configuration. New bundles support explicit upgrade and source-import actions; see START-HERE.
 
 Try the [browser demo](https://upsylon3.github.io/home/) without a server.
 It uses local browser storage and simulated server features: **test data only**.

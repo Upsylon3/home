@@ -3,16 +3,52 @@ import { fileURLToPath } from 'node:url';
 import { createInterface } from 'node:readline/promises';
 import { initialize, configure, readState, issueCode } from './setup.mjs';
 import { validateDomain } from './runtime.mjs';
+import { planUpgrade, upgradeBundle } from './upgrade.mjs';
+import fs from 'node:fs';
+import { prepareSourceImport, readSourceImportPlan, validateSourceContainers, validateSourceVolume, importSource, parseImportJson } from './source-import.mjs';
 
 const root = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
 const action = process.argv[2] || 'start';
-const terminal = createInterface({ input: process.stdin, output: process.stdout });
+const terminal = action === 'access' ? createInterface({ input: process.stdin, output: process.stdout }) : null;
 async function requireOwner() {
   const status = await fetch('http://homecore:4000/api/auth/registration', { signal: AbortSignal.timeout(5000) });
   if (!status.ok || (await status.json()).ownerCreated !== true) throw new Error('Create the owner account locally before enabling other-device access.');
 }
 try {
-  if (action === 'start') {
+  if (['prepare-import', 'check-import-containers', 'check-import-volume'].includes(action)) {
+    let input = '', length = 0;
+    process.stdin.setEncoding('utf8');
+    for await (const chunk of process.stdin) {
+      length += Buffer.byteLength(chunk);
+      if (length > 4 * 1024 * 1024) throw new Error('Source metadata exceeds the import limit.');
+      input += chunk;
+    }
+    const value = parseImportJson(input);
+    if (action === 'prepare-import') {
+      for (const name of ['package.json', 'gateway', 'gateway/Caddyfile', 'backups']) {
+        const stat = fs.lstatSync('/source/' + name);
+        if (stat.isSymbolicLink() || (['gateway', 'backups'].includes(name) ? !stat.isDirectory() : !stat.isFile())) {
+          throw new Error('Source metadata, gateway or backup paths are unsupported.');
+        }
+      }
+      const version = parseImportJson(fs.readFileSync('/source/package.json', 'utf8')).version;
+      const plan = prepareSourceImport(root, value, version);
+      console.log(plan.status === 'complete' ? 'complete' : plan.project);
+    } else if (action === 'check-import-containers') validateSourceContainers(root, value);
+    else validateSourceVolume(root, process.argv[3], value);
+  } else if (action === 'import-mounts') {
+    for (const [logical, actual] of Object.entries(readSourceImportPlan(root).volumes)) console.log(logical + '=' + actual);
+  } else if (action === 'import-source') {
+    const copied = importSource(root, { confirmStopped: process.argv[3] === '--confirm-stopped' });
+    console.log(copied ? 'Source import copied and verified. Sign in with your existing account at http://localhost:8080.' : 'Source import is already complete; destination data was kept.');
+  } else if (action === 'check-upgrade') {
+    const plan = planUpgrade('/previous', root);
+    console.log(plan.journal?.status === 'complete' ? 'complete' : plan.project);
+  } else if (action === 'upgrade') {
+    const copied = upgradeBundle('/previous', root, { confirmStopped: process.argv[3] === '--confirm-stopped' });
+    console.log(copied ? 'Upgrade copied and verified. Identity, credentials and files are preserved.' : 'This upgrade is already complete; existing destination data was kept.');
+    console.log('The old folder is an offline recovery copy. Start HOME from this new folder only.');
+  } else if (action === 'start') {
     const fresh = initialize(root);
     console.log(fresh ? '\nYour HOME is prepared. Accounts and files stay on this computer.' : '\nUsing your existing HOME configuration and data.');
     const state = readState(root);
@@ -50,5 +86,5 @@ try {
   console.error('HOME setup: ' + error.message);
   process.exitCode = 1;
 } finally {
-  terminal.close();
+  terminal?.close();
 }

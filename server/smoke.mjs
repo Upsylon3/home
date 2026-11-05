@@ -6,6 +6,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { initialize, issueCode } from './setup.mjs';
 import { runtimeCompose } from './runtime.mjs';
+import { sourceImportSmoke } from './source-import-smoke.mjs';
 if (process.env.GITHUB_ACTIONS !== 'true' || process.platform !== 'linux') throw new Error('Run this smoke check only on a disposable Linux GitHub runner.');
 function docker(args, capture = false) {
   const result = spawnSync('docker', args, { stdio: capture ? ['ignore', 'pipe', 'inherit'] : 'inherit', encoding: 'utf8' });
@@ -26,12 +27,13 @@ for (const [name, service] of Object.entries(template.services)) {
     docker(['image', 'tag', id, runtime.services[name].image]);
   }
 }
-fs.writeFileSync(path.join(root, 'bundle.json'), JSON.stringify({ version }));
+fs.writeFileSync(path.join(root, 'bundle.json'), JSON.stringify({ schema: 1, version, arch: process.arch }));
 fs.writeFileSync(path.join(root, 'compose-template.json'), JSON.stringify(template));
 initialize(root);
 fs.copyFileSync('gateway/Caddyfile', path.join(root, 'configuration/Caddyfile'));
 const code = issueCode(root);
 const compose = args => docker(['compose', '-f', path.join(root, 'compose.json'), ...args]);
+let upgradedRoot;
 const origin = 'http://127.0.0.1:8080';
 async function request(route, body, token) {
   const response = await fetch(origin + route, {
@@ -70,10 +72,54 @@ try {
   const file = files.find(item => item.name === 'proof.txt');
   assert.ok(file, 'Uploaded file persists after restart');
   assert.equal(await (await request(`/api/homecloud/files/${file.id}/download`, undefined, token)).text(), 'installer persistence proof');
-  console.log('Runtime installation: protected claim, upload, restart and exact-byte download verified.');
+  compose(['--profile', '*', 'stop']);
+  upgradedRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'home-server-upgrade-smoke-'));
+  const parts = version.split('.').map(Number);
+  const nextVersion = `${parts[0]}.${parts[1]}.${parts[2] + 1}`;
+  const nextRuntime = runtimeCompose(template, nextVersion);
+  for (const [name, service] of Object.entries(runtime.services)) {
+    if (!bundle && name === 'tls') continue; // Inactive public profile need not be downloaded for source-only proof.
+    docker(['image', 'tag', service.image, nextRuntime.services[name].image]);
+  }
+  fs.mkdirSync(path.join(upgradedRoot, 'configuration'));
+  fs.writeFileSync(path.join(upgradedRoot, 'configuration/Caddyfile'), 'fresh-bundle-default');
+  fs.writeFileSync(path.join(upgradedRoot, 'compose-template.json'), JSON.stringify(template));
+  fs.writeFileSync(path.join(upgradedRoot, 'bundle.json'), JSON.stringify({ schema: 1, version: nextVersion, arch: process.arch,
+    upgrade: { schema: 1, minimumSourceVersion: '1.7.0' } }));
+  fs.mkdirSync(path.join(upgradedRoot, 'setup'));
+  for (const name of ['setup.mjs', 'runtime.mjs', 'upgrade.mjs', 'source-import.mjs', 'cli.mjs']) {
+    fs.copyFileSync(bundle ? path.join(bundle, 'setup', name) : path.join('server', name), path.join(upgradedRoot, 'setup', name));
+  }
+  const transfer = () => docker(['run', '--rm',
+    '--mount', `type=bind,source=${upgradedRoot},target=/bundle`,
+    '--mount', `type=bind,source=${root},target=/previous,readonly`,
+    '--entrypoint', 'node', nextRuntime.services.homecore.image, '/bundle/setup/cli.mjs', 'upgrade', '--confirm-stopped'], true);
+  const oldDatabase = fs.readFileSync(path.join(root, 'data/homecore_data/homecore.db'));
+  assert.match(transfer(), /Upgrade copied and verified/);
+  assert.equal(fs.readFileSync(path.join(upgradedRoot, 'configuration/core.env'), 'utf8'), before);
+  const upgradedCompose = args => docker(['compose', '-f', path.join(upgradedRoot, 'compose.json'), ...args]);
+  upgradedCompose(['up', '-d', '--wait', '--wait-timeout', '180', '--remove-orphans']);
+  assert.equal((await request('/api/auth/login', account)).status, 200);
+  assert.equal(await (await request(`/api/homecloud/files/${file.id}/download`, undefined, token)).text(), 'installer persistence proof');
+  const nextForm = new FormData();
+  nextForm.append('file', new Blob(['post-upgrade bytes']), 'after-upgrade.txt');
+  const afterUpload = await fetch(origin + '/api/homecloud/files/upload', {
+    method: 'POST', headers: { Connection: 'close', Authorization: 'Bearer ' + token }, body: nextForm
+  });
+  assert.equal(afterUpload.status, 201);
+  await afterUpload.arrayBuffer();
+  assert.match(transfer(), /already complete/);
+  const nextFiles = (await (await request('/api/homecloud/files', undefined, token)).json()).files;
+  assert.ok(nextFiles.some(item => item.name === 'after-upgrade.txt'), 'Retry must not overwrite post-upgrade data');
+  assert.deepEqual(fs.readFileSync(path.join(root, 'data/homecore_data/homecore.db')), oldDatabase, 'Recovery source is untouched');
+  console.log('Runtime installation and upgrade: protected claim, unchanged credentials/session, exact-byte file transfer, post-upgrade write and retry verified.');
 } catch (error) {
   compose(['logs', '--tail', '50']);
   throw error;
 } finally {
+  if (upgradedRoot && fs.existsSync(path.join(upgradedRoot, 'compose.json'))) {
+    docker(['compose', '-f', path.join(upgradedRoot, 'compose.json'), 'down']);
+  }
   compose(['down']);
 }
+if (bundle) await sourceImportSmoke(path.resolve(bundle));

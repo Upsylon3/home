@@ -25,6 +25,9 @@ test('runtime archives contain launchers and refuse installation data or credent
       assert.match(listed.stdout.replaceAll('\\', '/'), /home-server\/home.sh/);
       assert.doesNotMatch(listed.stdout, /core\.env|\/data\//);
     }
+    fs.writeFileSync(path.join(source, 'source-import-plan.json'), '{"credentials":"must-not-ship"}');
+    assert.notEqual(archive('import-plan.zip').status, 0);
+    fs.unlinkSync(path.join(source, 'source-import-plan.json'));
     fs.writeFileSync(path.join(source, 'configuration/core.env'), 'must-not-ship');
     assert.notEqual(archive('credentials.zip').status, 0);
     fs.unlinkSync(path.join(source, 'configuration/core.env'));

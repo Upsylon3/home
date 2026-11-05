@@ -5,8 +5,6 @@ Only unfinished work is listed here. Completed changes belong in
 
 ## Usability and reliability
 
-- **Server upgrades and import:** preserve accounts, credentials and files when
-  updating a bundle or moving a source-based installation.
 - **Remote access:** improve DNS, router and HTTPS setup/diagnostics. Direct
   access cannot work through every provider's CGNAT configuration.
 - **Backups:** add off-machine copies and coordinated cross-service snapshots.

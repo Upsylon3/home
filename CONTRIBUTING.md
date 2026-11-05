@@ -112,8 +112,9 @@ docker compose logs -f
 docker compose stop
 ~~~
 
-Source Compose and downloaded bundles are separate installation paths. Do not
-mix their data/volume layouts or assume an automatic migration.
+Source Compose and downloaded bundles use different storage layouts. Move a
+supported source installation with the bundle's documented `import` command;
+do not mix their data directories or volumes manually.
 
 ### Tests and builds
 

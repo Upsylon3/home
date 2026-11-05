@@ -55,6 +55,7 @@ requires SSH to be enabled on the server; HOME does not enable it for you.
 | `start` (default) | Start the existing installation; preserve configuration and data |
 | `code` | Issue one account-creation code; invalidate the previous unconsumed code |
 | `access` | Choose this computer, trusted LAN, or public HTTPS |
+| `diagnose` | Check configured public DNS and the local HTTPS certificate without changing access |
 | `status` | See which services are running |
 | `logs` | Inspect service errors; redact private information before sharing |
 | `stop` | Stop HOME, keeping its data |
@@ -98,6 +99,26 @@ or automatically update DNS. The provider supplies an address, not HOME login.
 5. Turn off Wi-Fi on your phone and open `https://YOUR-HOSTNAME` using mobile
    data. A test inside the house does not prove outside access. Bookmark this
    address or save it in the HOME public portal; sign in on your server.
+
+Run `home.cmd diagnose` (Windows) or `./home.sh diagnose` (Linux/macOS) after
+starting HOME. This read-only command reports A/AAAA records using the container's
+DNS resolver and checks the local TLS service's certificate chain and hostname.
+It sends no login credentials or files, uses no public-IP discovery service,
+and does not change DNS, router rules, access mode or installation data.
+DNS lookups and the TLS handshake each have a five-second deadline.
+Missing DNS, resolver errors, private/shared/reserved answers or an unverified
+certificate produce exit code 1 with next steps. Local/LAN mode reports that
+public HTTPS is disabled and performs no network probes. Exit code 0 does
+**not** prove outside reachability or that the gateway/apps are healthy.
+
+Compare the reported A records with your router's WAN/public IPv4 address.
+If they differ, check the dynamic DNS updater. A private WAN address or one in
+`100.64.0.0–100.127.255.255` suggests double NAT or provider CGNAT; it is not
+conclusive proof. Ask the provider about incoming connections or check the
+upstream router. If AAAA records exist, check IPv6 routing/firewall rules too.
+Split DNS may return private addresses locally, so also check public DNS using
+your provider's tools. Use `status` and `logs` for TLS startup/certificate errors,
+then repeat the phone test over mobile data.
 
 The wizard validates your hostname and local owner setup. It cannot establish
 public reachability from inside your network, diagnose all routers/CGNAT, or

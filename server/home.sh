@@ -2,7 +2,7 @@
 set -eu
 cd -- "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 action=${1:-start}
-case "$action" in start|code|access|stop|status|logs|upgrade|import) ;; *) echo 'Usage: ./home.sh [start|code|access|stop|status|logs|upgrade OLD-FOLDER|import SOURCE-FOLDER]' >&2; exit 1 ;; esac
+case "$action" in start|code|access|diagnose|stop|status|logs|upgrade|import) ;; *) echo 'Usage: ./home.sh [start|code|access|diagnose|stop|status|logs|upgrade OLD-FOLDER|import SOURCE-FOLDER]' >&2; exit 1 ;; esac
 command -v docker >/dev/null 2>&1 || { echo 'Install Docker Engine with Compose (Linux) or Docker Desktop (macOS), then run HOME again. See START-HERE.md.' >&2; exit 1; }
 docker info >/dev/null 2>&1 || { echo 'Start Docker, select Linux containers if applicable, and try again.' >&2; exit 1; }
 docker compose version >/dev/null 2>&1 || { echo 'Docker Compose v2 is required. See START-HERE.md.' >&2; exit 1; }
@@ -12,6 +12,14 @@ case "$action" in
   logs) docker compose -f compose.json logs --tail 100; exit ;;
 esac
 image=$(cat installer-image.txt)
+if [ "$action" = diagnose ]; then
+  core=$(docker compose -f compose.json ps -q homecore)
+  [ -n "$core" ] || { echo 'Start HOME before running diagnostics.' >&2; exit 1; }
+  network=$(docker inspect --format '{{range $name, $value := .NetworkSettings.Networks}}{{$name}}{{end}}' "$core")
+  [ -n "$network" ] || { echo 'Could not find this HOME network.' >&2; exit 1; }
+  docker run --rm --user "$(id -u):$(id -g)" --read-only --cap-drop ALL --security-opt no-new-privileges --network "$network" --mount "type=bind,source=$(pwd),target=/bundle,readonly" --entrypoint node "$image" /bundle/setup/cli.mjs diagnose
+  exit
+fi
 if ! docker image inspect "$image" >/dev/null 2>&1; then
   echo 'Loading the included HOME containers. This may take a few minutes.'
   docker load -i images.tar

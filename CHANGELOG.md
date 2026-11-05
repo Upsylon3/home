@@ -14,6 +14,10 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
   validation from feature work. Setup, recovery and security requirements remain.
 
 ### Added
+- Read-only server `diagnose` action on Windows/Linux/macOS: bounded A/AAAA
+  lookups, private/shared address warnings and local HTTPS certificate validation,
+  with DNS, router, IPv6 and CGNAT guidance. No credentials, public-IP discovery
+  service or configuration changes; outside reachability still requires testing.
 - Source Compose import from a fresh server bundle: verify container settings and
   volume ownership, stop writers, retain accounts/session credentials and app data,
   preserve original volumes, and start the copied HOME locally. Keep effective

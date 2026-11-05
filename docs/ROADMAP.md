@@ -6,7 +6,9 @@ Only unfinished work is listed here. Completed changes belong in
 ## Usability and reliability
 
 - **Remote access:** improve DNS, router and HTTPS setup/diagnostics. Direct
-  access cannot work through every provider's CGNAT configuration.
+  access cannot work through every provider's CGNAT configuration. Bundles now
+  check DNS and local TLS with `diagnose`; outside reachability and hands-on
+  router/provider validation remain open.
 - **Backups:** add off-machine copies and coordinated cross-service snapshots.
   Existing per-database restore checks do not provide either guarantee.
 - **Application installation:** replace pre-seeded registry entries with an

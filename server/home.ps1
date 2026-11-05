@@ -1,4 +1,4 @@
-param([ValidateSet('start','code','access','stop','status','logs','upgrade','import')][string]$Action = 'start', [string]$PreviousFolder)
+param([ValidateSet('start','code','access','diagnose','stop','status','logs','upgrade','import')][string]$Action = 'start', [string]$PreviousFolder)
 $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
 if ($Action -eq 'import') {
@@ -19,6 +19,14 @@ if ($Action -in @('stop','status','logs')) {
     exit $LASTEXITCODE
 }
 $installerImage = (Get-Content -LiteralPath installer-image.txt -Raw).Trim()
+if ($Action -eq 'diagnose') {
+    $coreContainer = docker compose -f compose.json ps -q homecore
+    if ($LASTEXITCODE -ne 0 -or -not $coreContainer) { throw 'Start HOME before running diagnostics.' }
+    $homeNetwork = docker inspect --format '{{range $name, $value := .NetworkSettings.Networks}}{{$name}}{{end}}' $coreContainer
+    if ($LASTEXITCODE -ne 0 -or -not $homeNetwork) { throw 'Could not find this HOME network.' }
+    & docker run --rm --read-only --cap-drop ALL --security-opt no-new-privileges --network $homeNetwork.Trim() --mount "type=bind,source=$PSScriptRoot,target=/bundle,readonly" --entrypoint node $installerImage /bundle/setup/cli.mjs diagnose
+    exit $LASTEXITCODE
+}
 docker image inspect $installerImage *> $null
 if ($LASTEXITCODE -ne 0) {
     Write-Host 'Loading the included HOME containers. This may take a few minutes.'

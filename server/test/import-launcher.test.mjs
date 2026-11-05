@@ -23,7 +23,10 @@ const fs = require('node:fs');
 const args = process.argv.slice(2), scenario = process.env.HOME_IMPORT_CASE;
 fs.appendFileSync(process.env.HOME_IMPORT_LOG, JSON.stringify(args) + '\\n');
 const sensitive = 'disposable-service-secret-never-in-argv';
-if (args[0] === 'compose' && args.includes('config')) console.log(JSON.stringify({ fakeSecret: sensitive, unicode: 'Δ雪🚀' }));
+if (args[0] === 'compose' && args.includes('config')) {
+  if (fs.realpathSync(process.cwd()) !== fs.realpathSync(process.env.HOME_IMPORT_PREVIOUS)) process.exit(1);
+  console.log(JSON.stringify({ fakeSecret: sensitive, unicode: 'Δ雪🚀' }));
+}
 if (args[0] === 'ps' && args.includes('-aq')) console.log('source-core');
 if (args[0] === 'inspect') {
   if (args.includes('--format')) console.log(process.env.HOME_IMPORT_PREVIOUS + (process.platform === 'win32' ? '\\\\docker-compose.yml' : '/docker-compose.yml'));
@@ -56,6 +59,9 @@ if (args.includes('prepare-import') || args.includes('check-import-containers') 
   const driver = path.join(root, 'driver.ps1');
   fs.writeFileSync(driver, `
 function global:docker {
+  # A global mock function has its own encoding scope in Windows PowerShell.
+  # Match the real native executable's UTF-8 pipeline, including legacy PS5.
+  $OutputEncoding = [Console]::OutputEncoding
   if ($MyInvocation.ExpectingInput) { (@($input) -join "\u0060n") | & $env:HOME_IMPORT_NODE $env:HOME_IMPORT_FAKE @args }
   else { & $env:HOME_IMPORT_NODE $env:HOME_IMPORT_FAKE @args }
   $global:LASTEXITCODE = $LASTEXITCODE

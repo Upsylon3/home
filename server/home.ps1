@@ -46,7 +46,12 @@ if ($Action -in @('upgrade','import')) {
         [Console]::OutputEncoding = $OutputEncoding
         $targetMount = @('--mount',"type=bind,source=$current,target=/bundle")
         $sourceMount = @('--mount',"type=bind,source=$previous,target=/source,readonly")
-        $resolved = docker compose --project-directory $previous -f (Join-Path $previous 'docker-compose.yml') --profile '*' config --no-path-resolution --format json
+        # With --no-path-resolution, Compose reads relative env_file entries
+        # against its working directory as well as retaining relative paths.
+        Push-Location -LiteralPath $previous
+        try {
+            $resolved = docker compose --project-directory $previous -f (Join-Path $previous 'docker-compose.yml') --profile '*' config --no-path-resolution --format json
+        } finally { Pop-Location }
         if ($LASTEXITCODE -ne 0) { throw 'Could not resolve the source Compose configuration.' }
         $project = ($resolved -join "`n") | docker run --rm -i @targetMount @sourceMount --entrypoint node $installerImage /bundle/setup/cli.mjs prepare-import
         if ($LASTEXITCODE -ne 0) { throw 'Source import preflight failed. The original was not changed.' }

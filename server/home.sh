@@ -24,7 +24,7 @@ if [ "$action" = upgrade ] || [ "$action" = import ]; then
   case "$current/" in "$previous/"*) echo 'Old and new folders must be separate and non-nested.' >&2; exit 1 ;; esac
   case "$previous$current" in *,*) echo 'Installation paths must not contain commas.' >&2; exit 1 ;; esac
   if [ "$action" = import ]; then
-    resolved=$(docker compose --project-directory "$previous" -f "$previous/docker-compose.yml" --profile '*' config --no-path-resolution --format json)
+    resolved=$(cd -- "$previous" && docker compose --project-directory "$previous" -f "$previous/docker-compose.yml" --profile '*' config --no-path-resolution --format json)
     project=$(printf '%s' "$resolved" | docker run --rm -i --mount "type=bind,source=$current,target=/bundle" --mount "type=bind,source=$previous,target=/source,readonly" --entrypoint node "$image" /bundle/setup/cli.mjs prepare-import)
     unset resolved
     if [ "$project" != complete ]; then

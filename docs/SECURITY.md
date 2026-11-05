@@ -15,6 +15,10 @@ store real passwords or secrets in it yet.** [Review handoff](VALIDATION.md#vaul
 
 ## Access and authentication
 
+Foreign accounts are not accepted today. The [pairing design](PAIRING-DESIGN.md)
+defines future peer pins, limited guest grants, live revocation and restore gates;
+these are design requirements, not existing security controls.
+
 - Core hashes login passwords with bcrypt, supports TOTP/recovery codes and
   signs revocable JWT sessions. Password changes, disable and sign-out-everywhere
   invalidate sessions through token versions.

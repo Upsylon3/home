@@ -55,8 +55,10 @@ The public `/connect/` portal stores names/origins only in that browser, never
 fetches server APIs or handles credentials/setup codes, and opens HOME without
 a referrer. Clearing its storage removes shortcuts, not accounts. GitHub may
 retain ordinary hosting visit logs. Multiple saved addresses provide no shared
-identity: signed multi-server trust, revocation/recovery and replication are
-separate future designs. Replication is not backup.
+identity. The [multi-server design](PAIRING-DESIGN.md) specifies future signed
+pairing and recovery; implementation is pending. It requires explicit HTTPS and
+guest-origin configuration, not automatic networking changes. Storage replication
+needs a separate design and is not backup.
 
 ## Requirements and first-time setup
 

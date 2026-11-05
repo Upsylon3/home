@@ -7,6 +7,11 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 
 ## [Unreleased]
 
+### Added
+- Multi-server pairing design covering signed peer approval, explicit foreign
+  subject/task grants, revocation and restore recovery, with implementation and
+  security-review gates. Federation and foreign login remain unimplemented.
+
 ### Changed
 - Consolidated documentation into four root documents and six flat guides,
   folding current decision details and review evidence into their owning guides.

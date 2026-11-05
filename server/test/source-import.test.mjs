@@ -25,15 +25,21 @@ function fixture(t) {
       volumes: [{ type: 'volume', source: volume, target: '/data' }] };
   }
   services.gateway = { build: { context: './gateway' }, ports: [{ target: 80, published: '8080' }] };
+  services['homemonitor-backend'].environment.JWT_SECRET = '';
   services.tls = { image: 'caddy:2-alpine', profiles: ['public'], environment: { HOME_DOMAIN: '${HOME_DOMAIN:-}' },
-    volumes: [{ type: 'volume', source: 'caddy_data', target: '/data' }, { type: 'volume', source: 'caddy_config', target: '/config' }] };
+    volumes: [{ type: 'bind', source: './gateway/Caddyfile', target: '/etc/caddy/Caddyfile', read_only: true, bind: { create_host_path: true } },
+      { type: 'volume', source: 'caddy_data', target: '/data' }, { type: 'volume', source: 'caddy_config', target: '/config' }] };
   const template = { name: 'home', services, volumes: Object.fromEntries(['homecore_data', 'homecloud_backend_data', 'homemonitor_data', 'caddy_data', 'caddy_config'].map(name => [name, { name: 'home_' + name }])), networks: { default: { name: 'home_default' } } };
   const config = structuredClone(template);
+  config.networks.default.ipam = {};
   config.services.tls.environment.HOME_DOMAIN = 'family.example.org';
   const credentials = { JWT_SECRET: 'a'.repeat(64), HOMECORE_INTERNAL_SECRET: 'b'.repeat(64) };
-  for (const service of Object.values(config.services)) {
+  for (const [name, service] of Object.entries(config.services)) {
+    service.command = null; service.entrypoint = null;
+    for (const mount of service.volumes || []) if (mount.bind) delete mount.bind.create_host_path;
     if (service.env_file) {
       Object.assign(service.environment, credentials, { QUOTA_BYTES: '123456789', JWT_EXPIRES_IN: '3d', CORS_ORIGIN: 'https://family.example.org', IMPORT_NOTE: 'Unicode Δ with spaces\nand lines', IMPORT_LITERAL: '$$HOME_SHOULD_NOT_EXPAND' });
+      if (name === 'homemonitor-backend') service.environment.JWT_SECRET = '';
       delete service.env_file;
     }
   }
@@ -50,7 +56,7 @@ function fixture(t) {
   const containers = Object.entries(config.services).map(([name, service]) => ({ Config: {
     Labels: { 'com.docker.compose.project': 'home', 'com.docker.compose.service': name },
     Env: Object.entries(service.environment || {}).map(([key, value]) => key + '=' + value.replaceAll('$$', () => '$'))
-  }, Mounts: (service.volumes || []).map(mount => ({ Type: 'volume', Destination: mount.target, Name: config.volumes[mount.source].name })) }));
+  }, Mounts: (service.volumes || []).filter(mount => mount.type === 'volume').map(mount => ({ Type: 'volume', Destination: mount.target, Name: config.volumes[mount.source].name })) }));
   return { root, target, sourceRoot, adapter, config, template, credentials, containers,
     prepare: () => prepareSourceImport(target, config, '1.7.0'),
     transfer: () => importSource(target, { sourceRoot, adapter, confirmStopped: true }) };
@@ -72,6 +78,7 @@ test('source import preserves credentials, opaque databases/WAL/uploads/backups/
   assert.equal(compose.services.homecore.environment.IMPORT_NOTE, 'Unicode Δ with spaces\nand lines');
   assert.equal(compose.services.homecore.environment.IMPORT_LITERAL, '$$HOME_SHOULD_NOT_EXPAND');
   assert.equal(compose.services.homecore.environment.HOME_SETUP_REQUIRED, 'true');
+  assert.equal(compose.services['homemonitor-backend'].environment.JWT_SECRET, '', 'Monitor never receives the signing key');
   assert.equal(compose.services.gateway.ports[0].host_ip, '127.0.0.1');
   assert.equal(compose.services.tls.environment.HOME_DOMAIN, '');
   assert.match(fs.readFileSync(path.join(f.target, 'configuration/core.env'), 'utf8'), new RegExp('JWT_SECRET=' + f.credentials.JWT_SECRET));
@@ -115,6 +122,11 @@ test('unsupported versions, custom mounts/addresses/privileges and changed sourc
     v => { v.services.homecore.volumes[0].type = 'bind'; },
     v => { v.services.homecore.environment.DATA_DIR = '/elsewhere'; },
     v => { v.volumes.homecore_data.external = true; },
+    v => { v.networks.default.ipam = { config: [{ subnet: '172.28.0.0/16' }] }; },
+    v => { v.networks.default.driver = 'host'; },
+    v => { v.services.tls.volumes[0].source = '/outside'; },
+    v => { v.services.tls.volumes[0].read_only = false; },
+    v => { v.services['homemonitor-backend'].environment.JWT_SECRET = v.services.homecore.environment.JWT_SECRET; },
     v => { v.services.homecore.environment.JWT_SECRET = 'unsafe$dotenv'; }]) {
     const changed = structuredClone(f.config); mutate(changed);
     assert.throws(() => prepareSourceImport(f.target, changed, '1.7.0'));

@@ -98,6 +98,9 @@ export async function sourceImportSmoke(bundle) {
     const core = docker(['compose', '-f', path.join(target, 'compose.json'), 'ps', '-q', 'homecore'], true);
     const environment = JSON.parse(docker(['inspect', '--format', '{{json .Config.Env}}', core], true));
     assert.ok(environment.includes('IMPORT_LITERAL=$HOME_IMPORT_LITERAL'), 'Literal dollars must not be re-interpolated');
+    const monitor = docker(['compose', '-f', path.join(target, 'compose.json'), 'ps', '-q', 'homemonitor-backend'], true);
+    const monitorEnvironment = JSON.parse(docker(['inspect', '--format', '{{json .Config.Env}}', monitor], true));
+    assert.ok(monitorEnvironment.includes('JWT_SECRET='), 'Monitor must retain its blank signing-key override');
     assert.equal(settings.services.gateway.ports[0].host_ip, '127.0.0.1');
     console.log('Source import: actual launcher, named-volume provenance, original login/session, file bytes, notes/tasks, opaque Vault records, retained backups/volumes and no replay over new writes verified.');
   } finally {

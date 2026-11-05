@@ -33,6 +33,11 @@ function shape(service) {
   delete result.environment;
   delete result.env_file; // Source config is fully resolved before it reaches the helper.
   if (result.build) delete result.image; // Compose may derive build-image names from the project.
+  // Resolved and non-resolved Compose output spell these defaults differently.
+  for (const key of ['command', 'entrypoint']) if (result[key] === null) delete result[key];
+  for (const mount of result.volumes || []) {
+    if (mount.bind?.create_host_path === true) delete mount.bind.create_host_path;
+  }
   return result;
 }
 
@@ -53,8 +58,11 @@ export function prepareSourceImport(root, config, sourceVersion) {
   }
   // Network endpoints, processes, mounts, privilege and port declarations must
   // match the packaged topology; configurable environment values are retained.
-  if (config.networks && (Object.keys(config.networks).some(name => name !== 'default') ||
-      Object.keys(config.networks.default || {}).some(key => !['name'].includes(key)))) {
+  const network = { ...(config.networks?.default || {}) };
+  delete network.name;
+  // Compose emits this empty default even when no IPAM was configured.
+  if (isDeepStrictEqual(network.ipam, {})) delete network.ipam;
+  if (config.networks && (Object.keys(config.networks).some(name => name !== 'default') || Object.keys(network).length)) {
     throw new Error('Custom source networks need a dedicated migration.');
   }
   const services = {}, required = {}, volumes = {};
@@ -73,7 +81,8 @@ export function prepareSourceImport(root, config, sourceVersion) {
         throw new Error('Source environment contains unsupported entries.');
       }
       if (secrets.includes(key)) {
-        if (!expected.env_file || value !== credentials[key]) throw new Error('Source service credentials do not match Core.');
+        const fixed = expected.environment?.[key] ?? credentials[key];
+        if (!expected.env_file || value !== fixed) throw new Error('Source service credentials do not match the standard configuration.');
         delete environment[key];
       }
       if (infrastructureEnvironment.has(key) && !['HOME_DOMAIN', 'HOME_SETUP_REQUIRED'].includes(key)) {
@@ -129,6 +138,7 @@ export function readSourceImportPlan(root) {
 
 export function validateSourceContainers(root, containers) {
   const plan = readSourceImportPlan(root), found = new Set();
+  const template = readJson(path.join(root, 'compose-template.json'));
   if (!Array.isArray(containers)) throw new Error('Could not inspect the source containers.');
   for (const container of containers) {
     const labels = container.Config?.Labels || {}, name = labels['com.docker.compose.service'];
@@ -140,7 +150,8 @@ export function validateSourceContainers(root, containers) {
       const index = entry.indexOf('='); return [entry.slice(0, index), entry.slice(index + 1)];
     }));
     const expected = { ...plan.services[name] };
-    if (['homecore', 'homecloud-backend', 'homemonitor-backend'].includes(name)) Object.assign(expected, plan.credentials);
+    const service = template.services[name];
+    if (service.env_file) for (const key of secrets) expected[key] = service.environment?.[key] ?? plan.credentials[key];
     // `compose config` escapes literal dollars for reuse as Compose input;
     // Docker inspect reports the actual single-dollar container values.
     if (Object.entries(expected).some(([key, value]) => actual[key] !== value.replaceAll('$$', () => '$'))) {

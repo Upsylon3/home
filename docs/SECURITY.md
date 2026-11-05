@@ -81,10 +81,10 @@ give an external consumer the user's full login token instead.
   sessions identify users, not the calling app. Scoped application keys and
   background capabilities are enforced separate credential types. They do not
   sandbox code running inside the existing shared browser origin.
-  Install/enable/uninstall controls manage registry availability, not direct
-  URL/API access or service processes. All mutations require a live administrator
-  session; uninstall preserves data and atomically revokes affected automation
-  grants with audits. Reinstall does not revive revoked authority.
+  Install/enable/uninstall controls do not restrict direct browser-session URLs
+  or control service processes. Registry changes require a live administrator;
+  uninstall preserves data and atomically revokes affected application keys and
+  automation grants with audits. Reinstall does not revive revoked authority.
 - A disabled-account login response reveals that the account exists and is
   disabled. This is the current usability tradeoff.
 - Account disable and administrator password reset are supported; full

@@ -231,9 +231,9 @@ and dependencies fields. Uninstalled details return `404`, including enable
 attempts. Legacy `POST /api/core/apps` preserves explicit administrator metadata
 registration/re-registration, including bundled slugs and its enabled-by-default
 response; dependencies must be enabled. New clients use the two-step catalog
-installer. These operations
-do not install server packages or restrict direct application URLs/APIs. Ordinary
-caller-application authorization remains a separate boundary.
+installer. These operations do not install server packages or restrict direct
+browser-session URLs/APIs. Application keys separately require live enabled app
+registrations; disabling/uninstalling an app revokes affected keys.
 
 ### Internal service endpoints
 

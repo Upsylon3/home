@@ -123,9 +123,10 @@ automation grants are revoked with audits in the same transaction. Reinstall
 reuses the ID and requires a fresh enable action; revoked consent stays revoked.
 
 The distribution already contains these services. Installation does not fetch
-remote manifests, run arbitrary code, start/stop Docker or change backend access
-rules. Direct URLs/APIs retain their existing identity/role/ownership checks;
-registry availability is not application isolation. Legacy explicit administrator
+remote manifests, run arbitrary code or start/stop Docker. Direct browser
+URLs/APIs retain their existing identity/role/ownership checks; registry visibility
+does not sandbox those sessions. Application keys separately require live enabled
+caller/Cloud registrations and declared permissions. Legacy explicit administrator
 metadata registration/re-registration remains compatible, including its default
 enabled state. New clients use the catalog's two-step flow. This is a bundled-app
 lifecycle, not a third-party package marketplace.

@@ -21,8 +21,17 @@ stores separate server keys and pending/suspended/revoked peer records outside
 application data. Public descriptors are not credentials or signed proof of
 possession. Staging grants no access and cannot activate trust. Windows directory
 ACL protection is an operator prerequisite, not a verified tool guarantee.
-The [pairing design](PAIRING-DESIGN.md) defines remaining signed handshake,
-limited guest grants, live revocation and integrated restore gates.
+An explicit experimental opt-in adds the [signed pairing API](API.md#experimental-multi-server-pairing):
+fresh local administrator password/2FA on both sides, full transcript/key pin
+approval, Ed25519 message types separate from local JWTs, durable replay/receipt
+state, bounded public-HTTPS-only transport and uncached live peer status.
+Revocation commits locally before durable notification retries. A signed response
+binds the exact request, so a prior positive status cannot answer a new request.
+Half-activation, outages, capacity exhaustion, clock rollback and mismatched
+generations cannot provide effective trust. These controls grant no account or
+resource access. Guest principals, planned rotation, integrated restore gates,
+independent review and public-network drills remain unfinished; see the
+[pairing design](PAIRING-DESIGN.md) and [review evidence](VALIDATION.md#multi-server-pairing).
 
 - Core hashes login passwords with bcrypt, supports TOTP/recovery codes and
   signs revocable JWT sessions. Password changes, disable and sign-out-everywhere

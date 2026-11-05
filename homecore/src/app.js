@@ -21,7 +21,7 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 
-const { db } = require("./db"); // ensures tables + data directories exist before anything else runs
+const { db, DATA_DIR } = require("./db"); // ensures tables + data directories exist before anything else runs
 
 const authRoutes = require("./auth");
 const adminRoutes = require("./admin");
@@ -80,6 +80,10 @@ app.use(
     origin: corsOrigins.length === 1 && corsOrigins[0] === "*" ? "*" : corsOrigins
   })
 );
+const peerRuntime = require('./homecore/peerRoutes').createPeerRuntime({ db, dataDir: DATA_DIR });
+app.locals.peerRuntime = peerRuntime;
+app.use('/api/core/peers', peerRuntime.admin);
+app.use('/federation/v1', peerRuntime.peer);
 app.use(express.json());
 
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));

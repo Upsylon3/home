@@ -5,18 +5,18 @@ Only unfinished work is listed here. Completed changes belong in
 
 ## Application work
 
-- Implement the signed two-owner handshake, replay ledger, live peer status and
-  protected HTTPS transport from the [pairing design](PAIRING-DESIGN.md).
-  Offline identities and pending/suspended/revoked peer records are implemented;
-  staging a descriptor does not authenticate or activate a peer.
-- Add typed guest authentication and explicit Tasks resource grants only after
-  pairing works. Complete source/runtime restore integration, isolated guest
-  origins, two-server drills and independent protocol review before enablement.
+- Add typed guest authentication and explicit Tasks resource grants following the
+  [pairing design](PAIRING-DESIGN.md). Complete planned key/origin rotation,
+  source/runtime restore integration and isolated guest origins before enablement.
   Storage replication remains a separate design.
 
 ## Open validation
 
 These are evidence gaps, not features to rebuild:
+
+- **Multi-server pairing:** independent protocol/security review and two isolated
+  public-HTTPS HOME drills before guest access. Local TLS fixtures do not prove
+  internet reachability or physical restore. [Protocol checks](VALIDATION.md#multi-server-pairing).
 
 - **HomeVault:** independent security/cryptography review before real secrets
   are stored. [Review handoff](VALIDATION.md#vault-review).

@@ -63,6 +63,7 @@ also a shared XSS boundary.
 | `/api/homebridge/` | Optional Bridge, or an unavailable response |
 | `/api/share/` | Public Cloud share-token routes |
 | `/api/core/` and remaining `/api/` | Core, including compatible legacy aliases |
+| `/federation/v1/` | Core's opt-in signed peer protocol; unavailable by default |
 
 Specific API routes precede Core's catch-all. Missing upstreams produce bounded
 unavailable responses; nginx resolves app names dynamically so it can start
@@ -101,8 +102,10 @@ forwarded to the internet. Details: [deployment](DEPLOYMENT.md) and
   Bundle upgrades and standard source imports retain an offline recovery copy.
   Imports preserve Core identity and settings, then start locally. Multi-server
   identities and offline peer records are prepared separately from local sessions.
-  Active trust is not implemented; the [pairing design](PAIRING-DESIGN.md) defines
-  the signed handshake, limited guest-access and recovery boundaries.
+  An explicit experimental opt-in adds signed two-owner pairing and fresh peer
+  status, with separate private authority/replay state. Pairing grants no account
+  access; guest authentication and integrated recovery remain unfinished. The
+  [pairing design](PAIRING-DESIGN.md) defines these boundaries.
 
 Use [API.md](API.md) for contracts, [DEPLOYMENT.md](DEPLOYMENT.md) for operations
 and [ROADMAP.md](ROADMAP.md) for remaining work.

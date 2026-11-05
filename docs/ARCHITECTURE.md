@@ -86,7 +86,9 @@ forwarded to the internet. Details: [deployment](DEPLOYMENT.md) and
 - Shared internal secrets are operator-managed. Keep service ports private.
 - Vault's bounded administrator reset calls Vault's API; Core supplies live
   authority, while deletion/audit remain in Vault's own database.
-- Backups are per-database consistent, not coordinated cross-service snapshots.
+- Daily backups are per-database consistent. Managed installations also offer
+  manual coordinated snapshots with every project container stopped throughout
+  capture and verification; configuration requires its own protected backup.
   Manual verified exports copy published archives to operator-mounted storage;
   they do not include configuration or establish physical off-machine placement.
   Real off-machine copying and restore drills still matter.

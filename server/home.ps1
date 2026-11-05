@@ -1,7 +1,7 @@
-param([ValidateSet('start','code','access','diagnose','export-backups','verify-backups','stop','status','logs','upgrade','import')][string]$Action = 'start', [string]$PreviousFolder)
+param([ValidateSet('start','code','access','diagnose','snapshot','recover-snapshot','export-backups','verify-backups','stop','status','logs','upgrade','import')][string]$Action = 'start', [string]$PreviousFolder)
 $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
-if ($Action -eq 'import') {
+if ($Action -in @('import','snapshot','recover-snapshot')) {
     # Establish both directions before the first native command; legacy
     # PowerShell otherwise inherits the host console's older code page.
     $OutputEncoding = [Text.UTF8Encoding]::new($false)
@@ -13,12 +13,87 @@ docker info *> $null
 if ($LASTEXITCODE -ne 0) { throw 'Start Docker Desktop with Linux containers, then try again.' }
 docker compose version *> $null
 if ($LASTEXITCODE -ne 0) { throw 'Docker Compose v2 is required.' }
+if ((Get-Item -LiteralPath 'configuration/snapshot-state.json' -Force -ErrorAction SilentlyContinue) -and $Action -notin @('status','logs','recover-snapshot')) {
+    throw 'Snapshot recovery is pending. Run home.cmd recover-snapshot before other actions.'
+}
+function Invoke-CoordinatedSnapshot([string]$RootFolder, [string]$Destination, [string]$BackupImage, [switch]$Recover) {
+    $snapshotImage = (Get-Content -LiteralPath installer-image.txt -Raw).Trim()
+    $format = '{"id":{{json .Id}},"image":{{json .Image}},"running":{{json .State.Running}},"paused":{{json .State.Paused}},"restarting":{{json .State.Restarting}},"health":{{with index .State "Health"}}{{json .Status}}{{else}}null{{end}},"project":{{json (index .Config.Labels "com.docker.compose.project")}},"service":{{json (index .Config.Labels "com.docker.compose.service")}},"config":{{json (index .Config.Labels "com.docker.compose.project.config_files")}},"job":{{json (index .Config.Labels "home.snapshot.job")}},"mounts":{{json .Mounts}}}'
+    # Windows PowerShell strips embedded quotes when constructing native argv.
+    # Preserve both JSON keys and Go-template label strings for Docker.
+    if ($env:OS -eq 'Windows_NT' -and (-not $PSNativeCommandArgumentPassing -or $PSNativeCommandArgumentPassing -eq 'Legacy')) {
+        $format = $format.Replace('"', '\"')
+    }
+    function Get-SnapshotInventory {
+        $ids = @(docker ps -aq --no-trunc)
+        if ($LASTEXITCODE -ne 0 -or @($ids | Where-Object { $_ -notmatch '^[a-f0-9]{64}$' }).Count) { throw 'Could not list Docker container identities.' }
+        if (-not $ids.Count) { return '[]' }
+        $rows = @(docker inspect --format $format @ids)
+        if ($LASTEXITCODE -ne 0) { throw 'Could not inspect Docker container state and mounts.' }
+        return ($rows -join "`n")
+    }
+    function Invoke-SnapshotHelper([string]$Command, [string]$Inventory = '') {
+        $Inventory | & docker run --rm -i --network none --cap-drop ALL --security-opt no-new-privileges --mount "type=bind,source=$RootFolder,target=/bundle" --entrypoint node $snapshotImage /bundle/setup/cli.mjs $Command $RootFolder
+        $script:SnapshotHelperCode = $LASTEXITCODE
+    }
+    function Resume-Snapshot {
+        $restoreIds = @(Invoke-SnapshotHelper 'snapshot-resume' (Get-SnapshotInventory) | Where-Object { $_ })
+        if ($script:SnapshotHelperCode -ne 0) { throw 'Could not validate snapshot recovery. Keep the marker and check other writers or changed containers.' }
+        if ($restoreIds.Count) {
+            & docker start @restoreIds > $null
+            if ($LASTEXITCODE -ne 0) { throw 'Could not restart the original services. Run recover-snapshot after fixing Docker.' }
+        }
+        for ($attempt = 0; $attempt -lt 90; $attempt++) {
+            Invoke-SnapshotHelper 'snapshot-finish' (Get-SnapshotInventory)
+            if ($script:SnapshotHelperCode -eq 0) {
+                Write-Host 'Previous running state restored. Services that were stopped stayed stopped.'
+                return
+            }
+            if ($script:SnapshotHelperCode -ne 2) { throw 'Snapshot recovery remains pending. Check status and logs, then run recover-snapshot.' }
+            Start-Sleep -Seconds 2
+        }
+        throw 'Services did not become ready. Check status and logs, then run recover-snapshot.'
+    }
+    if ($Recover) { Resume-Snapshot; return }
+    Invoke-SnapshotHelper 'snapshot-begin' (Get-SnapshotInventory)
+    if ($script:SnapshotHelperCode -ne 0) { throw 'Snapshot preflight did not complete. Existing services were not stopped.' }
+    try {
+        $original = @(Invoke-SnapshotHelper 'snapshot-originals' (Get-SnapshotInventory) | Where-Object { $_ })
+        if ($script:SnapshotHelperCode -ne 0) { throw 'Could not validate the original service identities.' }
+        Write-Host 'Stopping this HOME for a coordinated snapshot. Downtime lasts through capture and verification.'
+        if ($original.Count) {
+            & docker stop --timeout 30 @original > $null
+            if ($LASTEXITCODE -ne 0) { throw 'Could not stop all original services; snapshot refused.' }
+        }
+        $quiet = Invoke-SnapshotHelper 'snapshot-check' (Get-SnapshotInventory)
+        if ($script:SnapshotHelperCode -ne 0) { throw 'Could not establish the shared offline interval.' }
+        $job = Invoke-SnapshotHelper 'snapshot-job'
+        if ($script:SnapshotHelperCode -ne 0) { throw 'Could not read snapshot identity.' }
+        $mounts = @(Invoke-SnapshotHelper 'snapshot-mounts')
+        if ($script:SnapshotHelperCode -ne 0) { throw 'Could not validate snapshot source mounts.' }
+        $snapshotArgs = @('run','--rm','--network','none','--cap-drop','ALL','--cap-add','DAC_OVERRIDE','--cap-add','CHOWN','--security-opt','no-new-privileges',
+            '--label',"home.snapshot.job=$job",'--mount',"type=bind,source=$Destination,target=/destination")
+        foreach ($mount in $mounts) {
+            if ($mount -notmatch '^([a-zA-Z0-9_-]+)=([a-zA-Z0-9_-]+)$') { throw 'Invalid snapshot source mount.' }
+            $snapshotArgs += @('--mount',"type=bind,source=$RootFolder/data/$($Matches[1]),target=/sources/$($Matches[2]),readonly")
+        }
+        $deadline = if ($env:BACKUP_TIMEOUT_SECONDS) { $env:BACKUP_TIMEOUT_SECONDS } else { '3600' }
+        & docker @snapshotArgs --entrypoint python3 $BackupImage /coordinated.py /sources /destination --confirm-offline --quiesced-at $quiet --timeout $deadline
+        if ($LASTEXITCODE -ne 0) { throw 'Coordinated snapshot failed. Earlier snapshots were kept.' }
+    } finally {
+        Resume-Snapshot
+    }
+}
+if ($Action -eq 'recover-snapshot') {
+    Invoke-CoordinatedSnapshot -RootFolder $PSScriptRoot -Recover
+    exit 0
+}
 if ($Action -in @('stop','status','logs')) {
     $command = @{stop='stop'; status='ps'; logs='logs'}[$Action]
     docker compose -f compose.json $command
     exit $LASTEXITCODE
 }
-if ($Action -in @('export-backups','verify-backups')) {
+if ($Action -in @('export-backups','verify-backups','snapshot')) {
     if (-not $PreviousFolder) { throw 'Pass an existing mounted destination folder, or an export folder to verify.' }
     $destination = (Resolve-Path -LiteralPath $PreviousFolder).Path
     $current = (Resolve-Path -LiteralPath $PSScriptRoot).Path.TrimEnd('\','/')
@@ -63,6 +138,10 @@ public static class HomeExportPaths {
     }
     $backupImage = @(docker compose -f compose.json images -q backup)
     if ($LASTEXITCODE -ne 0 -or $backupImage.Count -ne 1 -or $backupImage[0] -notmatch '^(sha256:)?[a-f0-9]{12,64}$') { throw 'Start HOME once so its backup image is available.' }
+    if ($Action -eq 'snapshot') {
+        Invoke-CoordinatedSnapshot -RootFolder $current -Destination $destination -BackupImage $backupImage[0]
+        exit 0
+    }
     $exportArgs = @('run','--rm','--network','none','--cap-drop','ALL','--cap-add','DAC_OVERRIDE','--security-opt','no-new-privileges')
     if ($Action -eq 'export-backups') {
         $exportArgs += @('--cap-add','CHOWN')

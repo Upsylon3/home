@@ -63,6 +63,8 @@ requires SSH to be enabled on the server; HOME does not enable it for you.
 | `code` | Issue one account-creation code; invalidate the previous unconsumed code |
 | `access` | Choose this computer, trusted LAN, or public HTTPS |
 | `diagnose` | Check configured public DNS and the local HTTPS certificate without changing access |
+| `snapshot DESTINATION` | Pause HOME, capture and verify all eight data sources, then resume previous services |
+| `recover-snapshot` | Resume original services after an interrupted snapshot |
 | `export-backups DESTINATION` | Copy and verify published archives to an existing mounted storage folder |
 | `verify-backups EXPORT-FOLDER` | Recheck an export's inventory, checksums and restorable databases |
 | `status` | See which services are running |
@@ -159,10 +161,55 @@ Unix permission flags do not establish Windows access controls. Protect the
 disk and backups using your operating system's encryption facilities.
 
 Backups on the same disk do not protect against disk failure. Copy protected
-backups off the machine. To make a coordinated full copy, run `stop`, copy
+backups off the machine. For a full installation copy including settings, run `stop`, copy
 `data/`, `configuration/`, `compose.json` and `backups/` to protected storage,
 then `start`. Preserve credentials: replacing them can break existing services
 and sessions. Do not run two copies of the same installation concurrently.
+
+### Create a coordinated snapshot
+
+Use this for a fresh matching set of all eight application data sources. First
+mount private storage accessible to Docker and create a destination outside the
+installation, with enough free space for the data, archives and restore scratch.
+Check the mount yourself; HOME cannot prove that it is off-machine or durable.
+
+~~~text
+Windows:       home.cmd snapshot "Z:\HOME backups"
+Linux/macOS:   ./home.sh snapshot "/mnt/backup-nas/HOME"
+~~~
+
+HOME stops all containers in this installation, including gateways, backup and
+optional services. Downtime lasts through capture and verification and grows
+with the data size. It publishes a new `home-snapshot-...` folder only when all
+eight archives pass, then starts exactly the containers that were running before.
+Previously stopped services stay stopped. The capture deadline is one hour;
+set `BACKUP_TIMEOUT_SECONDS` in the host shell to 1–86400 seconds if needed.
+This manual action does not change the daily backup schedule or prune old sets.
+
+Keep the set and its `manifest.json` together. Recheck it with
+`verify-backups "<destination>/home-snapshot-..."`. Configuration, service
+credentials and TLS certificates are excluded: back those up separately and
+protect this ordinary, unencrypted application data with disk/share encryption.
+Restore the entire matching set into a disposable offline installation first;
+follow the [offline restore maintenance](https://github.com/Upsylon3/home/blob/main/docs/DEPLOYMENT.md#backups)
+before reopening traffic. A shared capture interval does not repair earlier
+cross-app inconsistencies or prove historical authenticity.
+
+Keep standard managed Compose containers present (`stop`, not `down`). Scaled,
+paused, restarting or customized containers/overrides are refused. Do not run
+another lifecycle command, Docker tool or external writer during the operation.
+HOME checks container identities/mounts and fingerprints sources before and after
+capture; host programs and storage aliases are not a general filesystem lock.
+
+If the command is interrupted, inspect `status` and `logs`, then run
+`home.cmd recover-snapshot` or `./home.sh recover-snapshot`. Other actions remain
+blocked by `configuration/snapshot-state.json`. Recovery waits for the capture
+worker to exit and validates original container identities and storage before
+starting them. A failed readiness check keeps the marker for retry. Do not delete
+the marker or replace containers to bypass a refusal; resolve the reported writer,
+Docker or configuration problem first. Hidden `.home-snapshot-*` leftovers are
+incomplete and must never be restored as published sets. Preserve them until
+capture has exited; ordinary failures clean their own temporary output.
 
 ### Export archives to separate storage
 

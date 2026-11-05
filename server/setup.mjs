@@ -3,6 +3,12 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { runtimeCompose } from './runtime.mjs';
 
+export function assertNoActiveSnapshot(root) {
+  if (fs.lstatSync(path.join(root, 'configuration/snapshot-state.json'), { throwIfNoEntry: false })) {
+    throw new Error('Snapshot recovery is pending. Run the recover-snapshot action before changing or starting this HOME.');
+  }
+}
+
 export function writePrivate(file, value) {
   const temporary = file + '.tmp-' + crypto.randomBytes(6).toString('hex');
   try {
@@ -54,6 +60,7 @@ export function managedCompose(root, state, template, version) {
 }
 
 export function configure(root, access) {
+  assertNoActiveSnapshot(root);
   const state = readState(root);
   const manifest = JSON.parse(fs.readFileSync(path.join(root, 'bundle.json'), 'utf8'));
   const template = JSON.parse(fs.readFileSync(path.join(root, 'compose-template.json'), 'utf8'));
@@ -67,6 +74,7 @@ export function configure(root, access) {
 }
 
 export function initialize(root) {
+  assertNoActiveSnapshot(root);
   const importFile = path.join(root, 'source-import-plan.json');
   if (fs.existsSync(importFile)) {
     let status;
@@ -107,6 +115,7 @@ export function initialize(root) {
 }
 
 export function issueCode(root, now = Date.now()) {
+  assertNoActiveSnapshot(root);
   readState(root);
   const code = crypto.randomBytes(16).toString('hex');
   writePrivate(path.join(root, 'data', 'homecore_data', 'registration-code.json'), JSON.stringify({

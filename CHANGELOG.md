@@ -18,6 +18,10 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
   backup-only changes previously selected an install with scripts disabled.
 
 ### Added
+- Manual coordinated snapshots for managed installations: stop all project
+  containers, verify one complete eight-source set, then restore only the
+  previously running containers. Reject changed sources and overlapping writers;
+  keep interrupted recovery explicit. Configuration remains a separate backup.
 - Explicit bundled-app catalog/install/enable flow in Home Applications, with
   administrator authorization, dependency checks, disabled initial registrations
   and persistent uninstall/reinstall. Adopt existing registrations unchanged;

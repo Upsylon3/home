@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
-import { readState, writePrivate, configure, managedCompose } from './setup.mjs';
+import { readState, writePrivate, configure, managedCompose, assertNoActiveSnapshot } from './setup.mjs';
 import { runtimeCompose } from './runtime.mjs';
 
 const journalName = 'upgrade-state.json';
@@ -63,6 +63,8 @@ function manifest(root) {
 // Read-only preflight. The host launcher must stop and verify the source project
 // before copying; this module has no Docker socket and cannot prove it is offline.
 export function planUpgrade(source, target) {
+  assertNoActiveSnapshot(source);
+  assertNoActiveSnapshot(target);
   source = fs.realpathSync(source);
   target = fs.realpathSync(target);
   for (const [parent, child] of [[source, target], [target, source]]) {

@@ -2,16 +2,61 @@
 set -eu
 cd -- "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 action=${1:-start}
-case "$action" in start|code|access|diagnose|export-backups|verify-backups|stop|status|logs|upgrade|import) ;; *) echo 'Usage: ./home.sh [start|code|access|diagnose|export-backups DESTINATION|verify-backups EXPORT-FOLDER|stop|status|logs|upgrade OLD-FOLDER|import SOURCE-FOLDER]' >&2; exit 1 ;; esac
+case "$action" in start|code|access|diagnose|snapshot|recover-snapshot|export-backups|verify-backups|stop|status|logs|upgrade|import) ;; *) echo 'Usage: ./home.sh [start|code|access|diagnose|snapshot DESTINATION|recover-snapshot|export-backups DESTINATION|verify-backups EXPORT-FOLDER|stop|status|logs|upgrade OLD-FOLDER|import SOURCE-FOLDER]' >&2; exit 1 ;; esac
 command -v docker >/dev/null 2>&1 || { echo 'Install Docker Engine with Compose (Linux) or Docker Desktop (macOS), then run HOME again. See START-HERE.md.' >&2; exit 1; }
 docker info >/dev/null 2>&1 || { echo 'Start Docker, select Linux containers if applicable, and try again.' >&2; exit 1; }
 docker compose version >/dev/null 2>&1 || { echo 'Docker Compose v2 is required. See START-HERE.md.' >&2; exit 1; }
+if [ -e configuration/snapshot-state.json ] || [ -L configuration/snapshot-state.json ]; then
+  case "$action" in status|logs|recover-snapshot) ;; *) echo 'Snapshot recovery is pending. Run ./home.sh recover-snapshot before other actions.' >&2; exit 1 ;; esac
+fi
+
+# Deliberately exclude container environment/config values from inspection.
+snapshot_inventory() {
+  ids=$(docker ps -aq --no-trunc) || return 1
+  if [ -z "$ids" ]; then printf '[]'; return; fi
+  for id in $ids; do
+    case "$id" in *[!a-f0-9]*) return 1 ;; esac
+    [ "${#id}" -eq 64 ] || return 1
+  done
+  docker inspect --format '{"id":{{json .Id}},"image":{{json .Image}},"running":{{json .State.Running}},"paused":{{json .State.Paused}},"restarting":{{json .State.Restarting}},"health":{{with index .State "Health"}}{{json .Status}}{{else}}null{{end}},"project":{{json (index .Config.Labels "com.docker.compose.project")}},"service":{{json (index .Config.Labels "com.docker.compose.service")}},"config":{{json (index .Config.Labels "com.docker.compose.project.config_files")}},"job":{{json (index .Config.Labels "home.snapshot.job")}},"mounts":{{json .Mounts}}}' $ids
+}
+snapshot_helper() {
+  printf '%s' "${2:-}" | docker run --rm -i --user "$(id -u):$(id -g)" --network none --cap-drop ALL --security-opt no-new-privileges \
+    --mount "type=bind,source=$snapshot_root,target=/bundle" --entrypoint node "$snapshot_image" /bundle/setup/cli.mjs "$1" "$snapshot_root"
+}
+resume_snapshot() {
+  inventory=$(snapshot_inventory) || return 1
+  restore_ids=$(snapshot_helper snapshot-resume "$inventory") || return 1
+  if [ -n "$restore_ids" ]; then docker start $restore_ids >/dev/null || return 1; fi
+  attempt=0
+  while [ "$attempt" -lt 90 ]; do
+    inventory=$(snapshot_inventory) || return 1
+    if snapshot_helper snapshot-finish "$inventory"; then
+      echo 'Previous running state restored. Services that were stopped stayed stopped.'
+      return 0
+    else
+      snapshot_wait_status=$?
+      [ "$snapshot_wait_status" -eq 2 ] || return "$snapshot_wait_status"
+    fi
+    attempt=$((attempt + 1))
+    sleep 2
+  done
+  echo 'Services did not become ready. Run recover-snapshot after checking status and logs.' >&2
+  return 1
+}
+if [ "$action" = recover-snapshot ]; then
+  [ "$#" -eq 1 ] || { echo 'Usage: ./home.sh recover-snapshot' >&2; exit 1; }
+  snapshot_root=$(pwd -P)
+  snapshot_image=$(cat installer-image.txt)
+  resume_snapshot
+  exit
+fi
 case "$action" in
   stop) docker compose -f compose.json stop; exit ;;
   status) docker compose -f compose.json ps; exit ;;
   logs) docker compose -f compose.json logs --tail 100; exit ;;
 esac
-if [ "$action" = export-backups ] || [ "$action" = verify-backups ]; then
+if [ "$action" = export-backups ] || [ "$action" = verify-backups ] || [ "$action" = snapshot ]; then
   [ "$#" -eq 2 ] || { echo 'Pass an existing mounted destination folder, or an export folder to verify.' >&2; exit 1; }
   destination=$(CDPATH= cd -P -- "$2" && pwd -P)
   current=$(pwd -P)
@@ -23,6 +68,34 @@ if [ "$action" = export-backups ] || [ "$action" = verify-backups ]; then
   image_hash=${backup_image#sha256:}
   case "$image_hash" in ''|*[!a-f0-9]*) echo 'Start HOME once so its backup image is available.' >&2; exit 1 ;; esac
   [ "${#image_hash}" -ge 12 ] && [ "${#image_hash}" -le 64 ] || { echo 'Invalid backup image identifier.' >&2; exit 1; }
+  if [ "$action" = snapshot ]; then
+    snapshot_root=$current
+    snapshot_image=$(cat installer-image.txt)
+    inventory=$(snapshot_inventory)
+    snapshot_helper snapshot-begin "$inventory"
+    # Install the recovery trap before the first service is stopped. A lost
+    # terminal/Docker connection leaves the protected marker for recovery.
+    trap 'snapshot_exit_status=$?; trap - EXIT HUP INT TERM; if ! resume_snapshot; then echo "Snapshot recovery needed. Run ./home.sh recover-snapshot." >&2; snapshot_exit_status=1; fi; exit "$snapshot_exit_status"' EXIT
+    trap 'exit 130' HUP INT TERM
+    inventory=$(snapshot_inventory)
+    original=$(snapshot_helper snapshot-originals "$inventory")
+    echo 'Stopping this HOME for a coordinated snapshot. Downtime lasts through capture and verification.'
+    if [ -n "$original" ]; then docker stop --timeout 30 $original >/dev/null; fi
+    inventory=$(snapshot_inventory)
+    quiet=$(snapshot_helper snapshot-check "$inventory")
+    job=$(snapshot_helper snapshot-job)
+    mounts=$(snapshot_helper snapshot-mounts)
+    set -- run --rm --network none --cap-drop ALL --cap-add DAC_OVERRIDE --cap-add CHOWN --security-opt no-new-privileges \
+      --label "home.snapshot.job=$job" --mount "type=bind,source=$destination,target=/destination"
+    while IFS='=' read -r logical name; do
+      [ -n "$logical" ] || continue
+      set -- "$@" --mount "type=bind,source=$current/data/$logical,target=/sources/$name,readonly"
+    done <<EOF
+$mounts
+EOF
+    docker "$@" --entrypoint python3 "$backup_image" /coordinated.py /sources /destination --confirm-offline --quiesced-at "$quiet" --timeout "${BACKUP_TIMEOUT_SECONDS:-3600}"
+    exit
+  fi
   if [ "$action" = export-backups ]; then
     docker run --rm --network none --cap-drop ALL --cap-add DAC_OVERRIDE --cap-add CHOWN --security-opt no-new-privileges \
       --mount "type=bind,source=$current/backups,target=/backups,readonly" --mount "type=bind,source=$destination,target=/destination" \

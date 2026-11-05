@@ -41,7 +41,7 @@ run('docker', ['compose', '-f', buildFile, '--profile', 'public', 'pull', 'tls']
 run('docker', ['image', 'tag', template.services.tls.image, runtime.services.tls.image]);
 const images = Object.values(runtime.services).map(service => service.image);
 run('docker', ['image', 'save', '-o', path.join(bundle, 'images.tar'), ...images]);
-for (const file of ['runtime.mjs', 'setup.mjs', 'upgrade.mjs', 'source-import.mjs', 'diagnose.mjs', 'cli.mjs']) fs.copyFileSync(path.join(repo, 'server', file), path.join(bundle, 'setup', file));
+for (const file of ['runtime.mjs', 'setup.mjs', 'upgrade.mjs', 'source-import.mjs', 'diagnose.mjs', 'coordinated.mjs', 'cli.mjs']) fs.copyFileSync(path.join(repo, 'server', file), path.join(bundle, 'setup', file));
 for (const file of ['home.sh', 'home.ps1', 'home.cmd', 'START-HERE.md']) fs.copyFileSync(path.join(repo, 'server', file), path.join(bundle, file));
 fs.chmodSync(path.join(bundle, 'home.sh'), 0o755);
 fs.copyFileSync(path.join(repo, 'LICENSE'), path.join(bundle, 'LICENSE'));

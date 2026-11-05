@@ -1,18 +1,22 @@
 # Multi-server pairing design
 
-Status: offline identity preparation and pending/suspended/revoked peer records
-are implemented. No signed handshake, federation endpoints, foreign accounts or
-guest sessions are enabled. Independent protocol/security review and the gates
-below remain required before enablement. See [operator commands](DEPLOYMENT.md#offline-peer-identity-preparation).
+Status: signed two-owner pairing, replay protection, live peer status, revocation
+notifications and protected HTTPS transport are implemented behind an explicit
+experimental opt-in. Pairing grants no account/resource access. Foreign accounts
+and guest sessions remain unimplemented. Independent protocol/security review,
+public-HTTPS drills and recovery integration remain gates before guest enablement.
+See [operator commands](DEPLOYMENT.md#offline-peer-identity-preparation) and the
+[pairing API](API.md#experimental-multi-server-pairing).
 
 Core assigns durable account subject UUIDs while preserving numeric local IDs
 and existing sessions. The offline tool creates an independent server UUID,
 Ed25519 key and instance generation in a separate protected authority database.
 Its public descriptors are unsigned preparation metadata, not proof of key
 possession or completed pairing. Manual fingerprint confirmation only stages a
-pending record. The database cannot represent an active pair in this foundation.
-Later handshake work must validate these staged pins through both-owner approval
-and the signed transcript; it must not promote pending records automatically.
+pending record. The foundation pin table still cannot represent active trust.
+The separate protocol table records local activation only after the signed
+transcript and both local owner approvals; staged pins never activate themselves.
+Effective trust requires a fresh signed peer status, not a stored active flag.
 
 ## First use case and boundaries
 
@@ -45,9 +49,9 @@ The foreign identity is `(server UUID, subject UUID)`. Numeric IDs, usernames,
 display names and administrator roles are not portable authority. A renamed
 account retains its subject; a replacement account cannot inherit its grants.
 
-The first implementation requires independently reachable HTTPS servers with
-valid certificates and public DNS, plus a separate configured guest origin on
-the receiving server. Local HTTP operation remains available without pairing.
+Pairing requires independently reachable HTTPS servers with valid certificates
+and public DNS. Guest access additionally needs a separate configured guest
+origin on the receiving server. Local HTTP operation remains available without pairing.
 Private LAN/VPN pairing needs a later transport design; it must not become an
 implicit exception to outbound request protection. Setup never changes routers,
 firewalls, DNS or certificates automatically.
@@ -74,8 +78,8 @@ local administration.
    identity/pins/generation, a random nonce and ten-minute expiry. It also creates
    a 256-bit one-use invitation secret, retaining only its hash. Transfer the
    invitation through a trusted channel; never place the secret in a URL or log.
-2. B's administrator imports the offer, independently checks A's origin and full
-   fingerprint, and explicitly approves B's signed acceptance. Acceptance binds
+2. B's administrator imports the offer and independently checks A's origin and
+   full fingerprint before producing B's signed acceptance. Acceptance binds
    the exact offer bytes, B's identity/pins/generation and a fresh nonce. B sends
    the secret in an HTTPS POST body. A atomically binds its consumption to this
    B identity; competing attempts cannot replace the binding.
@@ -83,7 +87,9 @@ local administration.
    trusted channel. Compute it with SHA-256 over a fixed versioned domain label,
    newline, exact compact offer JWS, newline and exact compact acceptance JWS.
    These encodings cannot contain newlines. Do not invent JSON canonicalization.
-   The secret is excluded from stored transcripts and audit events.
+   The secret is excluded from stored transcripts and audit events. B explicitly
+   approves the resulting full transcript through its local administrator API
+   after comparison; acceptance alone does not supply this final approval.
 4. A explicitly approves B and signs confirmation of the transcript, both
    identities, generations and supported protocol. B acknowledges the same
    transcript before A sends its activation acknowledgement. All messages are
@@ -96,7 +102,10 @@ can leave one side waiting. Authorization requires both local active state and a
 fresh signed active status from the peer for the same transcript and generations.
 The UI reports waiting/unavailable rather than successful effective access.
 Revoke cancels partial ceremonies too; a revoked pair ID is never reactivated.
-Re-pairing requires a fresh invitation, pair ID and both approvals.
+Re-pairing requires a fresh invitation, pair ID and both approvals. Offers can
+be revoked before any peer accepts. Approval snapshots are checked against the
+current local administrator role, enabled state and token epoch until activation;
+active server identity trust is independent of later local password changes.
 
 ## Signed back-channel profile
 
@@ -111,7 +120,8 @@ origin, operation, pair ID, both instance generations, transaction ID, issued
 time, expiry, random 256-bit message ID and the complete operation payload.
 Maximum lifetime is 60 seconds with at most 30 seconds clock tolerance. Bind
 the operation to a fixed route: signatures cannot authorize a generic URL fetch.
-Responses bind the request transaction and operation as well as sender/recipient.
+Responses bind the request transaction and operation as well as sender/recipient,
+and hash the exact request JWS so an old status reply cannot answer a new request.
 Validate every field and current trust state, not just the signature.
 
 Persist replay IDs atomically with mutations through expiry plus tolerance.
@@ -120,7 +130,21 @@ rather than evicting live entries. Retry with a new message ID and the same
 transaction/payload digest may return the recorded result only after current
 trust checks. A changed payload conflicts; revocation overrides cached success.
 Unexpected clock rollback suspends federation until repaired, using a persisted
-time high-water mark. Time is never the sole revocation mechanism.
+time high-water mark. Inspection and refused protocol requests also record the
+observed clock before expiry checks. Time is never the sole revocation mechanism.
+
+The implementation pins `jose@6.2.15` for JOSE signing/verification and
+`ipaddr.js@2.5.0` for address classification. Neither adds production transitive
+dependencies or installation scripts. Transport checks every A/AAAA answer,
+pins the selected address, verifies the connected address and certificate hostname,
+and uses an explicit agent with no environment proxy. Outbound and incoming peer
+requests have five-second deadlines; local administration has 15 seconds for its
+two back-channel phases. There are four concurrent requests per peer and 32
+operations globally. Replay capacity is 4,096 live IDs per peer / 16,384 total;
+never evict a live ID. Retain at most 10,000 invitations/pin records and refuse
+new preparation at capacity rather than forgetting a tombstone. Revocation retries
+use a private durable outbox with bounded exponential backoff. These bounds are
+protocol implementation decisions, not new guarantees about the public network.
 
 Separate validators and keys prevent local sessions, identity assertions, peer
 messages, app keys and guest credentials from being interchangeable. This follows
@@ -217,17 +241,17 @@ metadata and foreign subject labels are private administrative information.
 
 ## Implementation and enablement gates
 
-No proposed namespace is currently an API contract. Reserve separate local-admin
-peer management, fixed `/federation/v1/` protocol operations and isolated guest
-resource routes only when implementation adds gateway and authentication rules.
-Do not mount a generic peer proxy or extend the existing local JWT validator.
+The [API guide](API.md#experimental-multi-server-pairing) owns implemented local
+administrator and fixed `/federation/v1/` protocol routes. Guest resource routes
+remain proposals and must not be mounted until typed authentication and resource
+authorization exist. Do not mount a generic peer proxy or extend the local JWT validator.
 
 Implement in these bounded slices, default off throughout:
 
-1. Durable identities and protected offline peer records are complete. Implement
-   the remaining signed pairing/status/revoke operations, replay ledger and
-   transport before the state machine can represent active pairs. No foreign
-   user access in this slice.
+1. Durable identities, protected peer records, signed pairing/status/revoke
+   operations, replay ledger and transport are complete behind experimental
+   opt-in. No foreign user access is enabled. Local TLS and adversarial checks are
+   recorded in [validation](VALIDATION.md#multi-server-pairing).
 2. Reviewed OIDC/JOSE library integration, typed guest principals, isolated guest
    origin and explicit Tasks foreign-subject ACLs. No general foreign login.
 3. Revocation/rotation/restore integration across both source and managed runtime

@@ -55,17 +55,18 @@ The public `/connect/` portal stores names/origins only in that browser, never
 fetches server APIs or handles credentials/setup codes, and opens HOME without
 a referrer. Clearing its storage removes shortcuts, not accounts. GitHub may
 retain ordinary hosting visit logs. Multiple saved addresses provide no shared
-identity. The [multi-server design](PAIRING-DESIGN.md) specifies future signed
-pairing and recovery; implementation is pending. It requires explicit HTTPS and
-guest-origin configuration, not automatic networking changes. Storage replication
-needs a separate design and is not backup.
+identity. [Experimental signed pairing](#experimental-signed-pairing) is a separate
+opt-in, grants no account access and makes no automatic networking changes.
+Guest access requires further origin/recovery work. Storage replication needs a
+separate design and is not backup.
 
 ## Offline peer identity preparation
 
-This is an operator foundation, not working server-to-server pairing. Core now
+This is the operator foundation for optional signed pairing. Core
 assigns immutable account subject UUIDs separately from numeric local IDs and
 retains subject tombstones when an account is deleted. Local login is unchanged.
-No peer network calls, foreign login, active trust or guest routes are enabled.
+The offline tool makes no peer network calls and cannot activate trust. Foreign
+login and guest routes remain unimplemented.
 
 After running the upgraded Core once, stop Core before using the offline tool.
 Use the account that owns the protected configuration. Create a dedicated private
@@ -124,8 +125,62 @@ requires a new identity in a new protected directory and revocation of the old
 identity by every peer. A partial initialization requires operator inspection;
 the tool does not erase or overwrite the partial file. Rolling back all private
 control state cannot be detected from that same state. Full automatic restore
-gating, signed notifications and managed/source lifecycle integration remain
-unfinished; no active federation may be added until those gates are implemented.
+gating and managed/source lifecycle integration remain unfinished; account and
+resource federation must stay disabled until those gates are implemented.
+
+## Experimental signed pairing
+
+This opt-in implements server identity trust for isolated evaluation. It does
+not share users, tasks, files or Vault data. Independent protocol review and
+public-HTTPS/recovery drills remain required before guest access. See
+[validation](VALIDATION.md#multi-server-pairing) and the [API flow](API.md#experimental-multi-server-pairing).
+
+Prepare each server's private identity offline as above. For a source Core
+process, explicitly configure `HOME_PEER_PROTOCOL_ENABLED=true` and
+`HOME_PEER_STATE_DIR` to that absolute protected directory, then start Core with
+an existing administrator. The ordinary data path and authority directory must
+be separate. No key is created or replaced at startup. Missing/invalid state
+disables pairing with `503` while local login remains available. Turning the
+flag off removes the pairing routes and background delivery; ordinary HOME
+operation remains local.
+
+In containers the protected directory must be separately mounted into Core
+with the required owner/permissions and explicitly configured by the operator.
+This change adds no Compose mounts or managed-launcher switch and changes no
+real installation. Do not place the authority database in an application data
+volume or start a copied identity as another HOME. Managed lifecycle/restore
+integration is still pending.
+
+Both origins must already have reachable public DNS and valid HTTPS. Existing
+Caddy/nginx routes `/federation/v1/` to Core, which requires an HTTPS request
+within the documented trusted-proxy boundary. Never expose raw HTTP gateway or
+Core ports; a scheme header does not provide transport encryption. Outgoing
+requests validate every DNS answer and the connected IP/TLS hostname, reject
+private/reserved/mapped addresses and redirects, and ignore environment proxies.
+There is no LAN/VPN bypass, arbitrary URL input or automatic DNS/router/TLS setup.
+
+Use the bounded administrator API to create an invitation on A and accept it on
+B. Transfer the invitation through a trusted channel, not a URL or log. Compare
+the full transcript fingerprint and both key IDs independently. B approves the
+transcript locally before A approves and completes the signed confirmation and
+activation. Local administrator passwords and configured TOTP are required on
+each action; no remote role claim supplies local approval. Retry a lost reply
+using the same pair/fingerprints and fresh local proof. A partial ceremony expires
+after ten minutes; recreate it rather than reusing an expired/revoked pair ID.
+
+The API's stored `active` state is not proof that both sides are currently
+available. Its status action performs a fresh signed round trip and can report
+`effectiveActive: true` only for that request. No account/resource handler uses
+it yet. Timeouts, outages, revocation and generation mismatches fail closed;
+already authorized in-flight requests may finish.
+
+Local revocation commits before contacting the peer. Its private outbox retries
+four notifications per pass with exponential backoff (30 seconds to 30 minutes).
+Notifications for a superseded local generation are recorded as obsolete;
+fresh live checks already reject the old generation. The offline `suspend`,
+`revoke` and `recover` commands still override protocol state. Stop Core before
+offline maintenance. Recovery also cancels unbound invitations and requires
+fresh pairing; never restore old authority state to undo revocation.
 
 ## Requirements and first-time setup
 

@@ -8,13 +8,19 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 ## [Unreleased]
 
 ### Added
+- Experimental signed two-owner server pairing with exact transcript/key approval,
+  durable replay and retry receipts, uncached live status, local revocation with
+  notification retries and bounded public-HTTPS transport. Keep the protocol off
+  by default and separate from local sessions; pairing grants no account/resource
+  access. Guest authentication, rotation, integrated recovery and independent
+  protocol review remain open.
 - Core account subject UUIDs and an offline peer identity tool with independent
   Ed25519 server keys, private authority storage, explicit fingerprint staging,
   durable suspension/revocation records and recovery generation changes. Preserve
-  existing local sessions; no signed handshake or foreign account access is enabled.
+  existing local sessions; offline preparation grants no account access.
 - Multi-server pairing design covering signed peer approval, explicit foreign
   subject/task grants, revocation and restore recovery, with implementation and
-  security-review gates. Federation and foreign login remain unimplemented.
+  security-review gates. Guest authentication remains unimplemented.
 
 ### Changed
 - Consolidated documentation into four root documents and six flat guides,

@@ -1,7 +1,8 @@
 # API reference
 
-Multi-server pairing and guest routes are not implemented. Proposed protocol
-boundaries live in the [pairing design](PAIRING-DESIGN.md), not this API contract.
+Experimental multi-server pairing is opt-in; guest routes and foreign accounts
+are not implemented. See the [pairing contract](#experimental-multi-server-pairing)
+and [design](PAIRING-DESIGN.md).
 
 All routes require `Authorization: Bearer <token>` unless noted
 otherwise. Get a token from `POST /api/core/auth/login` (and, if 2FA is
@@ -19,6 +20,62 @@ verification capacity exhaustion returns `503`; clients should keep their
 session and allow retry for these failures. A successful verification may
 be cached for up to five seconds, so account revocation propagates to an
 application backend within that window. HomeCore itself checks immediately.
+
+## Experimental multi-server pairing
+
+Default off. Core requires `HOME_PEER_PROTOCOL_ENABLED=true` and an explicitly
+prepared `HOME_PEER_STATE_DIR` outside application data. Missing/invalid protected
+state returns retryable `503` for pairing while ordinary local login still works.
+There are no legacy pairing aliases. All these routes require HTTPS and reject
+query strings. Pairing never issues a normal session or grants resource access.
+
+Local administration requires a current local administrator bearer session,
+`X-HOME-PEER-ADMIN: 1`, and an exact configured origin when `Origin` is present.
+Cross-site browser contexts are refused. Each POST requires `password`,
+`consent: true` and `totpCode` when 2FA is enabled. Password/2FA are checked afresh;
+pending-2FA tokens, application keys and peer messages cannot administer pairing.
+Only the listed action fields are accepted in addition to those proof fields.
+Administrator requests are limited to ten per 15 minutes per IP, and peer
+requests to 120 per minute per IP. All responses use `Cache-Control: no-store`.
+
+| Method and path | Additional JSON fields / result |
+|---|---|
+| `GET /api/core/peers` | Public local identity and administrative pair states; no private key or invitation secrets |
+| `POST /api/core/peers/offers` | No action fields; returns `pairId`, `invitation: {offer, secret}`, `expiresAt` once |
+| `POST /api/core/peers/accept` | `invitation`, `peerFingerprint` (A's full key ID); sends B's signed acceptance and returns the pending transcript |
+| `POST /api/core/peers/:pairId/approve` | `transcriptFingerprint`, `peerFingerprint`; B records approval; A sends confirmation and activation |
+| `POST /api/core/peers/:pairId/status` | No action fields; fresh signed status with `localState`, `remoteState`, `effectiveActive` when locally active |
+| `POST /api/core/peers/:pairId/revoke` | No action fields; cancels an offer or permanently revokes the peer record before notification |
+
+A creates the invitation. B accepts it after independently comparing A's full
+key ID. Both owners then compare the complete transcript fingerprint and peer
+key IDs through a trusted channel. B approves its transcript first, then A
+approves the same fingerprint. A sends the two signed activation phases.
+Each administrative pair response includes `effectiveActive: false`: stored
+activation alone is not live authority. Only the status operation can report
+both sides active for that request; it never caches a positive result.
+This status is server trust, not permission to use an account or application.
+
+If a reply is lost, repeat acceptance with the same invitation, or approval with
+the same pair/fingerprints and fresh local proof. The protocol generates new
+message IDs and uses durable receipts; altered/revoked/expired ceremonies fail.
+Half-activation may show A locally active while B is ready; live status remains
+false until both finish. Local revocation needs no reachable peer. Notifications
+retry separately, and already authorized in-flight requests may finish.
+
+Peer-to-peer routes are `POST /federation/v1/{accept,confirm,activate,status,revoke}`.
+They do not accept bearer sessions. Bootstrap `accept` takes `{acceptance, secret}`;
+the other operations take `{message}` containing the pinned Ed25519 JWS profile
+from the design. Successful responses are `{message}` with a signed response.
+No generic discovery, key URL, proxy or arbitrary fetch endpoint exists.
+
+Incoming bodies and peer responses are bounded to 32 KiB. Malformed/duplicate JSON, wrong profile,
+signature, issuer, audience, generation or operation is refused. Replay returns
+`409`; exhausted capacity returns `503`; DNS/TLS/peer failures return `502` and
+deadlines `504`. Clients retain local sessions on pairing failures. Errors contain
+static codes/messages and never echo invitation secrets, passwords or signed
+bodies. See [operations](DEPLOYMENT.md#experimental-signed-pairing) for configuration
+and [evidence limits](VALIDATION.md#multi-server-pairing).
 
 ## HomeCore (`/api/core`, with legacy compatibility aliases)
 

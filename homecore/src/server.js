@@ -38,6 +38,7 @@ const server = app.listen(PORT, () => {
 function shutdown(signal) {
   console.log(`[homecore] Received ${signal}, shutting down gracefully...`);
   server.close(() => {
+    app.locals.peerRuntime.close();
     db.close();
     console.log("[homecore] Shutdown complete.");
     process.exit(0);

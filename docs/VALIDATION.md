@@ -3,6 +3,37 @@
 Outstanding review/device evidence and reproduction notes live here. Run fixtures
 only against disposable data; never equate CI with independent or physical testing.
 
+## Multi-server pairing
+
+The experimental opt-in has automated two-owner transcript approval, invitation
+binding/race/reuse, partial activation, durable request/response replay and
+semantic retry checks. Tests cover local reauthentication/2FA/role refusal,
+credential type separation, capacity/expiry/clock rollback, generation suspension,
+revocation during a remote request and durable notification retries after outages.
+Malformed/duplicate JSON and changed issuer/audience/type/operation/generation
+cannot authorize a peer. An older Core snapshot cannot restore external revoked
+pin records. Existing local accounts and JWT sessions retain their behavior.
+The committed [public v1 wire vector](../homecore/test/fixtures/peer-v1.json)
+fixes exact offer, acceptance, transcript and status request/response bytes;
+disposable signing keys were discarded and are not included.
+
+Two real isolated Core processes complete the protocol over TLS with a disposable
+CA, then check live status and revocation. Transport tests exercise certificate
+hostname/trust failure, fixed routes, DNS pinning/connected-address mismatch,
+private/mapped/reserved answers, mixed A/AAAA responses, redirects, oversized or
+stalled responses, deadlines and capacity. The harness injects loopback DNS and
+a fixture CA through test constructors. Runtime configuration has no private-IP,
+TLS-verification or proxy bypass. These tests do not establish real public DNS,
+router reachability, WAN outages or physical recovery.
+
+Before enabling foreign account/resource access, obtain an independent protocol
+and implementation security review, validate two separate public-HTTPS HOME
+installations, and exercise key/origin rotation plus source and managed-runtime
+restore/import/clone gates. Whole-state rollback still requires operator-enforced
+recovery or independent non-rollback state. Windows authority ACL protection
+remains an operator prerequisite. No guest account/resource access is implemented,
+and no independent review or real installation drill is claimed here.
+
 ## Backup exports
 
 The mounted-storage exporter has disposable tests for archive byte preservation,

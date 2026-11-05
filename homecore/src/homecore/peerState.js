@@ -1,5 +1,5 @@
-// Offline preparation only. Nothing here connects to a peer, signs a protocol
-// message, accepts an account or permits an active pairing.
+// Protected identity/pin authority. Network protocol support is loaded only by
+// the explicit opt-in runtime; the offline tool never activates a pairing.
 const fs = require('node:fs');
 const path = require('node:path');
 const net = require('node:net');
@@ -133,6 +133,11 @@ function openPeerState({ stateDir, namespaceId, initialize = false, origin, now 
     const auditStatement = db.prepare('INSERT INTO audit (operation, pair_id, at, actor, local_generation) VALUES (?, ?, ?, ?, ?)');
     const audit = (operation, pairId, time) => auditStatement.run(operation, pairId, time, actor, descriptor.instanceGeneration);
     const load = () => db.prepare('SELECT * FROM authority WHERE id = 1').get();
+    const queueRevocation = recordId => {
+      if (db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'peer_notify'").get()) {
+        db.prepare('INSERT OR IGNORE INTO peer_notify (pair_id) SELECT pair_id FROM peer_pairings WHERE peer_record_id = ?').run(recordId);
+      }
+    };
     const publicPeer = row => ({ pairId: row.pair_id, descriptor: JSON.parse(row.descriptor),
       status: row.status, localGeneration: row.local_generation, createdAt: row.created_at, updatedAt: row.updated_at });
     function mutate(action, recovery = false) {
@@ -151,7 +156,7 @@ function openPeerState({ stateDir, namespaceId, initialize = false, origin, now 
       if (result.clockError) refuse('Clock rollback detected; repair time and run recover before staging peers.');
       return result.value;
     }
-    return {
+    const store = {
       identity() { return JSON.parse(load().descriptor); },
       list() { return db.prepare('SELECT * FROM peers ORDER BY created_at, pair_id').all().map(publicPeer); },
       stage(value, confirmedFingerprint) {
@@ -173,6 +178,7 @@ function openPeerState({ stateDir, namespaceId, initialize = false, origin, now 
             .get(value.origin, value.serverId)) refuse('This origin already has a different pending identity.');
           const pending = previous.find(row => row.status !== 'revoked');
           if (pending) return publicPeer(pending);
+          if (db.prepare('SELECT count(*) AS n FROM peers').get().n >= 10000) refuse('Peer preparation capacity exhausted.');
           const id = crypto.randomUUID();
           db.prepare('INSERT INTO peers VALUES (?, ?, ?, \'pending\', ?, ?, ?)')
             .run(id, value.serverId, JSON.stringify(value), descriptor.instanceGeneration, time, time);
@@ -188,14 +194,19 @@ function openPeerState({ stateDir, namespaceId, initialize = false, origin, now 
           if (row.status === status) return publicPeer(row);
           if (row.status === 'revoked') refuse('Revoked pair IDs cannot be changed.');
           db.prepare('UPDATE peers SET status = ?, updated_at = ? WHERE pair_id = ?').run(status, time, pairId);
+          if (status === 'revoked') queueRevocation(pairId);
           audit(status, pairId, time);
           return publicPeer(db.prepare('SELECT * FROM peers WHERE pair_id = ?').get(pairId));
         });
       },
       recover() {
         return mutate(time => {
+          if (db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'peer_invitations'").get()) {
+            db.prepare('UPDATE peer_invitations SET cancelled = 1 WHERE acceptance IS NULL').run();
+          }
           for (const row of db.prepare("SELECT pair_id FROM peers WHERE status != 'revoked'").all()) {
             db.prepare("UPDATE peers SET status = 'revoked', updated_at = ? WHERE pair_id = ?").run(time, row.pair_id);
+            queueRevocation(row.pair_id);
             audit('revoked', row.pair_id, time);
           }
           descriptor.instanceGeneration = crypto.randomUUID();
@@ -206,10 +217,14 @@ function openPeerState({ stateDir, namespaceId, initialize = false, origin, now 
       },
       close() { db.close(); }
     };
+    store.protocol = options => require('./peerProtocol').createPeerProtocol({
+      ...options, db, privateKey, mutate, audit, store, now
+    });
+    return store;
   } catch (error) {
     db.close();
     throw error;
   }
 }
 
-module.exports = { openPeerState, validateDescriptor, keyThumbprint, FILE_NAME };
+module.exports = { openPeerState, validateDescriptor, keyThumbprint, originValue, FILE_NAME };

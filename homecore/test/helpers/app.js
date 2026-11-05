@@ -30,6 +30,8 @@ async function startTestApp({ disableRateLimit = true, installedApps = true } = 
   process.env.JWT_SECRET = `test_secret_${Math.random().toString(36).slice(2)}_${Date.now()}`;
   process.env.JWT_EXPIRES_IN = "1h";
   process.env.CORS_ORIGIN = "*";
+  process.env.HOME_PEER_PROTOCOL_ENABLED = 'false';
+  delete process.env.HOME_PEER_STATE_DIR;
   process.env.DISABLE_RATE_LIMIT_FOR_TESTS = disableRateLimit ? "true" : "false";
   // Shared secret for POST /internal/events (see ../internalEvents.js).
   // apps/homecloud-backend/test/helpers/app.js reads this exact value back

@@ -3,11 +3,6 @@
 Only unfinished work is listed here. Completed changes belong in
 [CHANGELOG.md](../CHANGELOG.md). Later ideas are not committed features.
 
-## Usability and reliability
-
-- **Backups:** coordinated cross-service snapshots. Existing per-database
-  snapshots and verified archive exports do not establish a shared point in time.
-
 ## Application work
 
 - Enforce caller-application permissions before adding HomeAI or other consumers

@@ -116,7 +116,7 @@ test('diagnose CLI reads only installation state and preserves every fixture fil
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.mkdirSync(path.join(root, 'setup'));
   fs.mkdirSync(path.join(root, 'configuration'));
-  for (const file of ['cli.mjs', 'setup.mjs', 'runtime.mjs', 'upgrade.mjs', 'source-import.mjs', 'diagnose.mjs']) {
+  for (const file of ['cli.mjs', 'setup.mjs', 'runtime.mjs', 'upgrade.mjs', 'source-import.mjs', 'diagnose.mjs', 'coordinated.mjs']) {
     fs.copyFileSync('server/' + file, path.join(root, 'setup', file));
   }
   const stateFile = path.join(root, 'configuration/installation.json');

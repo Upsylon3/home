@@ -20,6 +20,33 @@ import uuid
 from snapshot import verify, interrupted
 
 ARCHIVE = re.compile(r"[A-Za-z0-9_-]+-backup-\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.tar\.gz\Z")
+COORDINATED_SOURCES = ('homecore', 'homecloud-backend', 'homemedia', 'homenotes',
+                       'homesync', 'hometasks', 'homemonitor', 'homevault')
+
+
+def publish_export(stage, destination, name, manifest):
+    encoded = json.dumps(manifest, indent=2).encode('utf-8') + b'\n'
+    if len(encoded) > 1024 * 1024:
+        raise ValueError('Export inventory exceeds the supported manifest size')
+    manifest_path = stage / 'manifest.json'
+    with manifest_path.open('xb') as stream:
+        os.chmod(manifest_path, 0o600)
+        stream.write(encoded)
+        stream.flush()
+        os.fsync(stream.fileno())
+    final = destination / name
+    if final.exists():
+        raise ValueError('Export destination already exists; refusing to replace it')
+    # Container archives are private/root-owned; let the destination owner read
+    # new output without changing any source ownership or earlier exports.
+    if hasattr(os, 'geteuid') and os.geteuid() == 0:
+        owner = destination.stat()
+        for entry in [*stage.iterdir(), stage]:
+            current = entry.stat()
+            if (current.st_uid, current.st_gid) != (owner.st_uid, owner.st_gid):
+                os.chown(entry, owner.st_uid, owner.st_gid)
+    stage.rename(final)
+    return final
 
 
 def directory(value):
@@ -67,7 +94,6 @@ def export_archives(source, destination):
     if not archives:
         raise ValueError('No published backup archives found; run a successful backup cycle first')
     name = 'home-backup-export-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ-') + uuid.uuid4().hex
-    final = destination / name
     # Only this newly allocated temporary directory may be removed on failure.
     with tempfile.TemporaryDirectory(prefix='.home-export-', dir=destination) as temporary:
         stage = Path(temporary)
@@ -93,28 +119,7 @@ def export_archives(source, destination):
                 entries.append({'name': archive.name, 'size': before.st_size, 'sha256': digest.hexdigest()})
         manifest = {'schema': 1, 'createdAt': datetime.now(timezone.utc).isoformat(),
                     'consistency': 'per-service', 'includesConfiguration': False, 'archives': entries}
-        if len(json.dumps(manifest, indent=2).encode('utf-8')) + 1 > 1024 * 1024:
-            raise ValueError('Export inventory exceeds the supported manifest size')
-        manifest_path = stage / 'manifest.json'
-        with manifest_path.open('x', encoding='utf-8') as stream:
-            os.chmod(manifest_path, 0o600)
-            json.dump(manifest, stream, indent=2)
-            stream.write('\n')
-            stream.flush()
-            os.fsync(stream.fileno())
-        if final.exists():
-            raise ValueError('Export destination already exists; refusing to replace it')
-        # Existing backup archives are root-owned/private in the container.
-        # The export helper reads them as root, then gives its new output to
-        # the destination owner so host users can read their private exports.
-        if hasattr(os, 'geteuid') and os.geteuid() == 0:
-            owner = destination.stat()
-            for entry in [*stage.iterdir(), stage]:
-                current = entry.stat()
-                if (current.st_uid, current.st_gid) != (owner.st_uid, owner.st_gid):
-                    os.chown(entry, owner.st_uid, owner.st_gid)
-        stage.rename(final)
-    return final
+        return publish_export(stage, destination, name, manifest)
 
 
 def verify_export(folder):
@@ -126,7 +131,7 @@ def verify_export(folder):
         raise ValueError('Export manifest exceeds the supported size')
     manifest = json.loads(raw)
     if not isinstance(manifest, dict) or manifest.get('schema') != 1 or \
-            manifest.get('consistency') != 'per-service' or manifest.get('includesConfiguration') is not False or \
+            manifest.get('consistency') not in ('per-service', 'coordinated-offline') or manifest.get('includesConfiguration') is not False or \
             not isinstance(manifest.get('archives'), list) or not manifest['archives']:
         raise ValueError('Unsupported or empty export manifest')
     names = set()
@@ -137,6 +142,20 @@ def verify_export(folder):
                 not isinstance(entry.get('sha256'), str) or not re.fullmatch('[a-f0-9]{64}', entry['sha256']):
             raise ValueError('Invalid archive entry in export manifest')
         names.add(entry['name'])
+    if manifest['consistency'] == 'coordinated-offline':
+        if len(names) != len(COORDINATED_SOURCES) or \
+                {name.rsplit('-backup-', 1)[0] for name in names} != set(COORDINATED_SOURCES) or \
+                len({name.rsplit('-backup-', 1)[1] for name in names}) != 1 or \
+                not isinstance(manifest.get('sourceFingerprint'), str) or \
+                not re.fullmatch('[a-f0-9]{64}', manifest['sourceFingerprint']):
+            raise ValueError('Coordinated snapshot must contain every expected source')
+        try:
+            quiet = datetime.fromisoformat(manifest['quiescedAt'])
+            completed = datetime.fromisoformat(manifest['createdAt'])
+            if quiet.tzinfo is None or completed.tzinfo is None or quiet > completed:
+                raise ValueError()
+        except (KeyError, TypeError, ValueError):
+            raise ValueError('Invalid coordinated snapshot interval') from None
     if {entry.name for entry in folder.iterdir()} != names | {'manifest.json'}:
         raise ValueError('Export files do not match the manifest')
     with tempfile.TemporaryDirectory(prefix='home-export-verify-') as scratch:
@@ -161,7 +180,7 @@ def main():
     try:
         if args.verify:
             count = verify_export(args.source)
-            print(f'Verified {count} exported archives: checksums, SQLite integrity and file references.')
+            print(f'Verified {count} backup archives: checksums, SQLite integrity and file references.')
         else:
             target = export_archives(args.source, args.destination)
             print('Verified export: ' + target.name)

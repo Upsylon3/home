@@ -1,5 +1,14 @@
 # Security
 
+Managed coordinated snapshots stop all project containers and read application
+sources through read-only mounts. Helpers have no Docker socket; capture has no
+network access. Only container identity/state/mount metadata is inspected, never
+container environment values. The private recovery marker contains container IDs
+and a configuration digest, not service credentials. Snapshot data is unencrypted
+except existing Vault ciphertext. Configuration and TLS certificates need separate
+protected backups. Keep storage private and encrypted; integrity checks are not
+proof of authenticity or physical disaster recovery. See [backup operations](DEPLOYMENT.md#backups).
+
 HOME is intended for user-controlled personal/family installations.
 **HomeVault has not received independent security/cryptography review. Do not
 store real passwords or secrets in it yet.** [Review handoff](VALIDATION.md#vault-review).

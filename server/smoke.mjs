@@ -105,7 +105,7 @@ try {
   fs.writeFileSync(path.join(upgradedRoot, 'bundle.json'), JSON.stringify({ schema: 1, version: nextVersion, arch: process.arch,
     upgrade: { schema: 1, minimumSourceVersion: '1.7.0' } }));
   fs.mkdirSync(path.join(upgradedRoot, 'setup'));
-  for (const name of ['setup.mjs', 'runtime.mjs', 'upgrade.mjs', 'source-import.mjs', 'diagnose.mjs', 'cli.mjs']) {
+  for (const name of ['setup.mjs', 'runtime.mjs', 'upgrade.mjs', 'source-import.mjs', 'diagnose.mjs', 'coordinated.mjs', 'cli.mjs']) {
     fs.copyFileSync(bundle ? path.join(bundle, 'setup', name) : path.join('server', name), path.join(upgradedRoot, 'setup', name));
   }
   const transfer = () => docker(['run', '--rm',
@@ -143,7 +143,28 @@ try {
   const verifiedExport = docker([...exportContainer,
     '--mount', `type=bind,source=${path.join(exportDestination, exported[0])},target=/export,readonly`,
     '--entrypoint', 'python3', nextRuntime.services.backup.image, '/export.py', '--verify', '/export'], true);
-  assert.match(verifiedExport, /exported archives: checksums, SQLite integrity and file references/);
+  assert.match(verifiedExport, /backup archives: checksums, SQLite integrity and file references/);
+  // Exercise the actual host stop/barrier/capture/restart workflow, with backup
+  // deliberately stopped beforehand. Never substitute it with direct Python.
+  fs.copyFileSync(bundle ? path.join(bundle, 'home.sh') : 'server/home.sh', path.join(upgradedRoot, 'home.sh'));
+  fs.writeFileSync(path.join(upgradedRoot, 'installer-image.txt'), nextRuntime.services.homecore.image);
+  const snapshotDestination = fs.mkdtempSync(path.join(os.tmpdir(), 'home-coordinated-smoke-'));
+  const snapshot = spawnSync('sh', [path.join(upgradedRoot, 'home.sh'), 'snapshot', snapshotDestination],
+    { encoding: 'utf8', timeout: 300_000 });
+  assert.equal(snapshot.status, 0, snapshot.stdout + snapshot.stderr);
+  assert.match(snapshot.stdout, /Verified coordinated snapshot:/);
+  assert.ok(!fs.existsSync(path.join(upgradedRoot, 'configuration/snapshot-state.json')));
+  assert.equal(docker(['compose', '-f', path.join(upgradedRoot, 'compose.json'), 'ps', '-q', 'backup'], true), '');
+  const sets = fs.readdirSync(snapshotDestination);
+  assert.equal(sets.length, 1);
+  assert.ok(sets[0].startsWith('home-snapshot-'));
+  const restoredSet = docker([...exportContainer,
+    '--mount', `type=bind,source=${path.join(snapshotDestination, sets[0])},target=/set,readonly`,
+    '--mount', `type=bind,source=${path.resolve('services/backup/test/restore_coordinated.py')},target=/proof.py,readonly`,
+    '--entrypoint', 'python3', nextRuntime.services.backup.image, '/proof.py', '/set', String(file.id), String(retainedNote.note.id)], true);
+  assert.match(restoredSet, /matching Core owner, Notes content and exact Cloud bytes/);
+  const afterSnapshotNote = await (await request(`/api/homenotes/notes/${retainedNote.note.id}`, undefined, token)).json();
+  assert.equal(afterSnapshotNote.note.content, 'retained app data');
   assert.equal((await request('/api/auth/login', account)).status, 200);
   assert.equal(await (await request(`/api/homecloud/files/${file.id}/download`, undefined, token)).text(), 'installer persistence proof');
   const nextForm = new FormData();

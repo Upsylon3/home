@@ -7,6 +7,7 @@ import { diagnoseAccess } from './diagnose.mjs';
 import { planUpgrade, upgradeBundle } from './upgrade.mjs';
 import fs from 'node:fs';
 import { prepareSourceImport, readSourceImportPlan, validateSourceContainers, validateSourceVolume, importSource, parseImportJson } from './source-import.mjs';
+import { parseInventory, beginSnapshot, originalIds, readSnapshot, checkSnapshotBarrier, resumeSnapshot, finishSnapshot, snapshotMounts } from './coordinated.mjs';
 
 const root = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
 const action = process.argv[2] || 'start';
@@ -16,7 +17,25 @@ async function requireOwner() {
   if (!status.ok || (await status.json()).ownerCreated !== true) throw new Error('Create the owner account locally before enabling other-device access.');
 }
 try {
-  if (['prepare-import', 'check-import-containers', 'check-import-volume'].includes(action)) {
+  if (action.startsWith('snapshot-')) {
+    if (action === 'snapshot-mounts') console.log(snapshotMounts(root).join('\n'));
+    else if (action === 'snapshot-job') console.log(readSnapshot(root).journal.job);
+    else {
+      let input = '';
+      process.stdin.setEncoding('utf8');
+      for await (const chunk of process.stdin) {
+        input += chunk;
+        if (Buffer.byteLength(input) > 4 * 1024 * 1024) throw new Error('Container inventory exceeds the snapshot limit.');
+      }
+      const rows = parseInventory(input);
+      if (action === 'snapshot-begin') beginSnapshot(root, process.argv[3], rows);
+      else if (action === 'snapshot-originals') console.log(originalIds(root, rows).join('\n'));
+      else if (action === 'snapshot-check') console.log(checkSnapshotBarrier(root, rows));
+      else if (action === 'snapshot-resume') console.log(resumeSnapshot(root, rows).join('\n'));
+      else if (action === 'snapshot-finish') finishSnapshot(root, rows);
+      else throw new Error('Unknown snapshot action.');
+    }
+  } else if (['prepare-import', 'check-import-containers', 'check-import-volume'].includes(action)) {
     let input = '', length = 0;
     process.stdin.setEncoding('utf8');
     for await (const chunk of process.stdin) {
@@ -88,8 +107,8 @@ try {
     } else throw new Error('Choose 1, 2 or 3.');
   } else throw new Error('Unknown setup action.');
 } catch (error) {
-  console.error('HOME setup: ' + error.message);
-  process.exitCode = 1;
+  if (error.exitCode !== 2) console.error('HOME setup: ' + error.message);
+  process.exitCode = error.exitCode || 1;
 } finally {
   terminal?.close();
 }

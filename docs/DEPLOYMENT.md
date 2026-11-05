@@ -139,7 +139,8 @@ default); increase the timeout for large/slow installations.
 - Empty/corrupt sources or symlinks fail closed. Read-only WAL snapshots need
   their readable existing sidecars; do not bypass locking or grant source writes.
 - Per-database consistency is not a shared cross-service point in time or proof
-  of historical file authenticity. Stop all writers for a coordinated full copy.
+  of historical file authenticity. Use the explicit offline snapshot action below
+  for a complete set from one shared interval.
 - Leave scratch/free disk space; snapshot verification is timeout-bounded.
   Only remove abandoned partial/snapshot scratch files while backup is stopped.
 - Copy protected backups off-machine. A second copy on the same disk does not
@@ -189,6 +190,52 @@ of service coverage/freshness. Configuration/credentials/certificates are exclud
 and still need a separate protected backup. Ordinary app data is not encrypted
 by the exporter. Real off-machine storage and restore drills remain operator
 validation; follow the offline restore requirements below before reopening traffic.
+
+### Coordinated offline snapshots
+
+Managed bundles expose `snapshot DESTINATION` and `recover-snapshot`; see
+[the operator workflow](../server/START-HERE.md#create-a-coordinated-snapshot).
+The host launcher records the original running container IDs in a private
+recovery marker, stops every project container (including optional services),
+rejects remaining overlapping writable mounts, then captures all eight read-only
+sources with networking disabled and no Docker socket. Restart uses those original
+IDs only. Normal launcher/configuration/upgrade actions refuse pending recovery.
+Readiness failure leaves the marker; explicit recovery validates identities,
+Compose layout and mounts, and refuses an active capture worker or new writers.
+
+Capture requires every canonical database, checks complete source fingerprints
+before/after, validates archives and Cloud file references, and atomically renames
+one new set only after all eight pass. Failure preserves earlier sets. The manifest
+uses schema 1, `consistency: coordinated-offline`, `quiescedAt`, `createdAt`, a
+source fingerprint and each archive's size/SHA-256. `verify-backups` (or
+`export.py --verify SET-FOLDER`) rejects incomplete sets, altered files and invalid
+intervals. These checks establish integrity under the offline precondition,
+not adversarial authenticity or a filesystem-wide writer lock. Do not use other
+lifecycle tools/external writers during capture. Existing cross-app inconsistencies
+are preserved, not repaired. Downtime covers all capture/verification; the host
+`BACKUP_TIMEOUT_SECONDS` defaults to 3600 (allowed 1–86400 for the entire set).
+
+Source-checkout operators must establish the same offline barrier themselves;
+the Python helper cannot stop containers. With all project and external writers
+stopped, existing containers retained and a private `backups/` destination:
+
+~~~bash
+docker compose --profile '*' stop
+docker compose run --rm --no-deps --entrypoint python3 backup \
+  /coordinated.py /sources /backups --confirm-offline
+~~~
+
+Resume only services that were previously running, after the command exits.
+`--confirm-offline` acknowledges this operator precondition. Use the managed
+launcher for automatic identity/barrier checks and interrupted recovery. New sets
+are not included in `export-backups`, which copies only existing per-service
+archive history. No configuration, service credentials or certificates are in a
+set; protect those separately. No automatic destination retention is applied.
+Restore all eight archives from the same verified set into an offline disposable
+target before relying on them, keeping the original data. Apply the following
+Core/Monitor maintenance before serving traffic. Never mix archive generations
+or run two copies of an installation. Physical storage/recovery validation remains
+open in [validation](VALIDATION.md#backup-exports).
 
 **Core restore exception:** when restoring `home_homecore_data`, do not restart
 services until restored delegations have been revoked. Keep Core,

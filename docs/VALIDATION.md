@@ -18,8 +18,16 @@ disks, filesystem durability and recovery on another physical machine remain
 unvalidated. An existing destination path is not proof that the intended share
 is still mounted or physically separate. Before relying on an export, verify
 the real destination and rehearse a disposable restore with the offline credential
-maintenance in [deployment](DEPLOYMENT.md#backups). Coordinated cross-service
-snapshots and configuration backup remain separate requirements.
+maintenance in [deployment](DEPLOYMENT.md#backups). Configuration backup remains
+a separate requirement.
+
+Coordinated snapshots add disposable complete-set/SQLite/Cloud restore tests,
+source-mutation and interrupted-write rejection, marker/readiness/container
+identity checks, and launcher failure recovery. Linux Docker fixtures exercise
+the actual host barrier, restore all eight databases and compare related Core,
+Notes and Cloud fixture data, while keeping a previously stopped service stopped.
+These tests do not establish power-loss recovery, physical Windows/macOS Docker
+behavior, real NAS/disconnect durability or recovery on another physical machine.
 
 ## Vault review
 

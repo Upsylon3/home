@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useOutletContext, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useOutletContext, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../api.js";
 import { greeting, shortDate } from "../dates.js";
 import QuickAdd from "../components/QuickAdd.jsx";
 import TaskRow from "../components/TaskRow.jsx";
 import TaskDialog from "../components/TaskDialog.jsx";
+import AssignedTaskDialog from "../components/AssignedTaskDialog.jsx";
 
 // ONE page component that shows five different "views" of the same task list.
 // The `view` prop (set in App.jsx) says which:
@@ -16,13 +17,14 @@ import TaskDialog from "../components/TaskDialog.jsx";
 // Sharing one component keeps the add / tick / edit / delete behavior
 // identical everywhere, instead of five copies that slowly drift apart.
 
-const VIEW_TITLES = { upcoming: "Upcoming", all: "All tasks", done: "Done" };
+const VIEW_TITLES = { upcoming: "Upcoming", all: "All tasks", done: "Done", assigned: "Assigned to me" };
 
 const EMPTY_MESSAGES = {
   today: "Nothing due today. Add a task above, or enjoy the quiet.",
   upcoming: "Nothing scheduled after today.",
   all: "No open tasks. Add one above.",
   done: "Nothing finished yet. Tick a task off and it will show up here.",
+  assigned: "No tasks are assigned to you.",
   project: "No open tasks in this project yet."
 };
 
@@ -56,7 +58,7 @@ export default function Tasks({ view }) {
   }
 
   const project = view === "project" ? projects.find((p) => String(p.id) === projectId) : null;
-  const showSearch = view === "all" || view === "done" || view === "project";
+  const showSearch = view === "assigned" || view === "all" || view === "done" || view === "project";
 
   // Switching views starts fresh: show "Loading…", clear the search box.
   useEffect(() => {
@@ -112,6 +114,7 @@ export default function Tasks({ view }) {
           const params = { search: query };
           if (view === "upcoming") Object.assign(params, { due: "upcoming", today });
           if (view === "done") params.status = "done";
+          if (view === "assigned") Object.assign(params, { scope: "assigned", status: "all" });
           if (view === "project") params.projectId = projectId;
           loaded = (await api.tasks.list(params)).data.tasks;
         }
@@ -341,7 +344,7 @@ export default function Tasks({ view }) {
       )}
 
       {/* key resets QuickAdd's typed text when you move to another view */}
-      {view !== "done" && (
+      {view !== "done" && view !== "assigned" && (
         <QuickAdd key={`${view}-${projectId}`} defaultDueDate={view === "today" ? today : ""} onAdd={handleAdd} />
       )}
 
@@ -355,7 +358,7 @@ export default function Tasks({ view }) {
             onChange={(e) => setSearchText(e.target.value)}
           />
           {/* Also the way to reach a project on a phone, where the sidebar is hidden. */}
-          {view !== "done" && (
+          {view !== "done" && view !== "assigned" && (
             <select
               className="input"
               style={{ width: "auto" }}
@@ -374,9 +377,14 @@ export default function Tasks({ view }) {
         </div>
       )}
 
+      {view !== 'assigned' && <p className="field-hint"><Link to="/assigned">Assigned to me</Link> · Tasks shared with you are listed separately.</p>}
+      {view === 'assigned' && <p className="field-hint">Tasks explicitly shared with you, including completed tasks. Projects stay private.</p>}
       {renderBody()}
 
-      {editing && (
+      {editing?.access === 'assignee' && <AssignedTaskDialog task={editing} onClose={closeTask}
+        onComplete={async () => { await api.tasks.complete(editing.id, today); await refresh(); }}
+        onDecline={async () => { await api.tasks.decline(editing.id); await refresh(); }} />}
+      {editing && editing.access !== 'assignee' && (
         <TaskDialog
           task={editing}
           projects={projects}
@@ -389,6 +397,7 @@ export default function Tasks({ view }) {
             await api.tasks.remove(editing.id);
             await refresh();
           }}
+          onAssignmentChange={async updated => { setEditing(updated); await refresh(); }}
           onClose={closeTask}
         />
       )}

@@ -11,6 +11,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const Database = require("better-sqlite3");
+const { spawnSync } = require('node:child_process');
 
 test("an old tasks table is upgraded in place, keeping its rows", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hometasks-migrate-"));
@@ -29,13 +30,18 @@ test("an old tasks table is upgraded in place, keeping its rows", () => {
     INSERT INTO tasks (user_id, title, due_date) VALUES (7, 'From the old days', '2026-10-09');
   `);
   old.close();
+  const maintain = database => spawnSync(process.execPath, [path.resolve(__dirname, '../scripts/revoke-restored-assignments.js'),
+    '--database', database, '--confirm-offline-restore'], { encoding: 'utf8' });
+  assert.equal(maintain(path.join(dir, 'hometasks.db')).stdout.trim(), '{"revoked":0}');
+  assert.equal(maintain(path.join(dir, 'missing.db')).status, 1);
+  assert.equal(fs.existsSync(path.join(dir, 'missing.db')), false);
 
   process.env.DATA_DIR = dir;
   // eslint-disable-next-line global-require -- must load after DATA_DIR is set
   const { db } = require("../src/db");
 
   const columns = db.prepare("PRAGMA table_info(tasks)").all().map((c) => c.name);
-  for (const name of ["repeat_rule", "repeat_anchor", "spawned_task_id", "reminder_at", "reminder_key", "reminder_sent_at", "reminder_error", "reminder_retry_at"]) {
+  for (const name of ["repeat_rule", "repeat_anchor", "spawned_task_id", "reminder_at", "reminder_key", "reminder_sent_at", "reminder_error", "reminder_retry_at", 'assignee_id', 'assignee_username', 'owner_username', 'assignment_version']) {
     assert.ok(columns.includes(name), `missing column ${name}`);
   }
 
@@ -45,13 +51,21 @@ test("an old tasks table is upgraded in place, keeping its rows", () => {
   assert.equal(row.due_date, "2026-10-09");
   assert.equal(row.reminder_at, null);
   assert.equal(row.reminder_key, null);
+  assert.equal(row.assignee_id, null);
+  assert.equal(row.assignment_version, 0);
 
   // Restart against the migrated file: additive migrations must be repeatable.
+  db.prepare("UPDATE tasks SET assignee_id=9,assignee_username='fixture_member',owner_username='fixture_owner' WHERE id=?").run(row.id);
   db.close();
   delete require.cache[require.resolve("../src/db")];
   const restarted = require("../src/db").db;
   assert.equal(restarted.prepare("SELECT title FROM tasks WHERE id = ?").get(row.id).title, row.title);
   assert.equal(restarted.pragma("integrity_check", { simple: true }), "ok");
+  assert.equal(restarted.prepare('SELECT assignee_id FROM tasks WHERE id=?').get(row.id).assignee_id, 9);
+  const restored = maintain(path.join(dir, 'hometasks.db'));
+  assert.equal(restored.status, 0, restored.stderr);
+  assert.equal(restored.stdout.trim(), '{"revoked":1}');
+  assert.equal(restarted.prepare('SELECT assignee_id FROM tasks WHERE id=?').get(row.id).assignee_id, null);
 
   restarted.close();
   fs.rmSync(dir, { recursive: true, force: true });

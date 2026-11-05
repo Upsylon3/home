@@ -250,6 +250,7 @@ async function route(s, request, base) {
     if (!id) {
       if (method === 'POST') { valid(body.title, 'Title'); return json({ task: create(s.tasks, { notes: '', priority: 'none', dueDate: null, repeat: 'none', projectId: null, isDone: false, completedAt: null, reminderAt: null, reminderState: null }) }, 201); }
       let tasks = s.tasks.filter(t => q.get('status') === 'all' || t.isDone === (q.get('status') === 'done'));
+      if (q.get('scope') === 'assigned') tasks = []; // One simulated account; no real sharing in the demo.
       if (q.has('projectId')) tasks = tasks.filter(t => match(t.projectId, q.get('projectId')));
       const today = q.get('today'), due = q.get('due');
       if (due) tasks = tasks.filter(t => due === 'none' ? !t.dueDate : t.dueDate && (due === 'overdue' ? t.dueDate < today : due === 'today' ? t.dueDate === today : t.dueDate > today));

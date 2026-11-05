@@ -168,7 +168,7 @@ external providers and integrations are optional.
 | Media | Browse Cloud files without a second file store |
 | Notes | Markdown workspace with sanitized rendering and Cloud attachments |
 | Sync | Android media backup with durable queue/retry/dedup and explicit permissions; retain whole-file retry and WorkManager battery constraints |
-| Tasks | Personal projects, dates, priorities, repetition and optional reminders; assignment needs a sharing model |
+| Tasks | Personal projects, dates, priorities, repetition and optional reminders; explicit task-level assignment with owner control |
 | Monitor | Admin-only, read-only health/storage/backup information; no Docker socket |
 | Bridge | Optional cross-app search and explicitly consented automation |
 | AI (future) | Optional consumer of authorized data; no bypass of ownership or Vault access |
@@ -178,6 +178,32 @@ This guide replaces `HOME_MASTER_SPECIFICATION.md` (product contract),
 numbers in source comments identify their original rationale, not current headings.
 Development, CI and release guides have moved into `CONTRIBUTING.md`.
 Current endpoint contracts are in [API.md](API.md).
+
+## Task ownership and assignment
+
+A task always belongs to its original local Core user (`user_id`). A single
+optional assignee receives access only to that task's title, notes, priority,
+dates, completion state and owner/assignee identity labels. The owner can edit,
+reassign, unassign, reopen or delete it; the assignee can read, complete or decline.
+Administrators have no override into another person's tasks. Core resolves an
+exact enabled username through its authenticated API; Tasks owns its ACL and
+metadata-only assignment audit, never a sibling account database.
+
+Projects, sibling tasks and the owner's reminder schedule/state are not shared.
+Personal task lists, summaries and Bridge search keep their owner-only defaults;
+the dedicated Assigned to me view uses an explicit assigned scope, including
+completed tasks. Owner edits remain visible while assignment is active. Unassign,
+reassign, decline or deletion removes access on the next request; already disclosed
+copies cannot be erased. Assignees cannot reopen tasks or change reminders.
+
+Completion by either participant keeps the original owner and private project.
+A repeat creates one next occurrence with the same assignee and no reminder;
+assignment/decline applies to each occurrence separately. Owner undo retains the
+existing rule: remove the open next occurrence, refuse if it is already complete.
+Versioned assignment writes reject stale lookups/clients; completion rechecks
+access and repeat creation in one immediate transaction. No assignment email,
+push, project collaboration or multi-server identity is introduced. Restored
+assignment ACLs must be revoked offline before reopening Tasks.
 
 ## Cross-app search
 

@@ -166,6 +166,27 @@ off by default and requires operator setup plus owner consent:
   cross-service exactly-once recovery is not guaranteed. Never prune receipts
   without a replacement duplicate-prevention design.
 
+## Task assignment
+
+HomeTasks sharing is explicit and task-specific. The original owner alone can
+edit, assign, reopen or delete a task. One assignee can read that task, complete
+it or decline; the backend checks this ACL on every request independently of the
+existing at-most-five-second identity cache. Being an administrator does not
+bypass task ownership. New or reassigned recipients must resolve to an enabled
+account through Core's exact-username API; no directory listing, role, email,
+password or sibling database is exposed. Assignment versions and transactional
+metadata-only audits prevent stale account lookups from reviving removed grants.
+
+Assignee responses redact project IDs and all owner reminder fields. Personal
+lists/search and summaries stay owner-only unless assigned scope is explicitly
+requested. The owner can continue editing shared content, and assigned repeats
+retain owner/assignee identity; each occurrence is a separate grant. Removal or
+decline denies future reads/actions but cannot erase previously disclosed copies.
+Application keys and background task capabilities cannot change assignments.
+After restoring a Tasks database, revoke assignment ACLs offline before traffic
+so an older backup cannot resurrect withdrawn sharing. Existing task reminders
+stay personal to the owner; assignee completion cancels the owner's reminder.
+
 ## Task reminders
 
 Task reminders use a separate external

@@ -126,6 +126,12 @@ jobs:
           DEMO_BROWSER_CHANNEL: chrome
         run: node homecore/test-support/application-browser.cjs
 
+      - name: Exercise task assignment with two real accounts
+        if: contains(fromJSON(needs.scope.outputs.builds), 'apps/hometasks') && needs.scope.outputs.native != 'false'
+        env:
+          DEMO_BROWSER_CHANNEL: chrome
+        run: node apps/hometasks-backend/test-support/assignment-browser.cjs
+
   windows:
     name: Windows install and native SQLite smoke test
     needs: scope

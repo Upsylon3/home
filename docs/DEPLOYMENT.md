@@ -142,6 +142,26 @@ application keys atomically, and its `{revoked:N}` counts both credential classe
 Run it on every Core restore before serving traffic; normal restarts do not
 revoke keys. Existing pre-feature databases remain supported by that script.
 
+## Task assignment deployment
+
+Deploy Core's exact-username lookup before Tasks, then the Tasks UI. Existing
+personal tasks stay private: additive nullable assignee/identity fields and a
+zero assignment version introduce no grants. Tasks stores its own sharing audit;
+no sibling database, service secret, external directory or provider is added.
+Assignment to an unavailable account/Core fails without changing access.
+
+The owner chooses an exact local username in a saved task's Assignment section.
+The assignee uses Assigned to me to read, complete or decline. Projects, other
+tasks and owner reminders remain private; repeated occurrences retain assignment
+individually. Remove assignment before disclosing later private edits. Previously
+read copies cannot be erased by revocation.
+
+Before rolling back to an older Tasks binary, stop traffic and revoke assignments
+with the maintenance command below. Older UIs cannot show/manage these grants;
+do not let hidden old grants survive edits and become active on a later upgrade.
+Normal restarts preserve assignments. Keep original backups and rehearse restores
+only into disposable targets.
+
 ## Backups
 
 The backup service writes per-app archives to `backups/` daily, retaining
@@ -306,6 +326,22 @@ Tasks backups now include durable automation receipts and daily counts. Restore
 them together with the tasks database. An older Tasks snapshot can lose newer
 receipts; cross-service exactly-once history is not guaranteed after such a
 restore. Keep this limitation visible when planning worker recovery.
+
+**Tasks assignment restore exception:** before reopening a restored Tasks
+database (or rolling back its binary), keep Tasks/traffic offline and run:
+
+~~~bash
+docker compose run --rm --no-deps --entrypoint node hometasks-backend \
+  scripts/revoke-restored-assignments.js \
+  --database /data/hometasks.db --confirm-offline-restore
+~~~
+
+Require successful exit and `{"revoked":N}` before traffic. The command clears
+assignment ACLs and audits revocation while retaining tasks, projects, reminders
+and automation receipts. Owners must explicitly share again. Pre-feature Tasks
+databases return zero. The local equivalent uses the same script with an absolute
+existing Tasks database path; it never loads `.env`, creates a missing database
+or stops traffic for you. This is separate from Core/Monitor restore maintenance.
 
 Substitute the volume name for whichever app you're restoring
 (`home_homecore_data`, `home_homemedia_data`, `home_homenotes_data`,

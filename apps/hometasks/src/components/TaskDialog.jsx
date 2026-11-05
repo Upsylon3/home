@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import Modal from "./Modal.jsx";
 import { REPEAT_OPTIONS } from "../repeat.js";
+import AssignmentControls from './AssignmentControls.jsx';
 
 function localReminder(instant) {
   if (!instant) return "";
@@ -19,7 +20,7 @@ function localReminder(instant) {
 //   onSave      async (patch) => saves the changed fields
 //   onDelete    async () => deletes the task
 //   onClose     closes the dialog
-export default function TaskDialog({ task, projects, today, onSave, onDelete, onClose }) {
+export default function TaskDialog({ task, projects, today, onSave, onDelete, onClose, onAssignmentChange }) {
   // Each field starts from the task's current value. Form inputs always deal
   // in text, so ids and "no due date" are turned into strings here and back
   // into numbers/null when saving.
@@ -43,6 +44,8 @@ export default function TaskDialog({ task, projects, today, onSave, onDelete, on
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const dirty = title.trim() !== task.title || notes !== task.notes || priority !== task.priority ||
+    dueDate !== (task.dueDate || '') || repeat !== task.repeat || projectId !== (task.projectId === null ? '' : String(task.projectId)) || reminder !== initialReminder;
 
   async function run(action) {
     setBusy(true);
@@ -168,6 +171,7 @@ export default function TaskDialog({ task, projects, today, onSave, onDelete, on
           Save
         </button>
       </form>
+      {task.access === 'owner' && <AssignmentControls task={task} disabled={busy || dirty} onChanged={onAssignmentChange} />}
 
       {/* Deleting is permanent (tasks have no Trash), so it takes two clicks. */}
       {confirmingDelete ? (

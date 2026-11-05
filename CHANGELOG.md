@@ -20,6 +20,12 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
   backup-only changes previously selected an install with scripts disabled.
 
 ### Added
+- Task-level HomeTasks assignment to one enabled account on the same HOME.
+  Owners retain editing/reassignment/reopen/delete control; assignees can read,
+  complete or decline only the shared task. Keep projects, other tasks and owner
+  reminders private; preserve personal lists and ownership across repeats.
+  Add versioned assignment changes, local sharing audits, two-account browser
+  proof and explicit offline revocation after restore.
 - Revocable application access keys in Home Settings, with explicit per-user
   consent and a declared-permission ceiling. Cloud enforces independent read,
   write, delete and share permissions with live Core verification and ownership

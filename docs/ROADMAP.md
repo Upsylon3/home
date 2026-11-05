@@ -5,16 +5,8 @@ Only unfinished work is listed here. Completed changes belong in
 
 ## Usability and reliability
 
-- **Remote access:** improve DNS, router and HTTPS setup/diagnostics. Direct
-  access cannot work through every provider's CGNAT configuration. Bundles now
-  check DNS and local TLS with `diagnose`; outside reachability and hands-on
-  router/provider validation remain open.
-- **Backups:** add off-machine copies and coordinated cross-service snapshots.
-  Verified archive exports to operator-mounted storage are implemented. Physical
-  off-machine/restore validation and coordinated cross-service snapshots remain;
-  per-database restore checks do not establish either guarantee.
-- **Application installation:** replace pre-seeded registry entries with an
-  install/register/enable flow. Uninstall must not silently delete data.
+- **Backups:** coordinated cross-service snapshots. Existing per-database
+  snapshots and verified archive exports do not establish a shared point in time.
 
 ## Application work
 
@@ -36,6 +28,8 @@ These are evidence gaps, not features to rebuild:
   and long-duration backup checks. [Device checks](VALIDATION.md#homesync).
 - **Installer:** hands-on Windows/macOS, reboot and real outside-access checks.
   Linux container tests do not establish those results.
+- **Off-machine backups:** physical NAS/removable-storage and recovery checks.
+  [Export validation](VALIDATION.md#backup-exports).
 
 ## Later ideas
 

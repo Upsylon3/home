@@ -153,6 +153,36 @@ Registration atomically assigns the administrator role to exactly the first
 created account. A username claimed by a concurrent registration returns
 `409 { error: "That username is already taken." }`.
 
+### Application installation
+
+`GET /api/core/app-catalog` returns `{applications: [...]}` for signed-in users.
+Each trusted bundled manifest includes `manifestVersion`, slug, name, description,
+version, icon, `baseUrl`, `healthUrl`, permissions, dependencies, installed and
+enabled. No remote manifest is fetched. Fresh databases have no installed apps;
+existing registrations are adopted unchanged.
+
+- Administrator `POST /api/core/apps/:slug/install` with `{}` installs a bundled
+  manifest and returns `201 {application}` with `enabled:false`. Unknown slugs
+  return `404`; already-installed apps or missing installed dependencies return
+  `409`. Manifest overrides are rejected with `400`.
+- Administrator `PATCH /api/core/apps/:id-or-slug` with `{enabled:true}` enables
+  an installed app only when its hard dependencies are enabled. Disable refuses
+  enabled dependants with `409`; installation and registry writes are atomic.
+- Administrator `DELETE /api/core/apps/:id-or-slug` uninstalls and returns
+  `{ok:true,dataPreserved:true}`. HomeCloud remains protected (`400`). The row,
+  ID, data and historical references survive; the app disappears from public and
+  internal registry lists. Reinstall restores that ID disabled. Related delegated
+  automation grants are permanently revoked and audited, even after reinstall.
+
+Existing list/detail routes preserve their response shapes with additive installed
+and dependencies fields. Uninstalled details return `404`, including enable
+attempts. Legacy `POST /api/core/apps` remains administrator metadata registration
+for custom integrations; bundled slugs use the catalog installer. These operations
+do not install server packages or restrict direct application URLs/APIs. Ordinary
+caller-application authorization remains a separate boundary.
+
+### Internal service endpoints
+
 `POST /internal/events`, `GET /internal/users/usage`, `GET /internal/apps`
 and `POST /internal/notifications` (not shown above) are machine-to-machine
 routes authenticated with a shared secret (`HOMECORE_INTERNAL_SECRET`), not a

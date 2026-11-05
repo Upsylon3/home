@@ -50,8 +50,8 @@ export async function sourceImportSmoke(bundle) {
   }
   const origin = 'http://127.0.0.1:8080';
   let token;
-  async function request(route, body, expected = 200) {
-    const response = await fetch(origin + route, { method: body ? 'POST' : 'GET',
+  async function request(route, body, expected = 200, method = body ? 'POST' : 'GET') {
+    const response = await fetch(origin + route, { method,
       headers: { Connection: 'close', ...(token ? { Authorization: 'Bearer ' + token } : {}), ...(body ? { 'Content-Type': 'application/json' } : {}) },
       ...(body ? { body: JSON.stringify(body) } : {}), signal: AbortSignal.timeout(15_000) });
     assert.equal(response.status, expected, route);
@@ -66,6 +66,11 @@ export async function sourceImportSmoke(bundle) {
     compose(['up', '-d', '--no-build', '--pull', 'never', '--wait', '--wait-timeout', '180']);
     const account = { username: 'source-import-owner', password: 'Disposable-Import-Password1' };
     const created = await request('/api/auth/register', account, 201); token = created.token;
+    const available = await request('/api/core/app-catalog');
+    for (const manifest of available.applications) {
+      await request(`/api/core/apps/${manifest.slug}/install`, {}, 201);
+      await request(`/api/core/apps/${manifest.slug}`, { enabled: true }, 200, 'PATCH');
+    }
     await upload('source-proof.bin', 'exact source upload bytes');
     const file = (await request('/api/homecloud/files')).files.find(value => value.name === 'source-proof.bin');
     const note = await request('/api/homenotes/notes', { title: 'Source note', content: 'source **Markdown** body' }, 201);

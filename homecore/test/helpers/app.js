@@ -22,7 +22,7 @@ let started = null;
 // before it (see src/rateLimiter.js). test/rateLimiting.test.js is the one
 // place that passes { disableRateLimit: false } to actually exercise the
 // real limiter.
-async function startTestApp({ disableRateLimit = true } = {}) {
+async function startTestApp({ disableRateLimit = true, installedApps = true } = {}) {
   if (started) return started;
 
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "homecloud-test-"));
@@ -39,6 +39,15 @@ async function startTestApp({ disableRateLimit = true } = {}) {
 
   // eslint-disable-next-line global-require -- must load after env vars are set
   const { app, db } = require("../../src/app");
+  // Most suites exercise a provisioned HOME. Fresh-install lifecycle tests opt
+  // out; production startup never installs these applications implicitly.
+  if (installedApps) {
+    const { catalog, install } = require("../../src/homecore/catalog");
+    for (const manifest of catalog()) {
+      install(manifest.slug);
+      db.prepare("UPDATE hc_applications SET enabled=1 WHERE slug=?").run(manifest.slug);
+    }
+  }
 
   const server = http.createServer(app);
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));

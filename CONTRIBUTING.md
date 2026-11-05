@@ -12,6 +12,8 @@ also follow [AGENTS.md](AGENTS.md).
 - Add dependencies only for a concrete need. Use real upstream services in
   integration tests where the architecture requires them.
 - Update relevant docs and `[Unreleased]`. Follow the shared design system.
+- Remove or cross out completed roadmap work in the same PR; keep remaining
+  features and physical/review validation gaps explicit.
 - Run [applicable checks](#ci-policy), review the diff and fix failures.
   Never claim tests or device validation that did not happen.
 

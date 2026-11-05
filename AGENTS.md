@@ -10,6 +10,10 @@ a short-lived branch. Inspect remote main, open PRs/issues and CI before startin
 Check that roadmap work is still needed. Prioritize regressions, security/data
 risks and broken journeys, then committed backlog, then concrete maintenance.
 Speculative ideas need a use case and a short design before implementation.
+Whenever roadmap work is completed, remove it or mark it crossed out in
+docs/ROADMAP.md in the same PR. Split partially completed entries so only the
+unfinished scope remains active. Keep completed behavior in CHANGELOG.md and
+move remaining physical/review evidence gaps to Open validation.
 
 Read the relevant [architecture and product/design contracts](docs/ARCHITECTURE.md),
 [security boundaries](docs/SECURITY.md), [API](docs/API.md),

@@ -50,6 +50,10 @@ is not an authorization boundary. Set explicit origins where appropriate.
 - App-manifest permissions do not isolate ordinary browser applications:
   sessions identify users, not the calling app. Scoped background capabilities
   are a separate enforced mechanism, not a fix for this generic gap.
+  Install/enable/uninstall controls manage registry availability, not direct
+  URL/API access or service processes. All mutations require a live administrator
+  session; uninstall preserves data and atomically revokes affected automation
+  grants with audits. Reinstall does not revive revoked authority.
 - A disabled-account login response reveals that the account exists and is
   disabled. This is the current usability tradeoff.
 - Account disable and administrator password reset are supported; full

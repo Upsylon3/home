@@ -69,11 +69,44 @@ async function route(s, request, base) {
   if (p === '/core/notifications') return json({ notifications: s.notifications });
   if (p.startsWith('/core/notifications/')) { find(s.notifications, p.split('/')[3]).readAt = now; return json({ ok: true }); }
   if (p === '/core/delegations') return json({ grants: [] });
+  const demoCatalog = () => seed(base).applications.map(app => {
+    const row = s.applications.find(item => item.slug === app.slug && item.installed !== false);
+    return { ...app, manifestVersion: 1, installed: !!row, enabled: !!row?.enabled,
+      dependencies: ['homemedia', 'homenotes'].includes(app.slug) ? ['homecloud'] : [], permissions: [] };
+  });
+  const requireDependencies = (slug, enabled = false) => {
+    for (const dependency of demoCatalog().find(app => app.slug === slug)?.dependencies || []) {
+      if (!s.applications.some(app => app.slug === dependency && app.installed !== false && (!enabled || app.enabled))) fail(`Install${enabled ? ' and enable' : ''} ${dependency} first.`, 409);
+    }
+  };
+  if (p === '/core/app-catalog' && method === 'GET') return json({ applications: demoCatalog() });
+  if (/^\/core\/apps\/[^/]+\/install$/.test(p) && method === 'POST') {
+    const slug = p.split('/')[3], manifest = demoCatalog().find(app => app.slug === slug) || fail('Application not available.', 404);
+    if (Object.keys(body).length) fail('Install accepts no manifest overrides.');
+    if (manifest.installed) fail('Application already installed.', 409);
+    requireDependencies(slug);
+    let app = s.applications.find(item => item.slug === slug);
+    if (app) Object.assign(app, manifest, { installed: true, enabled: false });
+    else { app = { ...manifest, id: s.nextId++, installed: true, enabled: false }; s.applications.push(app); }
+    return json({ application: app }, 201);
+  }
   if (p === '/core/apps') {
     if (method === 'POST') fail('Installing external apps requires a HOME server.', 501);
-    return json({ applications: s.applications });
+    return json({ applications: s.applications.filter(app => app.installed !== false) });
   }
-  if (p.startsWith('/core/apps/')) { const app = s.applications.find(a => match(a.id, p.split('/')[3]) || a.slug === p.split('/')[3]) || fail('App not found.', 404); if (method === 'PATCH') app.enabled = Boolean(body.enabled); else if (method === 'DELETE') app.enabled = false; return json({ application: app }); }
+  if (p.startsWith('/core/apps/')) {
+    const app = s.applications.find(a => a.installed !== false && (match(a.id, p.split('/')[3]) || a.slug === p.split('/')[3])) || fail('App not found.', 404);
+    if (method === 'PATCH') {
+      if (body.enabled === true) requireDependencies(app.slug, true);
+      if (body.enabled === false && demoCatalog().some(item => item.dependencies.includes(app.slug) && item.installed && item.enabled)) fail('Disable dependent applications first.', 409);
+      if (typeof body.enabled === 'boolean') app.enabled = body.enabled;
+    } else if (method === 'DELETE') {
+      if (app.slug === 'homecloud') fail('HomeCloud is the storage foundation.');
+      app.installed = false; app.enabled = false;
+      return json({ ok: true, dataPreserved: true });
+    }
+    return json({ application: app });
+  }
   if (p === '/admin/users' || p === '/core/admin/users') return json({ users: [{ ...s.user, ...quota() }] });
   if (p.startsWith('/admin/users/')) fail('Multi-user administration requires a HOME server.', 501);
   if (p.startsWith('/homebridge/')) {

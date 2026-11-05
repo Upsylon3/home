@@ -18,6 +18,15 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
   backup-only changes previously selected an install with scripts disabled.
 
 ### Added
+- Explicit bundled-app catalog/install/enable flow in Home Applications, with
+  administrator authorization, dependency checks, disabled initial registrations
+  and persistent uninstall/reinstall. Adopt existing registrations unchanged;
+  startup no longer recreates removed apps. Keep app data, IDs and history, and
+  revoke affected automation consent with atomic audits on uninstall. Registry
+  lifecycle does not download packages or restrict direct app routes.
+- Make same-PR removal/crossing-out of completed roadmap work a contributor and
+  agent requirement; separate completed remote diagnostics and backup exports
+  from remaining feature work and physical validation.
 - Manual verified backup exports to operator-mounted storage, with bundle
   `export-backups`/`verify-backups` actions, an inventory, SHA-256 readback,
   compressed-stream and SQLite/Cloud restore checks, and failure-safe publication.

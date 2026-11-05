@@ -87,6 +87,8 @@ export const api = {
 
   apps: {
     list: () => request("/core/apps"),
+    catalog: () => request("/core/app-catalog"),
+    install: slug => request(`/core/apps/${encodeURIComponent(slug)}/install`, { method: "POST", body: "{}" }),
     register: (payload) => request("/core/apps", { method: "POST", body: JSON.stringify(payload) }),
     update: (idOrSlug, payload) =>
       request(`/core/apps/${encodeURIComponent(idOrSlug)}`, { method: "PATCH", body: JSON.stringify(payload) }),

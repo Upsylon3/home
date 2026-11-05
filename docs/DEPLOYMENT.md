@@ -101,6 +101,29 @@ Test from outside the LAN, for example mobile data. A local success does not
 prove public access. Public exposure increases attack surface; use strong
 passwords and 2FA. Vault still needs independent review before real secrets.
 
+## Application availability
+
+After creating the owner account, open **Applications** in Home. Fresh servers
+start with no apps installed in the launcher. Install HomeCloud before Media,
+Notes or Sync; enable HomeCloud before enabling those dependants. Other bundled
+apps can be installed independently. Installation first adds a disabled app;
+enable it explicitly when ready. Existing registrations and disabled choices
+survive upgrades unchanged.
+
+Uninstall removes an app from Home and revokes its automation grants, preserving
+its files, settings and history. Reinstall does not restore revoked consent.
+HomeCloud remains the protected storage foundation. These controls manage the
+bundled app registry: services remain deployed, and saved direct URLs/APIs keep
+their normal authentication/ownership rules. Core has no Docker socket, package
+download or remote-manifest fetch capability. No third-party app installer is
+introduced. Custom metadata registrations remain available through the legacy
+administrator API.
+
+Deploy the new Core before the new Home frontend. The migration only adds an
+installed flag; it neither deletes app rows nor touches sibling databases. Older
+Core binaries ignore this flag and can show uninstalled entries as disabled, so
+do not rely on newer lifecycle visibility while running an older Core.
+
 ## Backups
 
 The backup service writes per-app archives to `backups/` daily, retaining

@@ -75,7 +75,8 @@ forwarded to the internet. Details: [deployment](DEPLOYMENT.md) and
 
 ## 6. Deliberate constraints and gaps
 
-- Registry entries are pre-seeded; there is no complete app installation flow.
+- Bundled applications use an explicit catalog/install/enable lifecycle. Core
+  manages registry availability, not package downloads or container processes.
 - Manifest permissions are declarative for normal browser sessions. Separate
   action/audience checks for background capabilities do not solve that gap.
 - Cloud data is owner-only. Public share links do not implement shared folders
@@ -98,6 +99,30 @@ forwarded to the internet. Details: [deployment](DEPLOYMENT.md) and
 
 Use [API.md](API.md) for contracts, [DEPLOYMENT.md](DEPLOYMENT.md) for operations
 and [ROADMAP.md](ROADMAP.md) for remaining work.
+
+### Bundled application lifecycle
+
+Fresh Core databases start with an empty installed list and a trusted seven-app
+catalog. An administrator installs a catalog manifest, which creates a disabled
+registration with declared routes, permissions and hard dependencies. Enablement
+is a separate action. Dependencies must be installed before installation and
+enabled before enablement; active dependants block disabling their foundation.
+HomeCloud retains its existing protected status and cannot be uninstalled.
+
+The additive `installed` column adopts existing registrations in place, including
+disabled/custom entries, without changing IDs, routes, permissions or history.
+Startup seeds permissions only; it does not reinstall removed apps or overwrite
+registration metadata. Uninstall hides a registration and disables it while
+retaining the row, all application data and historical references. Related
+automation grants are revoked with audits in the same transaction. Reinstall
+reuses the ID and requires a fresh enable action; revoked consent stays revoked.
+
+The distribution already contains these services. Installation does not fetch
+remote manifests, run arbitrary code, start/stop Docker or change backend access
+rules. Direct URLs/APIs retain their existing identity/role/ownership checks;
+registry availability is not application isolation. Legacy administrator metadata
+registration remains compatible for custom integrations. This is a bundled-app
+lifecycle, not a third-party package marketplace.
 
 ## Product contract
 

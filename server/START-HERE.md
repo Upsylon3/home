@@ -34,6 +34,13 @@ Copy the temporary setup code from the launcher's output and create your owner
 account. Codes expire after 15 minutes and work once. Run the `code` action for
 a new code. Nobody can claim the server merely by knowing its IP address.
 
+Open **Applications** in Home after signing in. On a fresh installation, choose
+an included app and click **Install**, then **Enable**. Install and enable
+HomeCloud before Media, Notes or Sync. Existing installations keep their app
+registrations and disabled choices when upgraded. Uninstall keeps app data and
+removes its launcher entry; services stay deployed, so saved direct app links
+can still work. HomeCloud remains the protected storage foundation.
+
 Create your owner account locally before enabling access from other devices.
 Do not send setup codes through the public portal. Later, give a new code to
 each household member you want to join; their accounts are regular users.

@@ -43,6 +43,8 @@ function verify(f, run) {
     assert.ifError(result.error);
     assert.equal(result.status, scenario === 'success' ? 0 : 1, result.stdout + result.stderr);
     const calls = fs.readFileSync(f.log, 'utf8').trim().split(/\r?\n/).map(JSON.parse);
+    const inspection = calls.find(args => args[0] === 'inspect');
+    assert.ok(inspection[inspection.indexOf('--format') + 1].includes('"id":{{json .Id}}'), 'Native Docker must receive the quoted JSON template intact');
     const stop = calls.findIndex(args => args[0] === 'stop');
     const start = calls.find(args => args[0] === 'start');
     const capture = calls.findIndex(args => args.includes('/coordinated.py'));
@@ -67,20 +69,22 @@ function verify(f, run) {
     assert.ok(!fs.existsSync(path.join(f.installation, 'configuration/snapshot-state.json')));
   }
 }
-test('PowerShell snapshot launcher resumes only original IDs on success and capture/stop/barrier failure', t => {
+for (const shell of process.platform === 'win32' ? ['pwsh', 'powershell.exe'] : ['pwsh']) {
+test(shell + ' snapshot launcher resumes only original IDs on success and capture/stop/barrier failure', t => {
   const f = fixture(t, 'home.ps1'), driver = path.join(f.root, 'driver.ps1');
   fs.writeFileSync(driver, [
     'function global:docker { & $env:HOME_SNAPSHOT_NODE $env:HOME_SNAPSHOT_ENGINE @args }',
     "& $env:HOME_SNAPSHOT_LAUNCHER $env:HOME_SNAPSHOT_ACTION $(if ($env:HOME_SNAPSHOT_ACTION -eq 'snapshot') { $env:HOME_SNAPSHOT_DESTINATION })",
     'exit $LASTEXITCODE'
   ].join('\n'));
-  verify(f, (action, scenario) => spawnSync(process.env.HOME_TEST_PWSH || 'pwsh', ['-NoProfile', '-File', driver], {
+  verify(f, (action, scenario) => spawnSync(shell === 'pwsh' ? process.env.HOME_TEST_PWSH || shell : shell, ['-NoProfile', '-File', driver], {
     encoding: 'utf8', timeout: 20_000, env: { ...process.env, HOME_SNAPSHOT_NODE: process.execPath,
       HOME_SNAPSHOT_ENGINE: f.engine, HOME_SNAPSHOT_LOG: f.log, HOME_SNAPSHOT_CASE: scenario,
       HOME_SNAPSHOT_INSTALL: f.installation, HOME_SNAPSHOT_ACTION: action,
       HOME_SNAPSHOT_LAUNCHER: path.join(f.installation, 'home.ps1'), HOME_SNAPSHOT_DESTINATION: f.destination }
   }));
 });
+}
 test('Unix snapshot launcher resumes only original IDs and retains interrupted recovery state', { skip: process.platform === 'win32' }, t => {
   const f = fixture(t, 'home.sh'), bin = path.join(f.root, 'bin');
   fs.mkdirSync(bin);

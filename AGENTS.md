@@ -14,6 +14,10 @@ Whenever roadmap work is completed, remove it or mark it crossed out in
 docs/ROADMAP.md in the same PR. Split partially completed entries so only the
 unfinished scope remains active. Keep completed behavior in CHANGELOG.md and
 move remaining physical/review evidence gaps to Open validation.
+Documentation cleanup must preserve unfinished application scope and product/design
+intent. Trace removed unfinished items to implemented behavior, a retained backlog
+entry or an explicit superseding decision. Shorter documentation is not a decision
+to drop features; keep completed, deferred, exploratory and rejected scope distinct.
 
 Read the relevant [architecture and product/design contracts](docs/ARCHITECTURE.md),
 [security boundaries](docs/SECURITY.md), [API](docs/API.md),

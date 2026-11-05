@@ -23,6 +23,11 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
   security-review gates. Guest authentication remains unimplemented.
 
 ### Changed
+- Restore unfinished application scope and HOME's personal/room-based direction
+  from pre-cleanup specifications, checked against current source. Prioritize
+  daily single-server app work, distinguish existing features from genuine gaps,
+  retain explicit v0 limits and prevent documentation cleanup from silently
+  discarding deferred features. No application behavior changes in this audit.
 - Consolidated documentation into four root documents and six flat guides,
   folding current decision details and review evidence into their owning guides.
 - Simplified project guides, removed completed roadmap steps and separated open

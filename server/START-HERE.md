@@ -195,8 +195,10 @@ follow the [offline restore maintenance](https://github.com/Upsylon3/home/blob/m
 before reopening traffic. A shared capture interval does not repair earlier
 cross-app inconsistencies or prove historical authenticity.
 
-Keep standard managed Compose containers present (`stop`, not `down`). Scaled,
-paused, restarting or customized containers/overrides are refused. Do not run
+Keep standard managed Compose containers present (`stop`, not `down`). Snapshot
+preflight refuses scaled, paused, restarting or customized containers/overrides.
+Recovery waits for originally running containers to finish transient restarts.
+Do not run
 another lifecycle command, Docker tool or external writer during the operation.
 HOME checks container identities/mounts and fingerprints sources before and after
 capture; host programs and storage aliases are not a general filesystem lock.

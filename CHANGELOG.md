@@ -14,6 +14,8 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
   validation from feature work. Setup, recovery and security requirements remain.
 
 ### Fixed
+- Wait for originally running containers that transiently restart during
+  snapshot recovery; retain strict preflight and foreign-writer checks.
 - Install the reviewed native SQLite binding when CI selects backup tests;
   backup-only changes previously selected an install with scripts disabled.
 

@@ -49,12 +49,12 @@ function plan(root) {
     sources.some(source => !source.logical || !source.readOnly)) throw new Error('Snapshot requires the complete eight-source backup layout.');
   return { project: compose.name, compose, composeDigest: digest(JSON.stringify(compose)), sources };
 }
-function validateOwned(layout, hostRoot, rows) {
+function validateOwned(layout, hostRoot, rows, restartingOriginals = []) {
   const own = rows.filter(row => row.project === layout.project), services = new Set();
   if (!own.length) throw new Error('Keep the managed installation containers present; use stop rather than down.');
   for (const row of own) {
     const service = layout.compose.services[row.service];
-    if (!service || services.has(row.service) || row.paused || row.restarting || !imagePattern.test(row.image || '') ||
+    if (!service || services.has(row.service) || row.paused || (row.restarting && !restartingOriginals.includes(row.id)) || !imagePattern.test(row.image || '') ||
       hostPath(row.config || '') !== hostPath(hostRoot + '/compose.json')) {
       throw new Error('Containers belong to another folder, are scaled, paused, restarting or use Compose overrides.');
     }
@@ -99,9 +99,9 @@ export function readSnapshot(root) {
   }
   return { journal, layout };
 }
-function current(root, rows) {
+function current(root, rows, allowOriginalRestarts = false) {
   const { journal, layout } = readSnapshot(root);
-  validateOwned(layout, journal.hostRoot, rows);
+  validateOwned(layout, journal.hostRoot, rows, allowOriginalRestarts ? journal.originals.map(row => row.id) : []);
   for (const original of journal.originals) {
     if (!rows.some(row => row.id === original.id && row.project === journal.project && row.service === original.service && row.image === original.image)) {
       throw new Error('An original snapshot container is missing or changed. Automatic recovery refused.');
@@ -121,7 +121,9 @@ export function checkSnapshotBarrier(root, rows) {
   return journal.quiescedAt;
 }
 export function resumeSnapshot(root, rows) {
-  const { journal, layout } = current(root, rows);
+  // Starting the original set can transiently restart dependants while their
+  // upstreams boot. Identity/mount checks still apply; readiness waits below.
+  const { journal, layout } = current(root, rows, true);
   if (rows.some(row => row.running && row.job === journal.job)) throw new Error('Snapshot capture is still running. Wait for it to exit before recovery.');
   const ids = journal.originals.map(row => row.id);
   rejectWriters(layout, journal.hostRoot, rows, ids);
@@ -129,7 +131,7 @@ export function resumeSnapshot(root, rows) {
 }
 export function finishSnapshot(root, rows) {
   const ids = resumeSnapshot(root, rows);
-  if (ids.some(id => !rows.find(row => row.id === id)?.running ||
+  if (ids.some(id => !rows.find(row => row.id === id)?.running || rows.find(row => row.id === id)?.restarting ||
     ![null, undefined, 'healthy'].includes(rows.find(row => row.id === id)?.health))) {
     throw Object.assign(new Error('Waiting for the original services to become ready.'), { exitCode: 2 });
   }

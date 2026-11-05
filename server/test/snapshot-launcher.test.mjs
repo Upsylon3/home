@@ -45,6 +45,7 @@ function verify(f, run) {
     const calls = fs.readFileSync(f.log, 'utf8').trim().split(/\r?\n/).map(JSON.parse);
     const inspection = calls.find(args => args[0] === 'inspect');
     assert.ok(inspection[inspection.indexOf('--format') + 1].includes('"id":{{json .Id}}'), 'Native Docker must receive the quoted JSON template intact');
+    assert.ok(inspection[inspection.indexOf('--format') + 1].includes('with index .State "Health"'), 'Containers without health checks omit Health entirely');
     const stop = calls.findIndex(args => args[0] === 'stop');
     const start = calls.find(args => args[0] === 'start');
     const capture = calls.findIndex(args => args.includes('/coordinated.py'));

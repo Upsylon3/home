@@ -18,7 +18,7 @@ if ((Get-Item -LiteralPath 'configuration/snapshot-state.json' -Force -ErrorActi
 }
 function Invoke-CoordinatedSnapshot([string]$RootFolder, [string]$Destination, [string]$BackupImage, [switch]$Recover) {
     $snapshotImage = (Get-Content -LiteralPath installer-image.txt -Raw).Trim()
-    $format = '{"id":{{json .Id}},"image":{{json .Image}},"running":{{json .State.Running}},"paused":{{json .State.Paused}},"restarting":{{json .State.Restarting}},"health":{{if .State.Health}}{{json .State.Health.Status}}{{else}}null{{end}},"project":{{json (index .Config.Labels "com.docker.compose.project")}},"service":{{json (index .Config.Labels "com.docker.compose.service")}},"config":{{json (index .Config.Labels "com.docker.compose.project.config_files")}},"job":{{json (index .Config.Labels "home.snapshot.job")}},"mounts":{{json .Mounts}}}'
+    $format = '{"id":{{json .Id}},"image":{{json .Image}},"running":{{json .State.Running}},"paused":{{json .State.Paused}},"restarting":{{json .State.Restarting}},"health":{{with index .State "Health"}}{{json .Status}}{{else}}null{{end}},"project":{{json (index .Config.Labels "com.docker.compose.project")}},"service":{{json (index .Config.Labels "com.docker.compose.service")}},"config":{{json (index .Config.Labels "com.docker.compose.project.config_files")}},"job":{{json (index .Config.Labels "home.snapshot.job")}},"mounts":{{json .Mounts}}}'
     # Windows PowerShell strips embedded quotes when constructing native argv.
     # Preserve both JSON keys and Go-template label strings for Docker.
     if ($env:OS -eq 'Windows_NT' -and (-not $PSNativeCommandArgumentPassing -or $PSNativeCommandArgumentPassing -eq 'Legacy')) {

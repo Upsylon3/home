@@ -105,7 +105,13 @@ try {
   const fresh = await browser.newContext(); const freshPage = await fresh.newPage();
   await freshPage.goto(origin + 'vault/'); await freshPage.getByRole('heading', { name: 'Create your vault' }).waitFor();
   await fresh.close();
-  page.once('dialog', dialog => dialog.accept()); await page.getByRole('button', { name: 'Reset demo' }).click();
+  page.once('dialog', dialog => dialog.accept());
+  // The heading already exists on the old home page. Wait for Reset's actual
+  // navigation before that heading can count as evidence of the new page.
+  const resetNavigation = page.waitForEvent('framenavigated', frame => frame === page.mainFrame());
+  await page.getByRole('button', { name: 'Reset demo' }).click();
+  await resetNavigation;
+  await page.waitForLoadState('load');
   await page.getByRole('heading', { name: /Good|Still up/ }).waitFor();
   await page.goto(origin + 'vault/'); await page.getByRole('heading', { name: 'Create your vault' }).waitFor();
   assert.deepEqual(errors, []);

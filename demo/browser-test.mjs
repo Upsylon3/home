@@ -53,6 +53,21 @@ try {
   for (const app of ['media/', 'monitor/', '#/settings', '#/apps', '#/search']) {
     await page.goto(origin + app); await page.locator('h1').waitFor();
   }
+  await page.goto(origin + '#/apps');
+  const notesCard = page.locator('.app-card').filter({ has: page.getByRole('heading', { name: 'HomeNotes', exact: true }) });
+  page.once('dialog', dialog => dialog.accept());
+  await notesCard.getByRole('button', { name: 'Uninstall', exact: true }).click();
+  await notesCard.getByRole('button', { name: 'Install', exact: true }).click();
+  await notesCard.getByText('Disabled', { exact: true }).waitFor();
+  await notesCard.getByRole('button', { name: 'Enable', exact: true }).click();
+  await notesCard.getByRole('link', { name: 'Launch', exact: true }).waitFor();
+  await page.reload();
+  await notesCard.getByRole('link', { name: 'Launch', exact: true }).waitFor();
+  await page.goto(origin + 'notes/');
+  await page.getByText('Browser journal', { exact: true }).first().click();
+  await page.waitForURL('**/#/notes/*');
+  await page.locator('input.note-editor-title').waitFor();
+  assert.equal(await page.locator('input.note-editor-title').inputValue(), 'Browser journal');
   // Use the unmodified Vault UI and Argon2id, not a fake unlock implementation.
   await page.goto(origin + 'vault/');
   await page.getByLabel('Master password', { exact: true }).fill('home-demo-master-only');

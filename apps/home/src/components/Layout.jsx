@@ -10,13 +10,17 @@ export default function Layout({ user, onLogout }) {
   const [apps, setApps] = useState([]);
 
   useEffect(() => {
-    api.apps
+    let cancelled = false;
+    function load() { api.apps
       .list()
-      .then(({ data }) => setApps(data.applications))
+      .then(({ data }) => { if (!cancelled) setApps(data.applications); })
       .catch(() => {
         // The sidebar just won't list external apps if this fails; the
         // rest of Home (Dashboard, Settings) still works independently.
-      });
+      }); }
+    load();
+    window.addEventListener("home:apps-changed", load);
+    return () => { cancelled = true; window.removeEventListener("home:apps-changed", load); };
   }, []);
 
   function handleLogout() {

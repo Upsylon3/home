@@ -144,6 +144,16 @@ function createDelegationStore(db, { now = Date.now } = {}) {
   }
   return {
     issue, revoke, verify, revokeRestored,
+    revokeApplication: (slug, actor) => {
+      db.transaction(() => {
+        const grants = db.prepare(`SELECT * FROM hc_delegation_grants WHERE revoked_at IS NULL AND id IN
+          (SELECT grant_id FROM hc_delegation_credentials WHERE audience = ?)`).all(slug);
+        for (const grant of grants) {
+          db.prepare("UPDATE hc_delegation_grants SET revoked_at = ? WHERE id = ?").run(now(), grant.id);
+          audit(grant, "revoked", actor);
+        }
+      }).immediate();
+    },
     surrender: token => {
       if (typeof token !== "string" || !TOKEN_RE.test(token)) throw failure(403, "DELEGATION_REFUSED", "Delegation is not authorized.");
       db.transaction(() => {

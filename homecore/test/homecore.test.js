@@ -34,37 +34,37 @@ test("GET /api/core/system requires auth and reports basic runtime info", async 
   assert.ok(res.body.nodeVersion.startsWith("v"));
 });
 
-test("HomeCloud is auto-registered as an application on first boot", async () => {
+test("provisioned fixture includes HomeCloud", async () => {
   const res = await admin.client.get("/api/core/apps");
   assert.equal(res.status, 200);
   const homecloud = res.body.applications.find((a) => a.slug === "homecloud");
-  assert.ok(homecloud, "expected the homecloud app to be seeded automatically");
+  assert.ok(homecloud, "expected the fixture to install homecloud");
   assert.equal(homecloud.enabled, true);
 });
 
-test("HomeMedia is also auto-registered on first boot, even though it's a separate service", async () => {
+test("provisioned fixture includes the separate HomeMedia service", async () => {
   const res = await admin.client.get("/api/core/apps");
   assert.equal(res.status, 200);
   const homemedia = res.body.applications.find((a) => a.slug === "homemedia");
-  assert.ok(homemedia, "expected the homemedia app to be seeded automatically");
+  assert.ok(homemedia, "expected the fixture to install homemedia");
   assert.equal(homemedia.enabled, true);
   assert.ok(homemedia.baseUrl);
 });
 
-test("HomeSync is also auto-registered, with its info-page base_url rather than a real launchable frontend", async () => {
+test("provisioned fixture includes HomeSync with its info-page URL", async () => {
   const res = await admin.client.get("/api/core/apps");
   assert.equal(res.status, 200);
   const homesync = res.body.applications.find((a) => a.slug === "homesync");
-  assert.ok(homesync, "expected the homesync app to be seeded automatically");
+  assert.ok(homesync, "expected the fixture to install homesync");
   assert.equal(homesync.enabled, true);
   assert.ok(homesync.baseUrl);
 });
 
-test("HomeNotes is also auto-registered on first boot", async () => {
+test("provisioned fixture includes HomeNotes", async () => {
   const res = await admin.client.get("/api/core/apps");
   assert.equal(res.status, 200);
   const homenotes = res.body.applications.find((a) => a.slug === "homenotes");
-  assert.ok(homenotes, "expected the homenotes app to be seeded automatically");
+  assert.ok(homenotes, "expected the fixture to install homenotes");
   assert.equal(homenotes.enabled, true);
   assert.ok(homenotes.baseUrl);
 });

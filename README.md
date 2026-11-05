@@ -9,6 +9,7 @@ on your hardware. Local use needs no third-party account or internet connection.
    [Releases](https://github.com/Upsylon3/home/releases).
 2. Install Docker and extract the bundle where you want its data.
 3. Follow [START-HERE](server/START-HERE.md) to start HOME and claim the owner account.
+4. Open **Applications** to install and enable your included apps.
 
 The [public portal](https://upsylon3.github.io/home/connect/) remembers server
 addresses in your browser; it does not host accounts. Outside access is optional

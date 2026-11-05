@@ -138,7 +138,9 @@ test("disabled or absent sources are not contacted, regardless of their registry
     assert.equal((await search(client)).body.groups[0].status, "disabled");
     assert.equal(hits, 1);
   } finally {
-    await admin.post("/api/core/apps", { slug: "homenotes", name: "HomeNotes", baseUrl: "/notes/" });
+    const restored = await admin.post("/api/core/apps", { slug: "homenotes", name: "HomeNotes", baseUrl: "/notes/" });
+    assert.equal(restored.status, 201);
+    assert.equal(restored.body.application.enabled, true);
   }
 });
 

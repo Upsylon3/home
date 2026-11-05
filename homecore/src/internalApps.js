@@ -15,7 +15,7 @@ const router = express.Router();
 
 router.get("/", requireInternalSecret, (req, res) => {
   const apps = db
-    .prepare("SELECT slug, name, health_url AS healthUrl, enabled FROM hc_applications ORDER BY name")
+    .prepare("SELECT slug, name, health_url AS healthUrl, enabled FROM hc_applications WHERE installed = 1 ORDER BY name")
     .all()
     .map((row) => ({ slug: row.slug, name: row.name, healthUrl: row.healthUrl, enabled: row.enabled === 1 }));
   res.json({ apps });

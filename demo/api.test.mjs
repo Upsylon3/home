@@ -6,6 +6,22 @@ const base = '/home/';
 const call = (state, path, method = 'GET', body) => handle(state, new Request('https://example.test' + base + 'demo-api' + path, { method, headers: { Authorization: 'Bearer browser-demo', ...(body && !(body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}) }, body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined }), base);
 const data = async (...args) => { const res = await call(...args); assert.ok(res.ok, await res.clone().text()); return res.json(); };
 
+test('bundled app uninstall and reinstall preserves browser data and requires enablement', async () => {
+  let state = seed(base);
+  const note = state.notes[0];
+  const removed = await data(state, '/core/apps/homenotes', 'DELETE');
+  assert.equal(removed.dataPreserved, true);
+  state = structuredClone(state);
+  assert.ok(!(await data(state, '/core/apps')).applications.some(app => app.slug === 'homenotes'));
+  assert.equal((await call(state, '/core/apps/homenotes')).status, 404);
+  assert.equal((await data(state, '/core/app-catalog')).applications.find(app => app.slug === 'homenotes').installed, false);
+  const installed = await data(state, '/core/apps/homenotes/install', 'POST', {});
+  assert.equal(installed.application.enabled, false);
+  await data(state, '/core/apps/homenotes', 'PATCH', { enabled: true });
+  assert.equal((await data(state, `/homenotes/notes/${note.id}`)).note.content, note.content);
+  assert.equal((await call(state, '/core/apps/homecloud', 'PATCH', { enabled: false })).status, 409);
+});
+
 test('file bytes survive storage round trips, trash and restore; new browsers are independent', async () => {
   let state = seed(base); const form = new FormData(); form.append('file', new Blob(['Hello locally'], { type: 'text/plain' }), 'local.txt');
   const { file } = await data(state, '/homecloud/files/upload', 'POST', form);

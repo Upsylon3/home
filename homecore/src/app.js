@@ -32,8 +32,8 @@ const activityRoutes = require("./homecore/homecloudActivity");
 // HomeCore v0 — shared platform (identity extras, application registry,
 // permissions catalog, cross-app events/audit, health, notifications). See
 // HOME_MASTER_SPECIFICATION.md §39-40. Required after HomeCloud's own
-// routes so its startup seeding (registering HomeCloud as the first
-// application) runs against an already-initialized database.
+// routes so platform schema and permission-catalog setup run against an
+// already-initialized database. Application installation is explicit.
 const homecoreRoutes = require("./homecore");
 // See internalEvents.js's header comment for why this is a separate,
 // shared-secret-authenticated mount rather than another route under

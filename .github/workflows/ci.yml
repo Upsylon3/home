@@ -120,6 +120,12 @@ jobs:
         env:
           SELECTED_WORKSPACES: ${{ needs.scope.outputs.builds }}
 
+      - name: Exercise application installation in the real Home UI
+        if: contains(fromJSON(needs.scope.outputs.builds), 'apps/home') && needs.scope.outputs.native != 'false'
+        env:
+          DEMO_BROWSER_CHANNEL: chrome
+        run: node homecore/test-support/application-browser.cjs
+
   windows:
     name: Windows install and native SQLite smoke test
     needs: scope
@@ -268,6 +274,12 @@ jobs:
           token=$(echo "$resp" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).token))")
           [ -n "$token" ] || { echo "no token in response"; exit 1; }
           echo "ok  registered"
+
+          # Fresh Core has an available catalog, not implicitly enabled apps.
+          for slug in homecloud homemedia homesync homenotes hometasks homemonitor homevault; do
+            curl -fsS -X POST "$BASE/api/core/apps/$slug/install" -H "Authorization: Bearer $token" -H 'Content-Type: application/json' -d '{}' > /dev/null
+            curl -fsS -X PATCH "$BASE/api/core/apps/$slug" -H "Authorization: Bearer $token" -H 'Content-Type: application/json' -d '{"enabled":true}' > /dev/null
+          done
 
           echo "--- canonical Core routes preserve legacy identity and scoped feeds"
           curl -fsS -H "Authorization: Bearer $token" "$BASE/api/core/auth/me" \

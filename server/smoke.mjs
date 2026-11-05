@@ -35,9 +35,9 @@ const code = issueCode(root);
 const compose = args => docker(['compose', '-f', path.join(root, 'compose.json'), ...args]);
 let upgradedRoot;
 const origin = 'http://127.0.0.1:8080';
-async function request(route, body, token) {
+async function request(route, body, token, method = body ? 'POST' : 'GET') {
   const response = await fetch(origin + route, {
-    method: body ? 'POST' : 'GET',
+    method,
     // Synchronous Docker stop/start blocks Node's socket-close callbacks.
     // Each probe must open a new connection instead of reusing a pre-stop socket.
     headers: { Connection: 'close', ...(body ? { 'Content-Type': 'application/json' } : {}), ...(token ? { Authorization: 'Bearer ' + token } : {}) },
@@ -55,6 +55,17 @@ try {
   assert.equal(created.status, 201);
   const { token, user } = await created.json();
   assert.equal(user.role, 'admin');
+  assert.deepEqual((await (await request('/api/core/apps', undefined, token)).json()).applications, []);
+  const available = (await (await request('/api/core/app-catalog', undefined, token)).json()).applications;
+  assert.equal(available.length, 7);
+  for (const manifest of available) {
+    const installed = await request(`/api/core/apps/${manifest.slug}/install`, {}, token);
+    assert.equal(installed.status, 201);
+    assert.equal((await installed.json()).application.enabled, false);
+    assert.equal((await request(`/api/core/apps/${manifest.slug}`, { enabled: true }, token, 'PATCH')).status, 200);
+  }
+  const retainedNote = await (await request('/api/homenotes/notes', { title: 'Keep on uninstall', content: 'retained app data' }, token)).json();
+  assert.equal((await request('/api/core/apps/homenotes', undefined, token, 'DELETE')).status, 200);
   assert.equal((await request('/api/auth/register', { ...account, username: 'replay-user', setupCode: code })).status, 403);
   const form = new FormData();
   form.append('file', new Blob(['installer persistence proof']), 'proof.txt');
@@ -67,6 +78,13 @@ try {
   assert.equal(fs.readFileSync(path.join(root, 'configuration/core.env'), 'utf8'), before);
   compose(['up', '-d', '--wait', '--wait-timeout', '180']);
   assert.equal((await request('/api/auth/login', account)).status, 200);
+  assert.equal((await request('/api/core/apps/homenotes', undefined, token)).status, 404);
+  const reinstalled = await request('/api/core/apps/homenotes/install', {}, token);
+  assert.equal(reinstalled.status, 201);
+  assert.equal((await reinstalled.json()).application.enabled, false);
+  assert.equal((await request('/api/core/apps/homenotes', { enabled: true }, token, 'PATCH')).status, 200);
+  const restoredNote = await (await request(`/api/homenotes/notes/${retainedNote.note.id}`, undefined, token)).json();
+  assert.equal(restoredNote.note.content, 'retained app data');
   const listing = await request('/api/homecloud/files', undefined, token);
   const files = (await listing.json()).files;
   const file = files.find(item => item.name === 'proof.txt');

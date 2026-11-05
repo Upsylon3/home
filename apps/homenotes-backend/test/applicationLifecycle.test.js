@@ -1,0 +1,21 @@
+const { test, after } = require("node:test");
+const assert = require("node:assert/strict");
+const { startTestApp, stopTestApp } = require("./helpers/app");
+const { registerUser, makeClient } = require("../../../homecore/test/helpers/client");
+after(stopTestApp);
+test("real Notes data remains readable after uninstall, startup and reinstall", async () => {
+  const context = await startTestApp();
+  const owner = await registerUser(context.homecore.baseUrl);
+  const notes = makeClient(context.baseUrl);
+  notes.setToken(owner.token);
+  const created = await notes.post("/api/homenotes/notes", { title: "Retained note", content: "Data survives uninstall" });
+  assert.equal(created.status, 201);
+  assert.equal((await owner.client.delete("/api/core/apps/homenotes")).status, 200);
+  require("../../../homecore/src/homecore/seed").runSeed();
+  assert.equal((await owner.client.get("/api/core/apps/homenotes")).status, 404);
+  assert.equal((await owner.client.post("/api/core/apps/homenotes/install", {})).status, 201);
+  assert.equal((await owner.client.patch("/api/core/apps/homenotes", { enabled: true })).status, 200);
+  const retained = await notes.get(`/api/homenotes/notes/${created.body.note.id}`);
+  assert.equal(retained.status, 200);
+  assert.equal(retained.body.note.content, "Data survives uninstall");
+});

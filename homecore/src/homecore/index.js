@@ -4,7 +4,7 @@
 //
 // Requiring ./db here — before any routes are set up — is what actually
 // creates the hc_ tables, adds the new users columns, seeds the permission
-// catalog, registers HomeCloud in the application registry, and wires the
+// catalog and wires the
 // onActivity -> hc_activity_events bridge. Every route module below
 // assumes that's already happened.
 const express = require("express");
@@ -42,6 +42,7 @@ router.use("/activity/homecloud", homecloudActivityRoutes);
 // Everything else requires a signed-in HomeCloud/HomeCore identity.
 router.use("/system", requireAuth, systemRoutes);
 router.use("/users", requireAuth, usersRoutes);
+router.use("/app-catalog", requireAuth, appsRoutes.catalogRouter);
 router.use("/apps", requireAuth, appsRoutes);
 router.use("/permissions", requireAuth, permissionsRoutes);
 router.use("/activity", requireAuth, activityRoutes);

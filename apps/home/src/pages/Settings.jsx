@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
-import { api } from "../api.js";
+import { api, setToken } from "../api.js";
 import { timeAgo } from "../utils.js";
 import ThemeToggle from "../components/ThemeToggle.jsx";
 import RetroControl from "../components/RetroControl.jsx";
@@ -8,13 +8,14 @@ import FollowupControls from "../components/FollowupControls.jsx";
 import VaultResetControls from "../components/VaultResetControls.jsx";
 import ApplicationAccessControls from '../components/ApplicationAccessControls.jsx';
 
-// Home's Settings only covers what HomeCore itself owns: display name and
-// sessions (§7.1, §7.2). Password, username, and two-factor auth are still
-// entirely HomeCloud's territory (its own /api/auth surface) — Home isn't
-// a replacement for every application's own UI, so this page links out to
-// HomeCloud's account settings rather than duplicating that form.
+// Core owns account security; HOME is the unified account interface.
 export default function Settings() {
   const { user, onLogout } = useOutletContext();
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState("");
   const [displayName, setDisplayName] = useState(user.displayName || "");
   const [savingName, setSavingName] = useState(false);
   const [nameSaved, setNameSaved] = useState(false);
@@ -40,6 +41,29 @@ export default function Settings() {
       setError(err.message);
     } finally {
       setSavingName(false);
+    }
+  }
+
+  async function handleChangePassword(e) {
+    e.preventDefault();
+    setError("");
+    setPasswordMessage("");
+    if (newPassword !== confirmPassword) {
+      setError("New password and confirmation do not match.");
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      const { data } = await api.changePassword(currentPassword, newPassword);
+      setToken(data.token);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setPasswordMessage("Password updated. Other sessions have been signed out.");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setChangingPassword(false);
     }
   }
 
@@ -131,10 +155,26 @@ export default function Settings() {
       </div>
 
       <div className="panel">
-        <h3 className="panel-title">Password &amp; two-factor authentication</h3>
-        <p className="panel-desc">
-          Managed in HomeCloud's own account settings for now — Home doesn't duplicate that yet.
-        </p>
+        <h3 className="panel-title">Password</h3>
+        <p className="panel-desc">Changing your password signs out other devices.</p>
+        {passwordMessage && <p role="status">{passwordMessage}</p>}
+        <form onSubmit={handleChangePassword}>
+          <div className="field">
+            <label htmlFor="currentPassword">Current password</label>
+            <input id="currentPassword" type="password" autoComplete="current-password" required value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />
+          </div>
+          <div className="field">
+            <label htmlFor="newPassword">New password</label>
+            <input id="newPassword" type="password" autoComplete="new-password" minLength={8} required value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+          </div>
+          <div className="field">
+            <label htmlFor="confirmPassword">Confirm new password</label>
+            <input id="confirmPassword" type="password" autoComplete="new-password" minLength={8} required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
+          </div>
+          <button className="btn btn-primary btn-sm" type="submit" disabled={changingPassword}>
+            {changingPassword ? "Updating…" : "Change password"}
+          </button>
+        </form>
       </div>
     </div>
   );

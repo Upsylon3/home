@@ -6,6 +6,7 @@ import ThemeToggle from "../components/ThemeToggle.jsx";
 import RetroControl from "../components/RetroControl.jsx";
 import FollowupControls from "../components/FollowupControls.jsx";
 import VaultResetControls from "../components/VaultResetControls.jsx";
+import TwoFactorControls from "../components/TwoFactorControls.jsx";
 import ApplicationAccessControls from '../components/ApplicationAccessControls.jsx';
 
 // Core owns account security; HOME is the unified account interface.
@@ -182,6 +183,8 @@ export default function Settings() {
           </ul>
         )}
       </div>
+
+      <TwoFactorControls />
 
       <div className="panel">
         <h3 className="panel-title">Password</h3>

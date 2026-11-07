@@ -88,6 +88,13 @@ export const api = {
   updateMe: (displayName) => request("/core/users/me", { method: "PATCH", body: JSON.stringify({ displayName }) }),
   mySessions: () => request("/core/users/me/sessions"),
   logoutEverywhere: () => request("/auth/logout-everywhere", { method: "POST" }),
+  twoFactor: {
+    status: () => request("/auth/me"),
+    setup: () => request("/auth/2fa/setup", { method: "POST" }),
+    confirm: code => request("/auth/2fa/confirm", { method: "POST", body: JSON.stringify({ code }) }),
+    disable: password => request("/auth/2fa/disable", { method: "POST", body: JSON.stringify({ password }) }),
+    regenerate: password => request("/auth/2fa/recovery-codes", { method: "POST", body: JSON.stringify({ password }) })
+  },
   changePassword: (currentPassword, newPassword) => request("/auth/change-password", {
     method: "POST", body: JSON.stringify({ currentPassword, newPassword })
   }),

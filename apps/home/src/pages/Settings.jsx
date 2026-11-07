@@ -31,7 +31,7 @@ export default function Settings() {
       .then(({ data }) => setSessions(data.sessions))
       .catch(() => setSessionError(true));
     api.myActivity(15)
-      .then(({ data }) => setActivity(data.activity))
+      .then(({ data }) => setActivity(data.events))
       .catch(() => setActivityError(true));
   }, []);
 
@@ -175,7 +175,7 @@ export default function Settings() {
           <ul>
             {activity.map((entry, index) => (
               <li key={entry.id ?? index}>
-                <strong>{entry.action || entry.type || "Account event"}</strong>
+                <strong>{entry.eventType || "Account event"}</strong>
                 {entry.createdAt && <span> — {timeAgo(entry.createdAt)}</span>}
               </li>
             ))}

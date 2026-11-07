@@ -51,8 +51,7 @@ export default function TwoFactorControls() {
         <>
           <p>Add this secret manually to your authenticator application:</p>
           <p><code>{setup.secret}</code></p>
-          <p className="panel-desc">Or open the setup URI on your authenticator device.</p>
-          <a href={setup.otpauthUrl}>Open authenticator setup</a>
+          <p className="panel-desc">Keep this secret private. Use manual entry in your authenticator application.</p>
           <form onSubmit={e => { e.preventDefault(); run(async () => {
             const { data } = await api.twoFactor.confirm(code.trim());
             setRecoveryCodes(data.recoveryCodes);

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { api, setToken } from "../api.js";
-import { timeAgo } from "../utils.js";
+import { timeAgo, describeEvent } from "../utils.js";
 import ThemeToggle from "../components/ThemeToggle.jsx";
 import RetroControl from "../components/RetroControl.jsx";
 import FollowupControls from "../components/FollowupControls.jsx";
@@ -178,7 +178,7 @@ export default function Settings() {
           <ul>
             {activity.map((entry, index) => (
               <li key={entry.id ?? index}>
-                <strong>{entry.eventType || "Account event"}</strong>
+                <strong>{describeEvent(entry)}</strong>
                 {entry.createdAt && <span> — {timeAgo(entry.createdAt)}</span>}
               </li>
             ))}

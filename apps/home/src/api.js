@@ -18,7 +18,8 @@ async function request(path, options = {}) {
 
   const res = await fetch(`/api${path}`, { ...options, headers });
 
-  if (res.status === 401) {
+  // A wrong password on a re-authentication operation is not an expired session.
+  if (res.status === 401 && !options.keepSessionOn401) {
     setToken(null);
     window.dispatchEvent(new CustomEvent("home:session-expired"));
   }
@@ -100,11 +101,11 @@ export const api = {
     status: () => request("/auth/me"),
     setup: () => request("/auth/2fa/setup", { method: "POST" }),
     confirm: code => request("/auth/2fa/confirm", { method: "POST", body: JSON.stringify({ code }) }),
-    disable: password => request("/auth/2fa/disable", { method: "POST", body: JSON.stringify({ password }) }),
-    regenerate: password => request("/auth/2fa/recovery-codes", { method: "POST", body: JSON.stringify({ password }) })
+    disable: password => request("/auth/2fa/disable", { method: "POST", body: JSON.stringify({ password }), keepSessionOn401: true }),
+    regenerate: password => request("/auth/2fa/recovery-codes", { method: "POST", body: JSON.stringify({ password }), keepSessionOn401: true })
   },
   changePassword: (currentPassword, newPassword) => request("/auth/change-password", {
-    method: "POST", body: JSON.stringify({ currentPassword, newPassword })
+    method: "POST", body: JSON.stringify({ currentPassword, newPassword }), keepSessionOn401: true
   }),
 
   health: () => request("/core/health"),

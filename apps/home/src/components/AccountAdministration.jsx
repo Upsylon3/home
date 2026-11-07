@@ -65,7 +65,7 @@ export default function AccountAdministration({ currentUserId }) {
                   {u.totpEnabled && <button className="btn btn-ghost btn-sm" disabled={busy !== null} onClick={() => {
                     if (window.confirm("Only proceed after verifying " + u.username + "'s identity independently. Disable their 2FA?")) act(u.id, () => api.accountAdmin.disable2fa(u.id));
                   }}>Reset 2FA</button>}
-                  <button className="btn btn-danger-ghost" disabled={busy !== null || u.id === currentUserId} onClick={() => {
+                  <button className="btn btn-danger-ghost" disabled={busy !== null || String(u.id) === String(currentUserId)} onClick={() => {
                     const disabled = !u.disabled;
                     if (window.confirm((disabled ? "Disable" : "Enable") + " account " + u.username + "?")) act(u.id, () => api.accountAdmin.setDisabled(u.id, disabled));
                   }}>{u.disabled ? "Enable" : "Disable"}</button>

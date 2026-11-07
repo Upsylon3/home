@@ -54,6 +54,14 @@ export const api = {
     }),
     revoke: id => request(`/core/application-access/${encodeURIComponent(id)}`, { method: 'DELETE' })
   },
+  accountAdmin: {
+    users: () => request("/admin/users"),
+    resetPassword: (id, newPassword) => request(`/admin/users/${encodeURIComponent(id)}/reset-password`, { method: "POST", body: JSON.stringify({ newPassword }) }),
+    setDisabled: (id, disabled) => request(`/admin/users/${encodeURIComponent(id)}/disabled`, { method: "POST", body: JSON.stringify({ disabled }) }),
+    setRole: (id, role) => request(`/admin/users/${encodeURIComponent(id)}/role`, { method: "POST", body: JSON.stringify({ role }) }),
+    setQuota: (id, quotaBytes) => request(`/admin/users/${encodeURIComponent(id)}/quota`, { method: "POST", body: JSON.stringify({ quotaBytes }) }),
+    disable2fa: id => request(`/admin/users/${encodeURIComponent(id)}/2fa/disable`, { method: "POST" })
+  },
   vaultAdmin: {
     users: () => request("/core/admin/users"),
     status: id => request(`/homevault/admin/users/${encodeURIComponent(id)}/vault`),

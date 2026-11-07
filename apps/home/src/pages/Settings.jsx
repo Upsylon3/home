@@ -20,13 +20,19 @@ export default function Settings() {
   const [savingName, setSavingName] = useState(false);
   const [nameSaved, setNameSaved] = useState(false);
   const [sessions, setSessions] = useState(null);
+  const [sessionError, setSessionError] = useState(false);
+  const [activity, setActivity] = useState(null);
+  const [activityError, setActivityError] = useState(false);
   const [error, setError] = useState("");
   const [loggingOutEverywhere, setLoggingOutEverywhere] = useState(false);
 
   useEffect(() => {
     api.mySessions()
       .then(({ data }) => setSessions(data.sessions))
-      .catch(() => {});
+      .catch(() => setSessionError(true));
+    api.myActivity(15)
+      .then(({ data }) => setActivity(data.activity))
+      .catch(() => setActivityError(true));
   }, []);
 
   async function handleSaveName(e) {
@@ -128,7 +134,9 @@ export default function Settings() {
       <div className="panel">
         <h3 className="panel-title">Sessions</h3>
         <p className="panel-desc">Every device that's signed in with your account.</p>
-        {sessions === null ? (
+        {sessionError ? (
+          <p role="alert">Could not load sessions. Refresh to try again.</p>
+        ) : sessions === null ? (
           <p style={{ color: "var(--text-dim)", fontSize: 13 }}>Loading…</p>
         ) : sessions.length === 0 ? (
           <p style={{ color: "var(--text-dim)", fontSize: 13 }}>No session history yet.</p>
@@ -152,6 +160,27 @@ export default function Settings() {
         >
           {loggingOutEverywhere ? "Signing out…" : "Sign out of every device"}
         </button>
+      </div>
+
+      <div className="panel">
+        <h3 className="panel-title">Recent account activity</h3>
+        <p className="panel-desc">Your recent activity across HOME applications.</p>
+        {activityError ? (
+          <p role="alert">Could not load account activity. Refresh to try again.</p>
+        ) : activity === null ? (
+          <p>Loading…</p>
+        ) : activity.length === 0 ? (
+          <p>No recent activity.</p>
+        ) : (
+          <ul>
+            {activity.map((entry, index) => (
+              <li key={entry.id ?? index}>
+                <strong>{entry.action || entry.type || "Account event"}</strong>
+                {entry.createdAt && <span> — {timeAgo(entry.createdAt)}</span>}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="panel">

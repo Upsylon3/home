@@ -6,6 +6,7 @@ import ThemeToggle from "../components/ThemeToggle.jsx";
 import RetroControl from "../components/RetroControl.jsx";
 import FollowupControls from "../components/FollowupControls.jsx";
 import VaultResetControls from "../components/VaultResetControls.jsx";
+import AccountAdministration from "../components/AccountAdministration.jsx";
 import TwoFactorControls from "../components/TwoFactorControls.jsx";
 import ApplicationAccessControls from '../components/ApplicationAccessControls.jsx';
 
@@ -98,6 +99,7 @@ export default function Settings() {
       <FollowupControls user={user} />
       <ApplicationAccessControls />
       {user.role === "admin" && <VaultResetControls />}
+      {user.role === "admin" && <AccountAdministration currentUserId={user.id} />}
 
       <div className="panel">
         <h3 className="panel-title">Appearance</h3>

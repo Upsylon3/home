@@ -88,6 +88,9 @@ export const api = {
   updateMe: (displayName) => request("/core/users/me", { method: "PATCH", body: JSON.stringify({ displayName }) }),
   mySessions: () => request("/core/users/me/sessions"),
   logoutEverywhere: () => request("/auth/logout-everywhere", { method: "POST" }),
+  changePassword: (currentPassword, newPassword) => request("/auth/change-password", {
+    method: "POST", body: JSON.stringify({ currentPassword, newPassword })
+  }),
 
   health: () => request("/core/health"),
   system: () => request("/core/system"),

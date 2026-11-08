@@ -239,7 +239,7 @@ build of the existing web apps with a browser-local API adapter.
 
 ### Use it
 
-A current browser with service workers, IndexedDB and Web Crypto is required;
+A current browser with IndexedDB, Web Locks and Web Crypto is required;
 use HTTPS or localhost. First use creates local sample data. Demo sign-in is
 simulated: any name/password enters the same sandbox, not a separate account.
 

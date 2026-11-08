@@ -16,6 +16,22 @@ page.on('pageerror', e => errors.push(e.message));
 page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
 const see = async text => page.getByText(text, { exact: true }).waitFor();
 try {
+  const restricted = await browser.newContext({ serviceWorkers: 'block' });
+  try {
+    await restricted.addInitScript(() => {
+      ServiceWorkerContainer.prototype.register = async () => { throw new DOMException('Service worker failed to launch', 'SecurityError'); };
+    });
+    const restrictedPage = await restricted.newPage();
+    await restrictedPage.goto(origin);
+    await restrictedPage.getByRole('link', { name: 'Launch', exact: true }).nth(5).waitFor();
+    await restrictedPage.goto(origin + 'cloud/');
+    await restrictedPage.locator('input[type=file]').setInputFiles({ name: 'restricted-browser.txt', mimeType: 'text/plain', buffer: Buffer.from('local upload') });
+    await restrictedPage.getByText('restricted-browser.txt', { exact: true }).waitFor();
+    await restrictedPage.reload();
+    await restrictedPage.getByText('restricted-browser.txt', { exact: true }).waitFor();
+  } finally {
+    await restricted.close();
+  }
   await verifyPortal(page, origin);
   await verifyBenchmark(browser, origin + 'vault/benchmark.html');
   await page.goto(origin);

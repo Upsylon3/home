@@ -1,8 +1,21 @@
 const base = new URL('.', import.meta.url).pathname;
-if (!('serviceWorker' in navigator)) throw new Error('This demo needs a browser with service workers and HTTPS.');
-const registration = await navigator.serviceWorker.register(base + 'demo-worker.js', { scope: base, type: 'module' });
-await navigator.serviceWorker.ready;
-if (!navigator.serviceWorker.controller) await new Promise(resolve => navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true }));
+async function connectWorker() {
+  await navigator.serviceWorker.register(base + 'demo-worker.js', { scope: base, type: 'module' });
+  await navigator.serviceWorker.ready;
+  if (!navigator.serviceWorker.controller) await new Promise(resolve => navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true }));
+}
+let timer;
+try {
+  await Promise.race([
+    connectWorker(),
+    new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Worker startup timed out')), 5000); })
+  ]);
+} catch {
+  const { usePageApi } = await import('./demo-page.js');
+  usePageApi(base);
+} finally {
+  clearTimeout(timer);
+}
 const probe = await fetch(base + 'demo-api/demo/status');
 if (!probe.ok) throw new Error('Browser storage is unavailable. Allow site storage to use the HOME demo.');
 if (!localStorage.getItem('home_demo_started')) {

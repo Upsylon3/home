@@ -69,6 +69,14 @@ try {
   for (const app of ['media/', 'monitor/', '#/settings', '#/apps', '#/search']) {
     await page.goto(origin + app); await page.locator('h1').waitFor();
   }
+  await page.goto(origin + 'media/');
+  // A heading or a successful HTTP response does not prove an image decoded.
+  const thumbnail = page.locator('.photo-tile').getByRole('img', { name: 'A little room to explore.svg' });
+  const decodedAspectRatio = async img => { await img.decode(); return img.naturalWidth / img.naturalHeight; };
+  assert.equal(await thumbnail.evaluate(decodedAspectRatio), 1.5);
+  await thumbnail.click();
+  const original = page.locator('.lightbox-image');
+  assert.equal(await original.evaluate(decodedAspectRatio), 1.5);
   await page.goto(origin + '#/apps');
   const notesCard = page.locator('.app-card').filter({ has: page.getByRole('heading', { name: 'HomeNotes', exact: true }) });
   page.once('dialog', dialog => dialog.accept());

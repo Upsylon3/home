@@ -26,9 +26,9 @@ try {
     await restrictedPage.getByRole('link', { name: 'Launch', exact: true }).nth(5).waitFor();
     await restrictedPage.goto(origin + 'cloud/');
     await restrictedPage.locator('input[type=file]').setInputFiles({ name: 'restricted-browser.txt', mimeType: 'text/plain', buffer: Buffer.from('local upload') });
-    await restrictedPage.getByText('restricted-browser.txt', { exact: true }).waitFor();
+    await restrictedPage.getByRole('cell', { name: 'restricted-browser.txt', exact: true }).waitFor();
     await restrictedPage.reload();
-    await restrictedPage.getByText('restricted-browser.txt', { exact: true }).waitFor();
+    await restrictedPage.getByRole('cell', { name: 'restricted-browser.txt', exact: true }).waitFor();
   } finally {
     await restricted.close();
   }

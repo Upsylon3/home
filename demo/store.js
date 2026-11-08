@@ -16,6 +16,11 @@ async function read(db) {
   });
 }
 async function save(db, state) {
+  // Some WebKit storage implementations reject Blob and File values. Convert
+  // new and legacy files before opening the transaction so it stays active.
+  for (const file of state.files) {
+    if (file.blob instanceof Blob) file.blob = await file.blob.arrayBuffer();
+  }
   return new Promise((resolve, reject) => {
     const tx = db.transaction('data', 'readwrite');
     tx.objectStore('data').put(state, 'state');
@@ -39,6 +44,6 @@ export async function respond(request, base) {
       } finally { db.close(); }
     });
   } catch (error) {
-    return Response.json({ error: error.name === 'QuotaExceededError' ? 'Browser storage is full. Remove some demo files and try again.' : 'Demo storage failed. Allow browser storage and try again.' }, { status: 507 });
+    return Response.json({ error: error?.name === 'QuotaExceededError' ? 'Browser storage is full. Remove some demo files and try again.' : 'Demo storage failed. Allow browser storage and try again.' }, { status: 507 });
   }
 }

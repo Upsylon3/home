@@ -283,11 +283,12 @@ function breadcrumb(rows, id) {
   return result;
 }
 function binary(file, download, request) {
-  const headers = { 'Content-Type': file.mimetype || file.blob.type || 'application/octet-stream', 'Accept-Ranges': 'bytes', 'X-Content-Type-Options': 'nosniff' };
+  const blob = file.blob instanceof Blob ? file.blob : new Blob([file.blob], { type: file.mimetype });
+  const headers = { 'Content-Type': file.mimetype || blob.type || 'application/octet-stream', 'Accept-Ranges': 'bytes', 'X-Content-Type-Options': 'nosniff' };
   if (download) headers['Content-Disposition'] = `attachment; filename*=UTF-8''${encodeURIComponent(file.originalName)}`;
   const range = request.headers.get('range')?.match(/^bytes=(\d+)-(\d*)$/);
-  if (range) { const start = Number(range[1]), end = Math.min(Number(range[2] || file.blob.size - 1), file.blob.size - 1); if (start > end) return new Response(null, { status: 416 }); headers['Content-Range'] = `bytes ${start}-${end}/${file.blob.size}`; return new Response(file.blob.slice(start, end + 1), { status: 206, headers }); }
-  return new Response(file.blob, { headers });
+  if (range) { const start = Number(range[1]), end = Math.min(Number(range[2] || blob.size - 1), blob.size - 1); if (start > end) return new Response(null, { status: 416 }); headers['Content-Range'] = `bytes ${start}-${end}/${blob.size}`; return new Response(blob.slice(start, end + 1), { status: 206, headers }); }
+  return new Response(blob, { headers });
 }
 function media(s, p, q, method, body, base, request, create, remove) {
   const library = () => s.files.filter(f => active(f) && /^(image|video|audio)\//.test(f.mimetype));

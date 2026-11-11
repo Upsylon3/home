@@ -8,6 +8,11 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 ## [Unreleased]
 
 ### Added
+- Android backup feedback observes real manual/automatic WorkManager state,
+  scanning/checking/uploading stages, per-run file outcomes and the latest retained
+  manual result. Report queued/retrying/failed/cancelled states without claiming
+  an enqueue started a backup; keep active manual work on repeated taps. Durable
+  multi-run history and exact unmet-constraint diagnostics remain open.
 - Cloud folder selection/drop preserves directory hierarchy, reuses existing
   folders and provides a bounded three-transfer queue with progress, per-file
   retry/cancel and navigation protection. Keep the original destination while

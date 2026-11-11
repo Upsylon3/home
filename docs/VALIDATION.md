@@ -3,6 +3,30 @@
 Outstanding review/device evidence and reproduction notes live here. Run fixtures
 only against disposable data; never equate CI with independent or physical testing.
 
+## Notes save safety
+
+On 2026-11-11, the pre-fix demo reproduced lost text: type a title and immediately
+select All Notes; reopening returned `Untitled`. Windows/Node 26.13.0 now passes
+21 Notes tests, the production Notes build and the real-Core/Cloud/Notes Edge
+browser fixture. Browser proof covers immediate navigation/save, failed-save
+retention/retry, Back/keep-editing, deliberate queued-edit discard, sign-out
+cancellation, failed-load retry and the beforeunload guard. The same editor
+journey runs within the demo's browser regression with the hash router. Queue
+tests prove serialized in-flight edits, newer-field precedence, merged text/tags
+on retry and discard/unmount cancellation. The real-browser fixture injects only
+the requested failures; normal saves use the real temporary Notes database.
+
+~~~sh
+npm test --workspace=apps/homenotes
+npm run build --workspace=apps/homenotes
+DEMO_BROWSER_CHANNEL=msedge node apps/homenotes/test-support/save-browser.cjs
+~~~
+
+Use PowerShell's `$env:DEMO_BROWSER_CHANNEL='msedge'` on Windows, or an installed
+`chrome` channel elsewhere. Demo regression uses `npm run build:demo` followed
+by `npm run test:demo:browser`. Drafts are memory-only: this proof does not claim
+offline/crash recovery, multi-tab conflict resolution or mobile OS close prompts.
+
 ## Unified HOME accounts
 
 On 2026-11-11, Node 26.13.0 on Windows passed the 29 Core auth/admin/route-alias

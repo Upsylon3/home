@@ -39,6 +39,7 @@ function demoPlugin() {
       }
       if (id.endsWith('UploadZone.jsx')) code = code.replace('up to 1 GB per file', 'up to 100 MB per file in this demo');
       if (id.endsWith('main.jsx')) {
+        code = code.replaceAll('createBrowserRouter', 'createHashRouter').replace(', { basename: import.meta.env.BASE_URL }', '');
         code = code.replaceAll('BrowserRouter', 'HashRouter').replace(/ basename=\{(?:import.meta.env.BASE_URL|basename)\}/g, '').replace('&& import.meta.env.PROD', '&& false');
         code = `await import(${JSON.stringify(base + 'demo-bootstrap.js')}).catch(error => { document.getElementById("root").textContent = "HOME demo could not start: " + error.message; throw error; });\n` + code;
       }

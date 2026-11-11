@@ -1,8 +1,9 @@
 import { useOutletContext } from "react-router-dom";
+import { homeAccountUrl } from '../accountNavigation.js';
 import ThemeToggle from "../components/ThemeToggle.jsx";
 import RetroControl from "../components/RetroControl.jsx";
 
-// Deliberately thin: account management is HomeCloud/HomeCore's job, not
+// Deliberately thin: account management belongs to HOME/HomeCore, not
 // HomeTasks' — same reasoning as HomeMedia's Settings page.
 export default function Settings() {
   const { user } = useOutletContext();
@@ -27,8 +28,9 @@ export default function Settings() {
         <h3 className="panel-title">Account</h3>
         <p className="panel-desc">
           Signed in as <strong>{user.username}</strong>. Password, two-factor authentication, and other account
-          settings are managed from HomeCloud, not here.
+          settings are managed in HOME through HomeCore.
         </p>
+        <a className="btn btn-ghost btn-sm" href={homeAccountUrl}>Open HOME account settings</a>
       </div>
     </main>
   );

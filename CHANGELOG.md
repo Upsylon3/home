@@ -31,6 +31,10 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
   `/cloud/admin` bookmarks retain appearance/personal storage activity and the
   administrator storage audit, with links to HOME replacing duplicate account
   mutations. Authentication/API aliases and stored sessions are unchanged.
+- Media, Notes, Tasks and Monitor settings now link to HOME account settings
+  using a shared navigation helper, replacing stale HomeCloud guidance. Keep
+  their intentionally small appearance controls and Vault's own master-password
+  controls separate from global account security.
 - Restore unfinished application scope and HOME's personal/room-based direction
   from pre-cleanup specifications, checked against current source. Prioritize
   daily single-server app work, distinguish existing features from genuine gaps,

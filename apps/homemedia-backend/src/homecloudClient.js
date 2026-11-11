@@ -172,4 +172,28 @@ async function fileExists(token, fileId) {
   return files.some((f) => f.id === fileId);
 }
 
-module.exports = { listFiles, listMediaFiles, openFileStream, ensureRootFolder, forwardUpload, downloadFile, fileExists };
+// Cached derivatives are never authority for a source file. HEAD exercises the
+// same owner/permission/storage checks as Cloud's download without transferring
+// the original bytes. Do not serve a cache entry when Cloud cannot answer.
+async function canReadFile(token, fileId) {
+  let res;
+  try {
+    res = await fetch(`${HOMECLOUD_BACKEND_URL}/api/homecloud/files/${fileId}/download`, {
+      method: 'HEAD', headers: { Authorization: `Bearer ${token}` },
+      redirect: 'error', signal: AbortSignal.timeout(5000)
+    });
+  } catch {
+    const error = new Error("Couldn't reach HomeCloud to verify the file.");
+    error.status = 502;
+    throw error;
+  }
+  if (res.status === 404) return false;
+  if (!res.ok) {
+    const error = new Error('HomeCloud rejected the file verification request.');
+    error.status = [401, 403].includes(res.status) ? res.status : 502;
+    throw error;
+  }
+  return true;
+}
+
+module.exports = { listFiles, listMediaFiles, openFileStream, ensureRootFolder, forwardUpload, downloadFile, fileExists, canReadFile };

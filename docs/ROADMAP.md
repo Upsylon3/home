@@ -116,6 +116,8 @@ not authorize changing a real installation or storing real secrets in Vault.
    cached poster generation through Cloud's authorized file API. Review decoder
    dependency/runtime cost, invalid videos, cache invalidation and fallback first.
    Photo thumbnails, playback, EXIF and browser upload already exist.
+   Cached-thumbnail/EXIF source revalidation is fixed independently; video poster
+   generation remains open.
 5. **Sync backup feedback.** Show actual queued, waiting-for-constraints, running,
    retrying, failed and completed work, with meaningful run progress/history.
    Current slice observes manual/automatic WorkManager state, reports real

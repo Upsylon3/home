@@ -46,6 +46,11 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
   validation from feature work. Setup, recovery and security requirements remain.
 
 ### Fixed
+- Scope Android local backup deduplication and offline totals by canonical
+  server/account identity. Room v2 retains every legacy record without assuming
+  its destination; recheck those files through the server before recording new
+  scoped history. Capture Core identity verification against one session pair.
+  Device/profile/job isolation and multi-server enablement remain separate work.
 - Bind Android HTTP clients to an immutable server URL/token snapshot, publish
   cached URLs/clients together and reject new requests after a server switch or
   logout. Disable automatic redirects so login bodies and uploads cannot follow

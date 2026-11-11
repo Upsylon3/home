@@ -21,6 +21,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okio.BufferedSink
 import okio.source
 import java.time.Instant
+import kotlinx.coroutines.CancellationException
 
 /**
  * One backup run: scan → hash → ask the server what it's missing →
@@ -55,6 +56,10 @@ class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker
     private suspend fun backup(): Result {
         sessionManager.initialize()
         if (!sessionManager.isSignedIn()) return Result.failure()
+        val destinationKey = try { apiClient.verifyDestinationKey() }
+            catch (e: CancellationException) { throw e }
+            catch (e: Exception) { return Result.retry() }
+            ?: return Result.failure(workDataOf("reason" to "account-verification-required"))
 
         val settings = settingsStore.current()
         val categories = settings.enabledCategories()
@@ -65,7 +70,7 @@ class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         val deviceId = ensureDeviceId(api) ?: return Result.retry()
 
         val dao = db.syncedMediaDao()
-        val alreadyKnownLocalIds = dao.allSyncedLocalIds().toSet()
+        val alreadyKnownLocalIds = dao.allSyncedLocalIds(destinationKey).toSet()
 
         val candidates = mediaScanner.scan(categories).filter { it.localId !in alreadyKnownLocalIds }
         if (candidates.isEmpty()) return Result.success()
@@ -99,7 +104,7 @@ class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         // likely) — record locally without re-uploading, so future runs
         // skip them too instead of re-checking every time.
         for (file in plan.alreadySynced) {
-            dao.insert(file.toEntity())
+            dao.insert(file.toEntity(destinationKey))
         }
 
         var anyFailed = false
@@ -108,7 +113,7 @@ class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker
             catch (e: SecurityException) { throw e }
             catch (e: Exception) { false }
             if (uploaded) {
-                dao.insert(file.toEntity())
+                dao.insert(file.toEntity(destinationKey))
             } else {
                 anyFailed = true
             }
@@ -121,7 +126,8 @@ class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         return if (anyFailed) Result.retry() else Result.success()
     }
 
-    private fun HashedFile.toEntity() = SyncedMediaEntity(
+    private fun HashedFile.toEntity(destinationKey: String) = SyncedMediaEntity(
+        destinationKey = destinationKey,
         localMediaId = candidate.localId,
         contentHash = contentHash,
         category = candidate.category.toApiValue(),

@@ -25,6 +25,9 @@ import retrofit2.http.Part
  */
 interface HomeSyncApi {
 
+    @GET("api/core/auth/me")
+    suspend fun identity(): Response<UserSummary>
+
     @POST("api/homesync/auth/login")
     suspend fun login(@Body request: LoginRequest): Response<LoginResponse>
 

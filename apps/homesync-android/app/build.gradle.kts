@@ -8,6 +8,8 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
+ksp { arg("room.schemaLocation", "$projectDir/schemas") }
+
 android {
     namespace = "com.homeecosystems.homesync"
     // AGP 9.1.1 supports API 37; unblock newer AndroidX compilation without

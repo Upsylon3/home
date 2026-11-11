@@ -246,6 +246,30 @@ access and repeat creation in one immediate transaction. No assignment email,
 push, project collaboration or multi-server identity is introduced. Restored
 assignment ACLs must be revoked offline before reopening Tasks.
 
+## Android destination ledger
+
+Room v2 adds a destination key to backup records and replaces global media-ID
+uniqueness with `(destinationKey, localMediaId)`. The key hashes the canonical
+configured gateway URL (including scheme/port/path) and the authenticated local
+Core account ID, never a bearer token. Login responses establish that account;
+legacy sessions verify identity through Core using a captured URL/token pair.
+Queued work does not yet support multiple profiles.
+
+The v1 ledger recorded no destination, so its rows keep their original IDs,
+hashes, sizes and timestamps with an empty legacy destination. They remain
+retained history and are excluded from destination deduplication/totals. A first
+scoped run hashes/checks these files again; Cloud's per-user hash dedup avoids
+uploading content the server already has. Do not assign all old rows to whichever
+account happens to be active at upgrade. Offline totals require a previously
+verified account; an unknown legacy session reports unavailable history.
+
+This is a persistence prerequisite, not multi-server backup enablement. Device
+IDs, settings, profiles and WorkManager inputs/names must still be scoped. No
+application ID changes and no destructive Room fallback are permitted. Preserve
+an offline database backup before upgrade; downgrade to v1 cannot read Room v2.
+Use an isolated pre-upgrade recovery copy rather than deleting columns/history or
+trying to recreate global uniqueness after scoped duplicates have been recorded.
+
 ## Notes save safety
 
 Notes serializes title/content/tag autosaves in the current editor. Internal

@@ -42,6 +42,7 @@ class SessionManager(private val context: Context) {
         val SERVER_URL = stringPreferencesKey("server_url")
         val TOKEN = stringPreferencesKey("token")
         val DEVICE_ID = intPreferencesKey("device_id")
+        val ACCOUNT_ID = intPreferencesKey("account_id")
     }
 
     @Volatile private var session = ServerSession()
@@ -63,7 +64,7 @@ class SessionManager(private val context: Context) {
      */
     suspend fun initialize() {
         val prefs = context.sessionDataStore.data.first()
-        session = ServerSession(prefs[Keys.SERVER_URL], prefs[Keys.TOKEN])
+        session = ServerSession(prefs[Keys.SERVER_URL], prefs[Keys.TOKEN], prefs[Keys.ACCOUNT_ID])
         deviceId.value = prefs[Keys.DEVICE_ID]
     }
 
@@ -76,17 +77,35 @@ class SessionManager(private val context: Context) {
 
     internal fun currentSession(): ServerSession = session
 
+    fun currentDestinationKey(): String? = session.destinationKey()
+
+    /** Adopt legacy identity only after Core verifies this exact URL/token pair. */
+    internal suspend fun bindAccount(expected: ServerSession, accountId: Int): Boolean {
+        require(accountId > 0)
+        var bound = false
+        context.sessionDataStore.edit { prefs ->
+            if (prefs[Keys.SERVER_URL] == expected.serverUrl && prefs[Keys.TOKEN] == expected.token) {
+                prefs[Keys.ACCOUNT_ID] = accountId
+                session = expected.copy(accountId = accountId)
+                bound = true
+            }
+        }
+        return bound
+    }
+
     /**
      * Called twice in a normal login flow (see LoginViewModel.submitCredentials):
      * once with an empty token right after the person enters a server
      * address, so ApiClient has somewhere to actually send the login
      * request to, then again with the real token once login succeeds.
      */
-    suspend fun saveSession(serverUrl: String, token: String) {
-        session = ServerSession(serverUrl, token)
+    suspend fun saveSession(serverUrl: String, token: String, accountId: Int? = null) {
+        require(accountId == null || accountId > 0)
+        session = ServerSession(serverUrl, token, accountId)
         context.sessionDataStore.edit { prefs ->
             prefs[Keys.SERVER_URL] = serverUrl
             prefs[Keys.TOKEN] = token
+            if (accountId == null) prefs.remove(Keys.ACCOUNT_ID) else prefs[Keys.ACCOUNT_ID] = accountId
         }
     }
 

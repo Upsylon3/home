@@ -40,6 +40,9 @@ revocation, emergency 2FA reset and last-admin protection. Production Cloud buil
 and legacy settings/admin bookmarks pass navigation to HOME, retained storage
 activity and unavailable/retry checks. All seven demo builds and the Edge demo
 journey pass, including both Cloud-to-HOME hash-router account links.
+The follow-up navigation pass also exercises Media/Notes/Tasks/Monitor settings
+links to HOME in the demo, with 54 available frontend tests and all seven
+production builds passing on the combined revision.
 Cloud was unavailable during this fixture; account controls remained usable with
 unknown storage usage. This does not establish real deployment/device readiness.
 

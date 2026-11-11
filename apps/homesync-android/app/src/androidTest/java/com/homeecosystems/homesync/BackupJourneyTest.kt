@@ -98,10 +98,17 @@ class BackupJourneyTest {
             assertFalse(context.getSystemService(BatteryManager::class.java).isCharging)
             assertTrue(work(manualName).single().constraints.requiresCharging())
             assertEquals("Discharging manual work; backend=${status()}", WorkInfo.State.ENQUEUED, work(manualName).single().state)
+            waitFor { compose.onAllNodesWithText("Manual: Queued").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText("Back Up Now").assertIsNotEnabled()
             assertEquals(0, status().getInt("files"))
             shell("dumpsys battery set ac 1")
             shell("dumpsys battery set status 2")
             waitFor { work(manualName).single().state == WorkInfo.State.SUCCEEDED }
+            waitFor { compose.onAllNodesWithText("Manual: Completed").fetchSemanticsNodes().isNotEmpty() }
+            val outcome = work(manualName).single().outputData
+            assertEquals("completed", outcome.getString("phase"))
+            assertEquals(1, outcome.getInt("uploaded", -1))
+            assertEquals(0, outcome.getInt("failed", -1))
             val proof = status()
             assertEquals(1, proof.getInt("files")); assertEquals(1, proof.getInt("synced"))
             assertTrue(proof.getBoolean("bytesMatch")); assertTrue(proof.getBoolean("hashMatches"))

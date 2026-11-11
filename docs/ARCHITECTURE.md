@@ -201,7 +201,7 @@ The [roadmap](ROADMAP.md) owns unfinished work and its order.
 | Cloud | Owned files/folders, file/folder-tree uploads with a bounded queue, search/sort, ZIP downloads, share links and Trash; storage APIs for apps | Versioning and designed encryption at rest; public links are not same-HOME shared-folder ACLs |
 | Media | Cloud-backed gallery/timeline, albums/favorites/search, EXIF, image thumbnails, browser uploads and image/video/audio playback | Video posters, duplicate review and local-family shared albums; retain Cloud as the single file store |
 | Notes | Markdown preview, folders/tags/search/favorites, debounced autosave, versions/restore and Cloud attachments | Save/draft safety, templates, designed offline editing and local collaboration; history is not conflict resolution |
-| Sync | Android media categories and optional Downloads scanning, WorkManager scheduling/retry, hash dedup and aggregate backup summary | Live run/queue feedback, changed-file detection and chosen document/folder access; physical/background validation remains open |
+| Sync | Android media categories and optional Downloads scanning, WorkManager scheduling/retry, live work state/stages/counts, hash dedup and aggregate backup summary | Durable run history, exact unmet-constraint diagnostics, changed-file detection and chosen document/folder access; physical/background validation remains open |
 | Tasks | Personal projects/dates/priorities/search, completion history, fixed repeats, opt-in reminders and local task assignment | Richer recurrence; keep owner control and distinguish individual assignments from collaborative projects |
 | Vault | v0 encrypted login/note/card items, create/unlock/recover, Trash, password/recovery-key changes, administrator reset and client benchmark | Independent review is still required before real secrets; broader structured secret workflows remain design targets |
 | Monitor | v0 read-only CPU/memory/network/disk, application health, backup freshness, storage forecast and alerts | Preserve read-only scope; Docker Desktop metrics describe its VM, and health/freshness checks do not certify physical disks or recoverability |
@@ -245,6 +245,23 @@ Versioned assignment writes reject stale lookups/clients; completion rechecks
 access and repeat creation in one immediate transaction. No assignment email,
 push, project collaboration or multi-server identity is introduced. Restored
 assignment ACLs must be revoked offline before reopening Tasks.
+
+## Android backup feedback
+
+The Home screen observes both unique manual/periodic WorkManager flows. Worker
+progress reports scan/hash/server-check/upload stages and discovered/uploaded/
+already-on-server/failed counts; terminal manual results carry the final counts.
+The UI refreshes aggregate totals on actual work transitions, rather than a
+four-second timer. Manual enqueue uses KEEP so another tap cannot replace an
+active transfer. Hash/read failures request retry; cancellation is rethrown.
+
+ENQUEUED is labelled queued/scheduled (or retry queued after an attempt), with an
+explicit Android scheduling/network/battery wait explanation. It does not claim
+the exact currently unmet constraint. Periodic work returns to Scheduled and
+WorkManager may prune old work; the latest retained manual result is not a durable
+run history. No file names, credentials or new persistence are stored in progress.
+The application ID, Room schema, global work names and schedule constraints stay
+compatible. Rollback ignores the additional progress/output fields.
 
 ## Cloud folder uploads
 

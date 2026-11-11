@@ -20,6 +20,20 @@ preference-key or database-schema change is made. The local Windows Gradle
 distribution download was too slow and was cancelled after CI supplied the
 required APK/JVM proof; no local Android build is claimed.
 
+## Android live backup feedback
+
+Windows/JBR 21 with the repository's exact Gradle 9.3.1 passed `assembleDebug`,
+`testDebugUnitTest` and `assembleDebugAndroidTest`. Five new JVM tests cover
+queued-vs-running truth, retry attempts, periodic scheduling, per-file outcomes,
+permission failure/cancellation and older work without recorded counters.
+The existing backup/picker instrumentation sources add queued/completed UI and
+terminal-count assertions; building the test APK does not execute those tests.
+No emulator/physical-device execution of this new feedback slice is claimed.
+The disposable emulator remains unavailable without usable acceleration; no host
+driver/settings changes were made. Durable run history and precise constraint
+diagnostics remain roadmap work, as do destination-bound jobs and Room runtime
+migration proof in the separate draft ledger change.
+
 ## Cloud folder uploads
 
 Six dependency-free queue tests pass for path validation, directory-reader

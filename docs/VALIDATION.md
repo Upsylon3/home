@@ -3,6 +3,23 @@
 Outstanding review/device evidence and reproduction notes live here. Run fixtures
 only against disposable data; never equate CI with independent or physical testing.
 
+## Android credential isolation
+
+The [Android CI run](https://github.com/Upsylon3/home/actions/runs/43057804190)
+passed `:app:assembleDebug :app:testDebugUnitTest` on Java 17, Gradle 9.3.1 and
+the declared API-37 SDK. Unit-test Kotlin compilation and the test task executed;
+the debug APK artifact was uploaded. Five new JVM tests use real loopback HTTP
+listeners to check retained-client server switching, same-server renewal/logout,
+empty-token login, wrong-origin/port/path refusal, redirect header/body isolation
+and redacted session descriptions. They do not use Android framework mocks or
+an emulator. Existing SyncLogic/MediaAccess JVM tests remain in the same task.
+
+This proof does not validate physical phones, running-worker server switches,
+profile/Room migrations or multiple destinations. No application-ID, persisted
+preference-key or database-schema change is made. The local Windows Gradle
+distribution download was too slow and was cancelled after CI supplied the
+required APK/JVM proof; no local Android build is claimed.
+
 ## Notes save safety
 
 On 2026-11-11, the pre-fix demo reproduced lost text: type a title and immediately

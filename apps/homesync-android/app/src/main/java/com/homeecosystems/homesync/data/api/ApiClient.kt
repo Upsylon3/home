@@ -2,12 +2,9 @@ package com.homeecosystems.homesync.data.api
 
 import com.homeecosystems.homesync.BuildConfig
 import com.homeecosystems.homesync.data.SessionManager
-import okhttp3.Interceptor
-import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import java.util.concurrent.TimeUnit
 
 /**
  * Builds (and rebuilds, when needed) the Retrofit client used for every
@@ -18,8 +15,8 @@ import java.util.concurrent.TimeUnit
  */
 class ApiClient(private val sessionManager: SessionManager) {
 
-    @Volatile private var cachedApi: HomeSyncApi? = null
-    @Volatile private var cachedForUrl: String? = null
+    private data class CachedApi(val url: String, val api: HomeSyncApi)
+    @Volatile private var cached: CachedApi? = null
 
     /**
      * Returns a client pointed at whatever server address SessionManager
@@ -28,13 +25,13 @@ class ApiClient(private val sessionManager: SessionManager) {
      * all, they just call this whenever they need the API.
      */
     fun getApi(): HomeSyncApi {
-        val url = sessionManager.currentServerUrl().orEmpty()
-        val existing = cachedApi
-        if (existing != null && cachedForUrl == url) return existing
+        val url = normalizeBaseUrl(sessionManager.currentServerUrl().orEmpty())
+        val existing = cached
+        if (existing != null && existing.url == url) return existing.api
 
         val built = build(url)
-        cachedApi = built
-        cachedForUrl = url
+        // Publish the key/client together; concurrent builds cannot mix them.
+        cached = CachedApi(url, built)
         return built
     }
 
@@ -42,44 +39,19 @@ class ApiClient(private val sessionManager: SessionManager) {
      * Call right after the server address changes (see
      * LoginViewModel.submitCredentials, which calls this immediately
      * after sessionManager.saveSession with a new address) so the *next*
-     * getApi() call is forced to rebuild against the new address instead
-     * of the `cachedForUrl == url` check above quietly reusing a client
-     * still pointed at the old one for one extra call.
+     * getApi() call rebuilds its cached client. Retained clients also check
+     * the URL/token snapshot before every new request.
      */
     fun invalidate() {
-        cachedApi = null
-        cachedForUrl = null
+        cached = null
     }
 
     private fun build(rawUrl: String): HomeSyncApi {
-        // Attaches the signed-in token to every outgoing request. Harmless
-        // to attach it even to /auth/login and /auth/2fa/verify, which
-        // don't require it — homecore's auth middleware simply doesn't
-        // check for one on those routes, so an extra header there is
-        // ignored, not rejected.
-        val authInterceptor = Interceptor { chain ->
-            val requestBuilder = chain.request().newBuilder()
-            sessionManager.currentToken()?.takeIf { it.isNotBlank() }?.let { token ->
-                requestBuilder.addHeader("Authorization", "Bearer $token")
-            }
-            chain.proceed(requestBuilder.build())
-        }
-
-        val clientBuilder = OkHttpClient.Builder()
-            .connectTimeout(15, TimeUnit.SECONDS)
-            // Generous read/write timeouts: this is a home Wi-Fi network,
-            // not a datacenter link, and uploads can be large videos —
-            // see BackupWorker's streamingRequestBody, which streams
-            // straight from disk rather than buffering, but the transfer
-            // itself can still legitimately take a while.
-            .readTimeout(60, TimeUnit.SECONDS)
-            .writeTimeout(60, TimeUnit.SECONDS)
-            .addInterceptor(authInterceptor)
+        val clientBuilder = serverHttpClient(normalizeServerUrl(rawUrl), sessionManager::currentSession).newBuilder()
 
         // Full request/response logging only in debug builds. This would
         // otherwise print auth tokens straight to Logcat on every request
-        // — fine while developing, a real problem in anything installed
-        // on someone's actual phone.
+        // — unsafe even during development. BASIC logs no headers/body.
         if (BuildConfig.DEBUG) {
             val logging = HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BASIC }
             clientBuilder.addInterceptor(logging)
@@ -106,12 +78,6 @@ class ApiClient(private val sessionManager: SessionManager) {
      * nobody thinks to type "http://" in front of a LAN IP address.
      */
     internal fun normalizeBaseUrl(input: String): String {
-        val trimmed = input.trim()
-        val withScheme = if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-            trimmed
-        } else {
-            "http://$trimmed"
-        }
-        return if (withScheme.endsWith("/")) withScheme else "$withScheme/"
+        return normalizeServerUrl(input).toString()
     }
 }

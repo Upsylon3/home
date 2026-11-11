@@ -19,6 +19,6 @@
     "multer": "^2.5.0"
   },
   "devDependencies": {
-    "otpauth": "^9.5.1"
+    "otpauth": "^9.6.0"
   }
 }

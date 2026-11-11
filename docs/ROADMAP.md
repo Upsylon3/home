@@ -96,13 +96,11 @@ Work in this order unless a confirmed regression or security fix takes priority.
 Each item needs its own focused change and appropriate proof; this list does
 not authorize changing a real installation or storing real secrets in Vault.
 
-1. **Notes save safety.** Reproduce navigation before the 1.5-second autosave
-   delay and failed-save/retry behavior. The editor currently cancels the pending
-   timer on cleanup, and no durable draft or leave protection was found in this
-   audit. Investigate possible lost edits before adding features; this is a
-   source finding, not a reproduced browser result. Preserve unsaved text and
-   make saved/saving/failed states dependable. Full offline editing additionally
-   needs explicit cache privacy, conflict and recovery behavior.
+1. ~~**Notes save safety:** reproduce immediate-navigation loss; preserve pending
+   edits with save/discard navigation protection, serialized saves and explicit
+   failed-save retry.~~ Verified against real disposable services and the demo.
+   Persistent offline drafts, crash recovery and concurrent-edit conflicts remain
+   in the separately designed offline workspace below.
 2. **Notes templates.** Restore the deferred reusable-note workflow: create a
    personal template and start an independent editable note from it. Define
    title/content/tag copying and ownership; reuse Notes' existing APIs and

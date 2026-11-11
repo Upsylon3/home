@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter } from "react-router-dom";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import App from "./App.jsx";
 import "@fontsource/inter/latin-400.css";
 import "@fontsource/inter/latin-500.css";
@@ -33,10 +33,10 @@ import "./styles/components.css";
 //
 // `import.meta.env.BASE_URL` is set by Vite from that same `base` config
 // value, so the two can never drift out of sync with each other.
+// Data router supplies reliable internal-navigation blocking for unsaved edits.
+const router = createBrowserRouter([{ path: "*", element: <App /> }], { basename: import.meta.env.BASE_URL });
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <BrowserRouter basename={import.meta.env.BASE_URL}>
-      <App />
-    </BrowserRouter>
+    <RouterProvider router={router} />
   </React.StrictMode>
 );

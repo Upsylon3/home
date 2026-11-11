@@ -46,6 +46,11 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
   validation from feature work. Setup, recovery and security requirements remain.
 
 ### Fixed
+- Preserve pending Notes edits when navigating before autosave. Serialize text/tag
+  saves, retain failed fields for retry, require save or explicit discard before
+  internal navigation, and warn on reload/close or intentional sign-out. Keep
+  attachment refreshes from replacing draft text, flush edits before version
+  restore/Trash, retry failed note loads and ignore late old-session failures.
 - Keep valid HOME sessions after incorrect account passwords or authenticator
   codes, expire revoked sessions and ignore late failures for replaced tokens.
   Bound the administrator table on narrow screens, retry failed account/TOTP

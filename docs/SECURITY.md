@@ -71,6 +71,10 @@ independent review and public-network drills remain unfinished; see the
   before serving them. Source deletion/denial or an unavailable Cloud fails
   closed; derivative responses are private/no-store. This cannot recall copies
   already delivered to a client.
+- Browser video posters use owner-authorized, fixed-deadline source tickets with
+  shared request/byte budgets; the browser cache is bounded and never persisted.
+  No server video decoder is added. All bearer media responses sandbox uploaded
+  document content, including HTML/SVG, while media elements can decode bytes.
 - Share links use high-entropy tokens, separate rate limits and immediate
   invalidation when the underlying file is trashed.
 - Upload caps, per-user quotas, input/path validation and safe Markdown rendering

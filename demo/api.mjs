@@ -339,7 +339,7 @@ function media(s, p, q, method, body, base, request, create, remove) {
   }
   const [, , id, action] = p.split('/'); const file = find(s.files, id);
   if (action === 'thumbnail' || action === 'stream') return binary(file, false, request);
-  if (action === 'ticket') return json({ url: base + 'demo-api/homemedia/' + id + '/stream' });
+  if (action === 'ticket' || action === 'poster-ticket') return json({ url: base + 'demo-api/homemedia/' + id + '/stream' });
   if (action === 'exif') return json({ exif: null });
   fail('This media feature requires a server.', 501);
 }

@@ -1,4 +1,5 @@
 import AuthImage from "./AuthImage.jsx";
+import VideoPoster from './VideoPoster.jsx';
 import { api } from "../api.js";
 import { StarGlyph, PlayGlyph, MusicGlyph } from "./icons.jsx";
 
@@ -21,9 +22,7 @@ export default function PhotoTile({ file, onOpen, onToggleFavorite }) {
           <span className="photo-tile-audio-name">{file.name}</span>
         </div>
       ) : (
-        <div className="photo-tile-video-placeholder">
-          <PlayGlyph size={28} />
-        </div>
+        <VideoPoster file={file} />
       )}
       </button>
 

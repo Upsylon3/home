@@ -5,6 +5,7 @@ import PhotoGrid from "../components/PhotoGrid.jsx";
 import Lightbox from "../components/Lightbox.jsx";
 import Modal from "../components/Modal.jsx";
 import AuthImage from "../components/AuthImage.jsx";
+import VideoPoster from '../components/VideoPoster.jsx';
 import { TrashGlyph } from "../components/icons.jsx";
 
 function AddPhotosModal({ album, existingIds, onClose, onAdded }) {
@@ -62,6 +63,7 @@ function AddPhotosModal({ album, existingIds, onClose, onAdded }) {
                 key={file.id}
                 type="button"
                 className={`photo-picker-tile${selected.has(file.id) ? " selected" : ""}`}
+                aria-label={`Select ${file.name}`} aria-pressed={selected.has(file.id)}
                 onClick={() => toggle(file.id)}
               >
                 {file.kind === "image" ? (
@@ -71,7 +73,7 @@ function AddPhotosModal({ album, existingIds, onClose, onAdded }) {
                     className="photo-tile-img"
                     placeholder={<div className="photo-tile-placeholder" />}
                   />
-                ) : (
+                ) : file.kind === 'video' ? <VideoPoster file={file} /> : (
                   <div className="photo-tile-video-placeholder" />
                 )}
               </button>

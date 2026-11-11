@@ -8,6 +8,11 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 ## [Unreleased]
 
 ### Added
+- Browser-native video posters in Media library/favorites/albums/covers/picker,
+  with lazy bounded decoding and a small session-only cache. Add owner-authorized
+  short-lived range tickets with byte/request/deadline limits, unsupported-file
+  fallback and real-video browser proof. Keep original bytes in Cloud; no new
+  server decoder, database migration or persistent browser cache.
 - Android backup feedback observes real manual/automatic WorkManager state,
   scanning/checking/uploading stages, per-run file outcomes and the latest retained
   manual result. Report queued/retrying/failed/cancelled states without claiming
@@ -60,6 +65,8 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
   validation from feature work. Setup, recovery and security requirements remain.
 
 ### Fixed
+- Sandbox bearer media responses so directly opening uploaded HTML/SVG cannot
+  create an active same-origin document. Preserve ordinary media-element playback.
 - Media cached thumbnails and EXIF now recheck Cloud's authorized source download
   before returning derivatives. Permanent source deletion, permission denial and
   Cloud outages cannot fall back to old cache entries; use private/no-store

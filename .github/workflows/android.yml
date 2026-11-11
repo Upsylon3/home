@@ -113,6 +113,14 @@ jobs:
             apps/homesync-android/app/schemas/
           retention-days: 14
 
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+      - name: Verify migration SQL against the generated Room contract
+        run: |
+          node --test test/destination-migration.test.mjs
+          git diff --exit-code -- app/schemas
+
       # If the build failed, keep the HTML test/lint reports for debugging.
       - name: Save reports on failure
         if: failure()

@@ -6,6 +6,90 @@ Only unfinished work is listed here. Completed changes belong in
 Daily personal/family use on one HOME is the current priority. Optional
 multi-server work does not block improving the applications.
 
+## Platform consolidation: HOME mobile, Core accounts and Sync devices
+
+Status: approved direction; implementation and full frontend inventory pending. This
+section records new product decisions, not claims that the work is complete.
+Keep changes in focused PRs with migrations, tests and rollback plans. Preserve
+existing data and functionality; do not create parallel Android clients or
+authentication authorities.
+
+### 1. One HOME Android application
+
+- Audit the entire existing `apps/homesync-android/` Kotlin/Compose project,
+  its tests, permissions, WorkManager jobs, API clients and persistence.
+- Evolve the existing native project into the general HOME Android client,
+  including an application dashboard, Core login/profile, server selection and
+  mobile-appropriate entry points to installed HOME applications. Decide the
+  supported native versus embedded/web journeys per app before implementation.
+- Migrate package/application identifiers, build paths and release workflows
+  deliberately; preserve installed-client data or provide an explicit migration
+  and rollback. Avoid a second competing Android project.
+- Retain and reuse the current media-backup worker, device registration,
+  deduplication, scheduling and settings as the HomeSync portion of the app.
+- Provide a physical-phone install/test guide and APK build, then validate
+  permissions, selected media, Doze, reboot, network transitions and upgrades.
+
+### 2. HomeSync as the cross-device coordination service
+
+- Define HomeSync's scope as device enrollment, state/health, opt-in
+  synchronization, and backup orchestration, with HomeCloud remaining the
+  authoritative file store and HomeMedia consuming Cloud media.
+- Keep device synchronization distinct from Core's experimental *server-to-server
+  federation*: server pairing proves server identity but does not grant user or
+  resource access. Do not bypass the pairing design's authorization gates.
+- Support multiple saved HOME servers on Android with per-server sessions,
+  device IDs, backup settings, queue identity and deduplication history.
+  Explicitly define whether each server is a backup destination or a selected
+  interactive HOME; never implicitly replicate private data to every server.
+- Migrate legacy single-server local data without losing backup history.
+  Bind queued WorkManager work to an immutable destination identity, and test
+  server switching, logout, retries, token isolation, changed files and
+  destination-specific deduplication.
+- Define conflicts, offline behavior, encryption/transport, trust, revocation
+  and user-visible synchronization status before expanding to other app data.
+
+### 3. Centralize account ownership in HomeCore and HOME
+
+- ~~Move Core-backed account settings/administration into HOME and retire
+  duplicate Cloud account controls after API/browser proof.~~ Existing Cloud
+  bookmarks preserve storage preferences/audit and link to HOME. See
+  [validation](VALIDATION.md#unified-home-accounts) for executed checks.
+- Audit registration/login entry points across the remaining frontends;
+  preserve owner setup, compatible auth APIs and existing sessions.
+- Audit other application Settings screens and entry points for links to
+  Cloud account settings; unify navigation without erasing app-specific
+  preferences. Preserve password/2FA/session revocation, user disable,
+  owner setup, admin authorization and existing sessions through migration.
+- Avoid copying identity tables into other services or introducing another
+  account authority. Use additive migrations, compatibility windows,
+  disposable test fixtures and documented rollback.
+
+### 4. Frontend completion and UX consistency audit
+
+- Inspect every frontend route, visible control, placeholder, disabled action,
+  unfinished workflow, dead navigation target, error/empty/loading state,
+  mobile layout and settings screen. Classify each as implemented, intentionally
+  minimal, incomplete, broken or aspirational; verify with source and tests.
+- Produce a prioritized issue inventory with reproduction, owning app,
+  acceptance criteria and dependencies. Do not confuse a placeholder input
+  attribute with an unfinished feature, or reopen completed features.
+- Fix confirmed dead ends and high-impact incomplete journeys in focused PRs;
+  use the shared design system and preserve app-specific capabilities.
+- Update API/architecture/security docs, validation evidence, roadmap and
+  changelog as each slice lands. Never claim APK/device or browser validation
+  from source inspection alone.
+
+### Suggested delivery order
+
+1. Inventory and architecture decisions, including account ownership and
+   Android migration compatibility.
+2. Core-backed unified HOME account/settings UX and safe Cloud redirects.
+3. Rename/evolve the existing Android app into HOME while retaining Sync.
+4. HomeSync multi-server profile/queue/data migrations and device UX.
+5. Cross-device functionality expansion after explicit data/conflict/security
+   designs; parallel frontend-completion fixes by severity.
+
 ## Next application work
 
 Work in this order unless a confirmed regression or security fix takes priority.

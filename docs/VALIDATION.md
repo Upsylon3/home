@@ -3,6 +3,42 @@
 Outstanding review/device evidence and reproduction notes live here. Run fixtures
 only against disposable data; never equate CI with independent or physical testing.
 
+## Unified HOME accounts
+
+On 2026-11-11, Node 26.13.0 on Windows passed the 29 Core auth/admin/route-alias
+tests and eight HOME API regressions. The production HOME build passed. The
+disposable real-Core browser fixture passed in headless Microsoft Edge: wrong
+password/TOTP retry, password token renewal and old-token refusal, enrollment,
+recovery rotation and one-use codes, disable 2FA, quota reset, role changes,
+disable/re-enable, member admin denial, revoked-session logout and 390px layout.
+The expanded journey also passes masked administrator password reset/session
+revocation, emergency 2FA reset and last-admin protection. Production Cloud builds
+and legacy settings/admin bookmarks pass navigation to HOME, retained storage
+activity and unavailable/retry checks. All seven demo builds and the Edge demo
+journey pass, including both Cloud-to-HOME hash-router account links.
+Cloud was unavailable during this fixture; account controls remained usable with
+unknown storage usage. This does not establish real deployment/device readiness.
+
+Reproduce after building HOME with Node 26 and an installed Playwright browser:
+
+~~~sh
+node --test homecore/test/auth.test.js homecore/test/admin.test.js homecore/test/routeAliases.test.js
+npm test --workspace=apps/home
+npm run build --workspace=apps/home
+npm run build --workspace=apps/homecloud
+DEMO_BROWSER_CHANNEL=msedge node apps/home/test-support/account-browser.cjs
+~~~
+
+Use `chrome` on CI/Linux or another installed supported channel. In PowerShell,
+set `$env:DEMO_BROWSER_CHANNEL='msedge'` before the fixture. The fixture creates
+only temporary accounts/databases and closes them on completion. Optional
+`HOME_ACCOUNT_SCREENSHOT` writes a screenshot containing test data only.
+Cloud authentication/API aliases remain; its legacy settings/admin routes now
+retain storage-specific views and link to HOME. Local development uses the
+separate HOME Vite server at `http://localhost:5174/settings` (sign in there if
+needed); production shares the gateway origin and existing session. Rollback is
+frontend-only: restore the previous Cloud UI with the same unchanged Core APIs.
+
 ## Multi-server pairing
 
 The experimental opt-in has automated two-owner transcript approval, invitation

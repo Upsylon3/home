@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, setToken } from "../api.js";
+import { homeAccountUrl } from "../accountNavigation.js";
 import StorageGauge from "../components/StorageGauge.jsx";
 import ActivityLED from "../components/ActivityLED.jsx";
 import UploadZone from "../components/UploadZone.jsx";
@@ -374,12 +375,15 @@ export default function Dashboard({ user, onLogout }) {
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <ThemeToggle />
-          <Link className="btn btn-ghost" to="/settings" style={{ textAlign: "center", textDecoration: "none" }}>
+          <a className="btn btn-ghost" href={homeAccountUrl} style={{ textAlign: "center", textDecoration: "none" }}>
             Account settings
+          </a>
+          <Link className="btn btn-ghost" to="/settings" style={{ textAlign: "center", textDecoration: "none" }}>
+            Cloud preferences
           </Link>
           {me?.role === "admin" && (
             <Link className="btn btn-ghost" to="/admin" style={{ textAlign: "center", textDecoration: "none" }}>
-              Admin panel
+              Storage activity
             </Link>
           )}
           <button className="btn btn-ghost" onClick={handleLogout}>

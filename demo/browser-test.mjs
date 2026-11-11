@@ -66,6 +66,13 @@ try {
   await page.waitForResponse(r => r.url().includes('/homenotes/notes/') && r.request().method() === 'PATCH');
   await page.reload(); await page.locator('input').filter({ visible: true }).first().waitFor();
   assert.equal(await page.locator('input').filter({ visible: true }).first().inputValue(), 'Browser journal');
+  for (const [route, label] of [['settings', 'Open HOME account settings'], ['admin', 'Open HOME account administration']]) {
+    await page.goto(origin + 'cloud/#/' + route);
+    await page.getByRole('link', { name: label, exact: true }).click();
+    await page.getByRole('heading', { name: 'Your account', exact: true }).waitFor();
+    assert.equal(new URL(page.url()).pathname, new URL(origin).pathname);
+    assert.equal(new URL(page.url()).hash, '#/settings');
+  }
   for (const app of ['media/', 'monitor/', '#/settings', '#/apps', '#/search']) {
     await page.goto(origin + app); await page.locator('h1').waitFor();
   }

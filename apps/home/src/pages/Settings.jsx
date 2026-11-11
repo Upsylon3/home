@@ -1,31 +1,41 @@
 import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
-import { api } from "../api.js";
-import { timeAgo } from "../utils.js";
+import { api, setToken } from "../api.js";
+import { timeAgo, describeEvent } from "../utils.js";
 import ThemeToggle from "../components/ThemeToggle.jsx";
 import RetroControl from "../components/RetroControl.jsx";
 import FollowupControls from "../components/FollowupControls.jsx";
 import VaultResetControls from "../components/VaultResetControls.jsx";
+import AccountAdministration from "../components/AccountAdministration.jsx";
+import TwoFactorControls from "../components/TwoFactorControls.jsx";
 import ApplicationAccessControls from '../components/ApplicationAccessControls.jsx';
 
-// Home's Settings only covers what HomeCore itself owns: display name and
-// sessions (§7.1, §7.2). Password, username, and two-factor auth are still
-// entirely HomeCloud's territory (its own /api/auth surface) — Home isn't
-// a replacement for every application's own UI, so this page links out to
-// HomeCloud's account settings rather than duplicating that form.
+// Core owns account security; HOME is the unified account interface.
 export default function Settings() {
   const { user, onLogout } = useOutletContext();
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const [displayName, setDisplayName] = useState(user.displayName || "");
   const [savingName, setSavingName] = useState(false);
   const [nameSaved, setNameSaved] = useState(false);
   const [sessions, setSessions] = useState(null);
+  const [sessionError, setSessionError] = useState(false);
+  const [activity, setActivity] = useState(null);
+  const [activityError, setActivityError] = useState(false);
   const [error, setError] = useState("");
   const [loggingOutEverywhere, setLoggingOutEverywhere] = useState(false);
 
   useEffect(() => {
     api.mySessions()
       .then(({ data }) => setSessions(data.sessions))
-      .catch(() => {});
+      .catch(() => setSessionError(true));
+    api.myActivity(15)
+      .then(({ data }) => setActivity(data.events))
+      .catch(() => setActivityError(true));
   }, []);
 
   async function handleSaveName(e) {
@@ -40,6 +50,31 @@ export default function Settings() {
       setError(err.message);
     } finally {
       setSavingName(false);
+    }
+  }
+
+  async function handleChangePassword(e) {
+    e.preventDefault();
+    setPasswordError("");
+    setPasswordMessage("");
+    if (newPassword !== confirmPassword) {
+      setPasswordError("New password and confirmation do not match.");
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      const { data } = await api.changePassword(currentPassword, newPassword);
+      setToken(data.token);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setPasswordMessage("Password updated. Other sessions have been signed out.");
+      api.mySessions().then(({ data }) => { setSessions(data.sessions); setSessionError(false); })
+        .catch(() => setSessionError(true));
+    } catch (err) {
+      setPasswordError(err.message);
+    } finally {
+      setChangingPassword(false);
     }
   }
 
@@ -62,11 +97,12 @@ export default function Settings() {
         <h1 className="page-title">Your account</h1>
       </div>
 
-      {error && <div className="error-banner">{error}</div>}
+      {error && <div className="error-banner" role="alert">{error}</div>}
 
       <FollowupControls user={user} />
       <ApplicationAccessControls />
       {user.role === "admin" && <VaultResetControls />}
+      {user.role === "admin" && <AccountAdministration currentUserId={user.id} />}
 
       <div className="panel">
         <h3 className="panel-title">Appearance</h3>
@@ -85,7 +121,9 @@ export default function Settings() {
         <p className="panel-desc">How your name appears across Home. Leave blank to just show your username.</p>
         <form onSubmit={handleSaveName} className="form-row">
           <div className="field">
+            <label htmlFor="home-display-name">Display name</label>
             <input
+              id="home-display-name"
               placeholder={user.username}
               value={displayName}
               onChange={(e) => {
@@ -104,7 +142,9 @@ export default function Settings() {
       <div className="panel">
         <h3 className="panel-title">Sessions</h3>
         <p className="panel-desc">Every device that's signed in with your account.</p>
-        {sessions === null ? (
+        {sessionError ? (
+          <p role="alert">Could not load sessions. Refresh to try again.</p>
+        ) : sessions === null ? (
           <p style={{ color: "var(--text-dim)", fontSize: 13 }}>Loading…</p>
         ) : sessions.length === 0 ? (
           <p style={{ color: "var(--text-dim)", fontSize: 13 }}>No session history yet.</p>
@@ -131,10 +171,50 @@ export default function Settings() {
       </div>
 
       <div className="panel">
-        <h3 className="panel-title">Password &amp; two-factor authentication</h3>
-        <p className="panel-desc">
-          Managed in HomeCloud's own account settings for now — Home doesn't duplicate that yet.
-        </p>
+        <h3 className="panel-title">Recent account activity</h3>
+        <p className="panel-desc">Your recent activity across HOME applications.</p>
+        {activityError ? (
+          <p role="alert">Could not load account activity. Refresh to try again.</p>
+        ) : activity === null ? (
+          <p>Loading…</p>
+        ) : activity.length === 0 ? (
+          <p>No recent activity.</p>
+        ) : (
+          <ul>
+            {activity.map((entry, index) => (
+              <li key={entry.id ?? index}>
+                <strong>{describeEvent(entry)}</strong>
+                {entry.createdAt && <span> — {timeAgo(entry.createdAt)}</span>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <TwoFactorControls />
+
+      <div className="panel">
+        <h3 className="panel-title">Password</h3>
+        <p className="panel-desc">Changing your password signs out other devices.</p>
+        {passwordError && <p role="alert">{passwordError}</p>}
+        {passwordMessage && <p role="status">{passwordMessage}</p>}
+        <form onSubmit={handleChangePassword}>
+          <div className="field">
+            <label htmlFor="currentPassword">Current password</label>
+            <input id="currentPassword" type="password" autoComplete="current-password" required value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />
+          </div>
+          <div className="field">
+            <label htmlFor="newPassword">New password</label>
+            <input id="newPassword" type="password" autoComplete="new-password" minLength={8} required value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+          </div>
+          <div className="field">
+            <label htmlFor="confirmPassword">Confirm new password</label>
+            <input id="confirmPassword" type="password" autoComplete="new-password" minLength={8} required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
+          </div>
+          <button className="btn btn-primary btn-sm" type="submit" disabled={changingPassword}>
+            {changingPassword ? "Updating…" : "Change password"}
+          </button>
+        </form>
       </div>
     </div>
   );

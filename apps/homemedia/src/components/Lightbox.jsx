@@ -25,6 +25,7 @@ function formatShutter(seconds) {
 // without the caller needing to manage two pieces of state.
 export default function Lightbox({ files, index, onClose, onIndexChange, onToggleFavorite, extraAction }) {
   const file = files[index];
+  const hasFile = Boolean(file);
   const [showInfo, setShowInfo] = useState(false);
   const [exif, setExif] = useState(null);
   const [exifLoading, setExifLoading] = useState(false);
@@ -38,7 +39,7 @@ export default function Lightbox({ files, index, onClose, onIndexChange, onToggl
     dialog.showModal();
     closeRef.current?.focus();
     return () => { dialog.close(); if (opener?.isConnected) opener.focus(); };
-  }, []);
+  }, [hasFile]);
 
   const goPrev = useCallback(() => {
     if (index > 0) onIndexChange(index - 1);

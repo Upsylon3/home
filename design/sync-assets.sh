@@ -60,6 +60,12 @@ for app in "${FRONTENDS[@]}"; do
   echo "synced session.js -> $app/src/session.js"
 done
 
+# Account links share one production/dev destination and a demo build override.
+for app in apps/homecloud apps/homemedia apps/homemonitor apps/homenotes apps/hometasks; do
+  cp design/accountNavigation.js "$app/src/accountNavigation.js"
+  echo "synced accountNavigation.js -> $app/src"
+done
+
 # Browser-tab and home-screen icons, generated from the icon set by
 # design/make-favicons.mjs (run that first if an icon changed). Each app gets
 # its OWN icon, copied into its public/ folder, which the build serves as-is.

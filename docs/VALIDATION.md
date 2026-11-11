@@ -537,6 +537,15 @@ No minimum client class, phone performance or latency budget is certified.
 Representative low-end browser tests and the independent security review
 remain open. CI measurements must not be appended here as physical-device proof.
 
+## Media keyboard navigation
+
+The production Media build and all seven demo builds pass. The Edge demo browser
+gate exercises actual Tab order, Enter/Space gallery activation, initial modal
+focus, repeated Tab containment, Escape close, opener restoration and independently
+focused favorites. A 390px viewer layout was also inspected. This uses the actual
+Media frontend with browser-local demo data; it is not a screen-reader audit or
+new backend authorization proof. Video posters remain separate roadmap work.
+
 ## Raw desktop report
 
 Original exported values are preserved below, compacted without changing data.

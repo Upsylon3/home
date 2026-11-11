@@ -55,6 +55,9 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
   validation from feature work. Setup, recovery and security requirements remain.
 
 ### Fixed
+- Media gallery tiles now support Tab/Enter/Space, expose favorite state and keep
+  focus visible. The media viewer uses a native modal dialog, contains keyboard
+  focus, closes with Escape and restores the opener.
 - Bind Android HTTP clients to an immutable server URL/token snapshot, publish
   cached URLs/clients together and reject new requests after a server switch or
   logout. Disable automatic redirects so login bodies and uploads cannot follow

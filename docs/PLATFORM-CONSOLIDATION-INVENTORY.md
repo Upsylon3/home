@@ -61,6 +61,10 @@ second destination. Do not reset or delete backup history as a shortcut.
   quota policy, but the Cloud backend remains the source of actual usage.
 - A repository-wide route/control audit and browser verification are still
   required; this list is not an exhaustive defect inventory.
+- Media gallery tiles were pointer-only divs. Native open buttons, visible
+  favorite focus/state and a modal viewer now complete the keyboard open/close
+  journey; demo browser proof covers Tab, Enter/Space, contained focus, Escape,
+  restored focus and favorite activation without accidentally opening a file.
 
 ### Settings/navigation pass, 2026-11-11
 

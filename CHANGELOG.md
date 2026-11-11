@@ -60,9 +60,6 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
   validation from feature work. Setup, recovery and security requirements remain.
 
 ### Fixed
-- Media gallery tiles now support Tab/Enter/Space, expose favorite state and keep
-  focus visible. The media viewer uses a native modal dialog, contains keyboard
-  focus, closes with Escape and restores the opener.
 - Bind Android HTTP clients to an immutable server URL/token snapshot, publish
   cached URLs/clients together and reject new requests after a server switch or
   logout. Disable automatic redirects so login bodies and uploads cannot follow
@@ -78,6 +75,9 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
   Bound the administrator table on narrow screens, retry failed account/TOTP
   loads and preserve quota precision when editing existing values.
 - HomeMedia demo pictures load in browsers that reject Blob values in IndexedDB.
+- Media gallery tiles now support Tab/Enter/Space, expose favorite state and keep
+  focus visible. The media viewer uses a native modal dialog, contains keyboard
+  focus, closes with Escape and restores the opener.
 - The browser demo can open and save changes when service workers are unavailable.
 - Wait for originally running containers that transiently restart during
   snapshot recovery; retain strict preflight and foreign-writer checks.

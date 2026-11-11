@@ -69,6 +69,7 @@ export default function Layout({ user, onLogout }) {
 
         <nav>
           <ul className="nav-list">
+            <li><NavLink to="/templates" className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}><NoteGlyph size={15} /> Templates</NavLink></li>
             <li>
               <NavLink to="/" end className={({ isActive }) => `nav-link${isActive ? " active" : ""}`}>
                 <NoteGlyph size={15} /> All Notes
@@ -154,6 +155,7 @@ export default function Layout({ user, onLogout }) {
       </div>
 
       <nav className="bottom-nav">
+        <NavLink to="/templates" className={({ isActive }) => `bottom-nav-item${isActive ? " active" : ""}`}><NoteGlyph size={18} />Templates</NavLink>
         <NavLink to="/" end className={({ isActive }) => `bottom-nav-item${isActive ? " active" : ""}`}>
           <NoteGlyph size={18} />
           Notes

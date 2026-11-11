@@ -76,6 +76,17 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_note_folders_user ON note_folders(user_id);
   CREATE INDEX IF NOT EXISTS idx_note_versions_note ON note_versions(note_id);
   CREATE INDEX IF NOT EXISTS idx_tags_user ON tags(user_id);
+
+  CREATE TABLE IF NOT EXISTS note_templates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    name TEXT NOT NULL COLLATE NOCASE,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    tags_json TEXT NOT NULL DEFAULT '[]',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(user_id, name)
+  );
 `);
 
 module.exports = { db, DATA_DIR };

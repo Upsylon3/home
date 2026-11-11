@@ -32,6 +32,9 @@ async function main() {
     browser = await chromium.launch({ headless: true, channel: process.env.DEMO_BROWSER_CHANNEL || 'chrome' });
     const { verifyNoteSaveSafety } = await import('./save-journey.mjs');
     await verifyNoteSaveSafety(browser, `http://127.0.0.1:${proxy.address().port}/`, { token: owner.token, notePattern: '**/notes/notes/*' });
+    const { verifyTemplates } = await import('./templates-journey.mjs');
+    await verifyTemplates(browser, `http://127.0.0.1:${proxy.address().port}/`, { token: owner.token, notePattern: '**/notes/notes/*' });
+    console.log('PASS: real-service personal templates, immediate-edit snapshot, persisted list, independent note/title/content/tags and template deletion.');
     console.log('PASS: production Notes BrowserRouter, real Core/Cloud/Notes, immediate navigation/save, failed-save retention/retry, explicit discard and reload guard.');
   } finally {
     if (browser) await browser.close();

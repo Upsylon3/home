@@ -17,7 +17,7 @@ for (const [app, prefix] of Object.entries(apps)) {
       ...(app === 'homevault' ? { rolldownOptions: { input: { app: path.join(root, 'apps/homevault/index.html'), benchmark: path.join(root, 'apps/homevault/benchmark.html') } } } : {}) }
   });
 }
-for (const file of ['worker.js', 'api.mjs', 'bootstrap.js']) await copyFile('demo/' + file, 'demo-dist/demo-' + file);
+for (const file of ['worker.js', 'api.mjs', 'bootstrap.js', 'store.js', 'page.js']) await copyFile('demo/' + file, 'demo-dist/demo-' + file);
 await writeFile('demo-dist/.nojekyll', '');
 await mkdir('demo-dist/connect', { recursive: true });
 for (const file of ['index.html', 'portal.css', 'portal.mjs', 'address.mjs']) {
@@ -33,6 +33,9 @@ function demoPlugin() {
       if (!id.replaceAll('\\', '/').includes('/src/')) return;
       // Only the separate demo build is changed. Production entry points and APIs stay intact.
       code = code.replace(/(["'`])\/api(?=[/$`"'])/g, `$1${base}demo-api`);
+      if (id.endsWith('UploadZone.jsx') || id.replaceAll('\\', '/').endsWith('/homemedia/src/api.js')) {
+        code = code.replace('new XMLHttpRequest()', 'new (window.homeDemoUpload || XMLHttpRequest)()');
+      }
       if (id.endsWith('UploadZone.jsx')) code = code.replace('up to 1 GB per file', 'up to 100 MB per file in this demo');
       if (id.endsWith('main.jsx')) {
         code = code.replaceAll('BrowserRouter', 'HashRouter').replace(/ basename=\{(?:import.meta.env.BASE_URL|basename)\}/g, '').replace('&& import.meta.env.PROD', '&& false');

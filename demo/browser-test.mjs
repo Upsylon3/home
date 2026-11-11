@@ -16,6 +16,22 @@ page.on('pageerror', e => errors.push(e.message));
 page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
 const see = async text => page.getByText(text, { exact: true }).waitFor();
 try {
+  const restricted = await browser.newContext({ serviceWorkers: 'block' });
+  try {
+    await restricted.addInitScript(() => {
+      ServiceWorkerContainer.prototype.register = async () => { throw new DOMException('Service worker failed to launch', 'SecurityError'); };
+    });
+    const restrictedPage = await restricted.newPage();
+    await restrictedPage.goto(origin);
+    await restrictedPage.getByRole('link', { name: 'Launch', exact: true }).nth(5).waitFor();
+    await restrictedPage.goto(origin + 'cloud/');
+    await restrictedPage.locator('input[type=file]').setInputFiles({ name: 'restricted-browser.txt', mimeType: 'text/plain', buffer: Buffer.from('local upload') });
+    await restrictedPage.getByRole('cell', { name: 'restricted-browser.txt', exact: true }).waitFor();
+    await restrictedPage.reload();
+    await restrictedPage.getByRole('cell', { name: 'restricted-browser.txt', exact: true }).waitFor();
+  } finally {
+    await restricted.close();
+  }
   await verifyPortal(page, origin);
   await verifyBenchmark(browser, origin + 'vault/benchmark.html');
   await page.goto(origin);
@@ -53,6 +69,14 @@ try {
   for (const app of ['media/', 'monitor/', '#/settings', '#/apps', '#/search']) {
     await page.goto(origin + app); await page.locator('h1').waitFor();
   }
+  await page.goto(origin + 'media/');
+  // A heading or a successful HTTP response does not prove an image decoded.
+  const thumbnail = page.locator('.photo-tile').getByRole('img', { name: 'A little room to explore.svg' });
+  const decodedAspectRatio = async img => { await img.decode(); return img.naturalWidth / img.naturalHeight; };
+  assert.equal(await thumbnail.evaluate(decodedAspectRatio), 1.5);
+  await thumbnail.click();
+  const original = page.locator('.lightbox-image');
+  assert.equal(await original.evaluate(decodedAspectRatio), 1.5);
   await page.goto(origin + '#/apps');
   const notesCard = page.locator('.app-card').filter({ has: page.getByRole('heading', { name: 'HomeNotes', exact: true }) });
   page.once('dialog', dialog => dialog.accept());

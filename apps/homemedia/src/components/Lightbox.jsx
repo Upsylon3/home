@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import MediaView from "./MediaView.jsx";
 import { XGlyph, ChevronLeftGlyph, ChevronRightGlyph, StarGlyph, InfoGlyph } from "./icons.jsx";
@@ -25,9 +25,21 @@ function formatShutter(seconds) {
 // without the caller needing to manage two pieces of state.
 export default function Lightbox({ files, index, onClose, onIndexChange, onToggleFavorite, extraAction }) {
   const file = files[index];
+  const hasFile = Boolean(file);
   const [showInfo, setShowInfo] = useState(false);
   const [exif, setExif] = useState(null);
   const [exifLoading, setExifLoading] = useState(false);
+  const dialogRef = useRef(null);
+  const closeRef = useRef(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const opener = document.activeElement;
+    dialog.showModal();
+    closeRef.current?.focus();
+    return () => { dialog.close(); if (opener?.isConnected) opener.focus(); };
+  }, [hasFile]);
 
   const goPrev = useCallback(() => {
     if (index > 0) onIndexChange(index - 1);
@@ -39,8 +51,7 @@ export default function Lightbox({ files, index, onClose, onIndexChange, onToggl
 
   useEffect(() => {
     function handleKey(e) {
-      if (e.key === "Escape") onClose();
-      else if (e.key === "ArrowLeft") goPrev();
+      if (e.key === "ArrowLeft") goPrev();
       else if (e.key === "ArrowRight") goNext();
     }
     window.addEventListener("keydown", handleKey);
@@ -65,7 +76,8 @@ export default function Lightbox({ files, index, onClose, onIndexChange, onToggl
   if (!file) return null;
 
   return (
-    <div className="lightbox-overlay" onClick={onClose}>
+    <dialog ref={dialogRef} className="lightbox-overlay" aria-label={`Media viewer: ${file.name}`}
+      onCancel={event => { event.preventDefault(); onClose(); }} onClick={onClose}>
       <div className="lightbox-content" onClick={(e) => e.stopPropagation()}>
         <div className="lightbox-media">
           <MediaView file={file} />
@@ -100,7 +112,7 @@ export default function Lightbox({ files, index, onClose, onIndexChange, onToggl
             >
               <InfoGlyph size={16} />
             </button>
-            <button className="icon-btn" onClick={onClose} aria-label="Close">
+            <button ref={closeRef} className="icon-btn" onClick={onClose} aria-label="Close">
               <XGlyph size={16} />
             </button>
           </div>
@@ -168,6 +180,6 @@ export default function Lightbox({ files, index, onClose, onIndexChange, onToggl
           </aside>
         )}
       </div>
-    </div>
+    </dialog>
   );
 }

@@ -149,9 +149,8 @@ router.get(
     if (!original) return res.status(404).json({ error: "File not found." });
 
     if (kindOfFile({ mimetype: original.contentType }) !== "image") {
-      // A real poster frame for video needs a decoder this service
-      // deliberately doesn't carry (see README's HomeMedia section) — the
-      // frontend shows a generic video/music tile instead of a real preview.
+      // This endpoint only generates image thumbnails. Video posters use
+      // bounded source tickets and the browser decoder; no server decoder.
       return res.status(404).json({ error: "No thumbnail available for this file." });
     }
 

@@ -8,6 +8,7 @@ import { verifyNoteSaveSafety } from '../apps/homenotes/test-support/save-journe
 import { verifyFolderUpload } from '../apps/homecloud/test-support/demo-folders.mjs';
 import { verifyTemplates } from '../apps/homenotes/test-support/templates-journey.mjs';
 import { verifyMediaKeyboard } from '../apps/homemedia/test-support/keyboard-journey.mjs';
+import { verifyVideoPosters } from '../apps/homemedia/test-support/poster-journey.mjs';
 const server = spawn(process.execPath, ['demo/serve.mjs'], { env: { ...process.env, PORT: '4174' }, stdio: ['ignore', 'pipe', 'inherit'] });
 await once(server.stdout, 'data');
 const browser = await chromium.launch({ ...(process.env.DEMO_BROWSER_CHANNEL ? { channel: process.env.DEMO_BROWSER_CHANNEL } : {}), headless: true });
@@ -36,11 +37,13 @@ try {
     await verifyFolderUpload(restrictedPage, origin);
     await restrictedPage.reload();
     await restrictedPage.getByRole('cell', { name: 'restricted-browser.txt', exact: true }).waitFor();
+    await verifyVideoPosters(restrictedPage, { mediaUrl: origin + 'media/', apiBase: new URL(origin).pathname + 'demo-api', token: 'browser-demo' });
   } finally {
     await restricted.close();
   }
   await verifyPortal(page, origin);
   await verifyMediaKeyboard(page, origin);
+  await verifyVideoPosters(page, { mediaUrl: origin + 'media/', apiBase: new URL(origin).pathname + 'demo-api', token: 'browser-demo' });
   await verifyFolderUpload(page, origin);
   await verifyBenchmark(browser, origin + 'vault/benchmark.html');
   await page.goto(origin);

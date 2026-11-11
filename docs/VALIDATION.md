@@ -585,4 +585,33 @@ gate exercises actual Tab order, Enter/Space gallery activation, initial modal
 focus, repeated Tab containment, Escape close, opener restoration and independently
 focused favorites. A 390px viewer layout was also inspected. This uses the actual
 Media frontend with browser-local demo data; it is not a screen-reader audit or
-new backend authorization proof. Video posters remain separate roadmap work.
+new backend authorization proof. Video posters are verified separately below.
+
+## Media video posters
+
+Windows/Node 26.13.0 passed ten Media frontend tests, 33 backend test entries
+(including two helper discovery entries), six demo API tests, four deployment
+artifact tests and 14 CI-policy tests. The production Media and all seven demo
+builds pass, as does the complete Edge demo gate with/without service workers.
+The real-Core/Cloud/Media browser fixture records a genuine canvas WebM, uploads
+it through Cloud, reads the resulting JPEG pixel to prove the green video frame
+was decoded, and checks unsupported-file fallback, normal playback and warm-cache
+reuse in favorites, album grids/covers and the picker. It also injects cover
+metadata failure while retaining album access, and verifies direct uploaded HTML
+cannot execute inside the response sandbox. The generated gallery was inspected.
+
+~~~sh
+npm run test --workspace=apps/homemedia --workspace=apps/homemedia-backend
+npm run build --workspace=apps/homemedia
+DEMO_BROWSER_CHANNEL=msedge node apps/homemedia/test-support/poster-browser.cjs
+npm run build:demo
+DEMO_BROWSER_CHANNEL=msedge npm run test:demo:browser
+~~~
+
+Use PowerShell environment assignment on Windows. CI runs the real-service
+journey when native dependencies and Media builds are selected. Test fixtures
+prove WebM/VP8 on Edge/Chrome, not all MP4/HEVC/MKV combinations or phone memory
+budgets. Unsupported, corrupt, oversized, slow and over-budget sources retain
+the fallback; no independent video security audit or new server decoder is
+claimed. Native/browser limits and the memory-cache rollback are documented in
+[architecture](ARCHITECTURE.md#media-video-posters).

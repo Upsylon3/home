@@ -10,7 +10,7 @@ export function usePageApi(base) {
     const request = new Request(input, init);
     const response = await respond(request, base);
     // Media elements need a browser-readable URL when no worker serves streams.
-    if (response.ok && url.pathname.endsWith('/ticket')) {
+    if (response.ok && /\/(ticket|poster-ticket)$/.test(url.pathname)) {
       const ticket = await response.json();
       const stream = await respond(new Request(ticket.url), base);
       if (!stream.ok) return stream;

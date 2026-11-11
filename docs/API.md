@@ -350,6 +350,7 @@ HomeCloud (in a top-level `HomeMedia` folder).
 | GET | `/api/homemedia/upload-folder` | Id of the HomeCloud folder uploads go to (created on first use) |
 | POST | `/api/homemedia/upload` | Upload one file (multipart, field `file`, optional `folderId`); streamed straight to HomeCloud |
 | POST | `/api/homemedia/:fileId/ticket` | Short-lived playback link for one file — what `<video>`, `<audio>` and `<img>` tags load, since they can't send a login header |
+| POST | `/api/homemedia/:fileId/poster-ticket` | Owner-authorized bounded source link for browser poster decoding |
 | GET | `/api/homemedia/stream/:ticket` | *(no auth — the ticket is the credential)* Streams the file, with Range support so seeking works |
 | GET | `/api/homemedia/:fileId/exif` | Cached EXIF data for one file |
 | GET | `/api/homemedia/:fileId/thumbnail` | Gallery-quality thumbnail (640px) |
@@ -364,6 +365,15 @@ still checks Cloud's owner-authorized download with HEAD (five-second deadline);
 Cache hits never authorize a file or provide an outage fallback. Cloud's existing
 Trash-download behavior is retained; permanent deletion makes derivatives
 unavailable. Already delivered browser copies cannot be recalled.
+
+Poster tickets use the same stream route, with a fixed 15-second lifetime, eight
+requests and a conservative 16 MiB reserved-byte budget (2 MiB per request).
+Only a single explicit/open-ended `bytes=START-END` range is accepted; omitted
+Range starts at zero. Reservations happen before upstream requests. Poster
+responses are private/no-store; exhaustion is `410`, unsupported ranges `416`,
+and expired/unknown tickets `404`. Normal playback keeps its existing seeking
+and sliding lifetime. Both stream modes sandbox document execution with
+`Content-Security-Policy: sandbox; default-src 'none'` and disable MIME sniffing.
 
 ## HomeMonitor backend (`/api/homemonitor`)
 

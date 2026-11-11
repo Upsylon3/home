@@ -112,12 +112,12 @@ not authorize changing a real installation or storing real secrets in Vault.
    and reports per-file outcomes with retry/cancel.~~ Uses existing authorized
    folder/upload APIs and quota checks. Real-service and demo browser proof pass;
    empty directories and persistent/resumable queues remain unsupported.
-4. **Media video posters.** Replace generic video placeholders with bounded,
-   cached poster generation through Cloud's authorized file API. Review decoder
-   dependency/runtime cost, invalid videos, cache invalidation and fallback first.
-   Photo thumbnails, playback, EXIF and browser upload already exist.
-   Cached-thumbnail/EXIF source revalidation is fixed independently; video poster
-   generation remains open.
+4. ~~**Media video posters.** Browser-native first-frame posters replace generic
+   video tiles in the library, favorites, albums, covers and picker.~~ Decode jobs,
+   source range tickets and the session-only cache are bounded; invalid,
+   unsupported or over-budget sources keep the fallback. No server decoder or
+   persistent poster store is introduced. Cross-browser/codec coverage beyond the
+   recorded WebM fixture remains an explicit validation limit.
 5. **Sync backup feedback.** Show actual queued, waiting-for-constraints, running,
    retrying, failed and completed work, with meaningful run progress/history.
    Current slice observes manual/automatic WorkManager state, reports real

@@ -8,6 +8,20 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 ## [Unreleased]
 
 ### Added
+- Android backup feedback observes real manual/automatic WorkManager state,
+  scanning/checking/uploading stages, per-run file outcomes and the latest retained
+  manual result. Report queued/retrying/failed/cancelled states without claiming
+  an enqueue started a backup; keep active manual work on repeated taps. Durable
+  multi-run history and exact unmet-constraint diagnostics remain open.
+- Cloud folder selection/drop preserves directory hierarchy, reuses existing
+  folders and provides a bounded three-transfer queue with progress, per-file
+  retry/cancel and navigation protection. Keep the original destination while
+  browsing; refresh loses the queue but retains completed files/created folders.
+- Personal Notes templates: save a note's title/Markdown/tags as a named private
+  snapshot, then create independent editable notes. Keep source notes and created
+  notes when removing a template; exclude attachments, folders, favorites and
+  version history. Add bounded owner-scoped APIs, autosave-safe creation, list
+  retry/empty states and desktop/mobile navigation.
 - HOME account settings now expose Core password changes, TOTP enrollment and
   recovery, personal activity and account administration. Add disposable real-Core
   browser journeys and frontend API regression tests, including masked

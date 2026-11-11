@@ -52,6 +52,58 @@ preference-key or database-schema change is made. The local Windows Gradle
 distribution download was too slow and was cancelled after CI supplied the
 required APK/JVM proof; no local Android build is claimed.
 
+## Android live backup feedback
+
+Windows/JBR 21 with the repository's exact Gradle 9.3.1 passed `assembleDebug`,
+`testDebugUnitTest` and `assembleDebugAndroidTest`. Five new JVM tests cover
+queued-vs-running truth, retry attempts, periodic scheduling, per-file outcomes,
+permission failure/cancellation and older work without recorded counters.
+The existing backup/picker instrumentation sources add queued/completed UI and
+terminal-count assertions; building the test APK does not execute those tests.
+No emulator/physical-device execution of this new feedback slice is claimed.
+The disposable emulator remains unavailable without usable acceleration; no host
+driver/settings changes were made. Durable run history and precise constraint
+diagnostics remain roadmap work, as do destination-bound jobs and Room runtime
+migration proof in the separate draft ledger change.
+
+## Cloud folder uploads
+
+Six dependency-free queue tests pass for path validation, directory-reader
+batches, shared folder creation, ASCII NOCASE matching, session changes, bounded
+concurrency, cancellation and failed-file retry. The production Cloud build and
+all seven demo builds pass. The Edge real-Core/Cloud fixture
+`node apps/homecloud/test-support/folder-browser.cjs` uses disposable databases,
+selects an actual nested directory, holds three transfers to prove the bound,
+injects a 503 and retries only that file, verifies exact downloaded bytes and
+existing-folder reuse, switches tabs, rejects navigation and checks 390px layout.
+The demo browser gate also checks directory selection/hierarchy/exact bytes with
+and without service-worker support. These are browser/loopback fixtures, not a
+production deployment or interruption/resume guarantee.
+## Personal Notes templates
+
+Windows/Node 26.13.0 passed 27 Notes backend tests using real disposable
+Core/Cloud/Notes, 21 Notes frontend tests, six demo API tests and the production
+Notes build. The real-service Edge journey covers immediate-edit snapshot
+creation, title/Markdown/tag copying, list persistence and failure/retry,
+independent editing, template removal with source/generated notes retained and
+390px layout. The same template journey runs in the seven-app demo browser gate.
+Backend cases additionally prove owner isolation, case-insensitive name conflicts,
+the 100-template cap, trashed-source refusal and exclusion of actual Cloud
+attachments/folders/favorites/versions.
+
+~~~sh
+npm test --workspace=apps/homenotes-backend
+npm test --workspace=apps/homenotes
+npm run build --workspace=apps/homenotes
+DEMO_BROWSER_CHANNEL=msedge node apps/homenotes/test-support/save-browser.cjs
+npm run build:demo
+DEMO_BROWSER_CHANNEL=msedge npm run test:demo:browser
+~~~
+
+Use PowerShell's `$env:DEMO_BROWSER_CHANNEL='msedge'` on Windows. The additive
+`note_templates` table is included in Notes database backups; old binaries ignore
+it on downgrade. No real accounts or installations are used by these fixtures.
+
 ## Notes save safety
 
 On 2026-11-11, the pre-fix demo reproduced lost text: type a title and immediately

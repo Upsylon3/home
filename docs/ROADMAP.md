@@ -106,23 +106,25 @@ not authorize changing a real installation or storing real secrets in Vault.
    failed-save retry.~~ Verified against real disposable services and the demo.
    Persistent offline drafts, crash recovery and concurrent-edit conflicts remain
    in the separately designed offline workspace below.
-2. **Notes templates.** Restore the deferred reusable-note workflow: create a
-   personal template and start an independent editable note from it. Define
-   title/content/tag copying and ownership; reuse Notes' existing APIs and
-   sanitized editor. Templates must not require another server or collaboration.
-3. **Cloud folder upload.** Add folder selection/drop with preserved directory
-   hierarchy, a bounded upload queue and per-file outcomes/retry. Multiple-file
-   selection/drop already exists; do not rebuild it or flatten a folder tree.
-   Use the owning user's existing folder/upload APIs, quota and path checks.
+2. ~~**Notes templates:** save a personal title/content/tag snapshot and start
+   independent editable notes from it.~~ Owner-scoped APIs and the sanitized
+   editor are reused; templates need no other server or collaboration.
+3. ~~**Cloud folder upload.** Folder selection/drop preserves file hierarchy,
+   reuses owned folders, limits transfers to three and queue entries to 1000,
+   and reports per-file outcomes with retry/cancel.~~ Uses existing authorized
+   folder/upload APIs and quota checks. Real-service and demo browser proof pass;
+   empty directories and persistent/resumable queues remain unsupported.
 4. **Media video posters.** Replace generic video placeholders with bounded,
    cached poster generation through Cloud's authorized file API. Review decoder
    dependency/runtime cost, invalid videos, cache invalidation and fallback first.
    Photo thumbnails, playback, EXIF and browser upload already exist.
 5. **Sync backup feedback.** Show actual queued, waiting-for-constraints, running,
    retrying, failed and completed work, with meaningful run progress/history.
-   The current aggregate totals/last-upload summary and transient request message
-   do not show a live backup queue. Use real worker state rather than an optimistic
-   "backup requested" success; keep phone permission/charging limits visible.
+   Current slice observes manual/automatic WorkManager state, reports real
+   scanning/checking/upload counts and retains the latest manual result. Requests
+   no longer claim a run started, and repeated taps keep active manual work.
+   Durable multi-run history and exact unmet-constraint diagnostics remain open;
+   the UI labels scheduling/constraint waits without guessing their cause.
 6. **Sync changed-file detection.** Stop treating a previously backed-up local
    media ID as proof its contents are unchanged. Design modified-time/size/hash
    rechecks and test an in-place edit, unchanged runs, retry and deduplication.

@@ -71,6 +71,18 @@ fun HomeScreen(
         LastBackupCard(state)
         state.historyNotice?.let { Text(it, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 12.dp)) }
 
+        Card(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Backup work", style = MaterialTheme.typography.titleMedium)
+                if (state.work.isEmpty()) Text("No backup work scheduled.")
+                state.work.forEach { work ->
+                    Text("${work.kind}: ${work.status}", style = MaterialTheme.typography.titleSmall)
+                    Text(work.detail, style = MaterialTheme.typography.bodyMedium)
+                }
+                Text("Shows current work and the latest retained manual outcome. Automatic work returns to Scheduled after each run; this is not a complete run history.", style = MaterialTheme.typography.bodySmall)
+            }
+        }
+
         state.message?.let {
             Text(it, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 12.dp))
         }
@@ -87,7 +99,7 @@ fun HomeScreen(
 
         Button(
             onClick = viewModel::backUpNow,
-            enabled = !blocked,
+            enabled = !blocked && state.work.none { it.kind == "Manual" && it.active },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 16.dp, bottom = 24.dp)

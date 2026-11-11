@@ -5,6 +5,8 @@ import { once } from 'node:events';
 import { verifyPortal } from '../server/portal/browser-proof.mjs';
 import { verifyBenchmark } from '../apps/homevault/test-support/benchmark-proof.mjs';
 import { verifyNoteSaveSafety } from '../apps/homenotes/test-support/save-journey.mjs';
+import { verifyFolderUpload } from '../apps/homecloud/test-support/demo-folders.mjs';
+import { verifyTemplates } from '../apps/homenotes/test-support/templates-journey.mjs';
 const server = spawn(process.execPath, ['demo/serve.mjs'], { env: { ...process.env, PORT: '4174' }, stdio: ['ignore', 'pipe', 'inherit'] });
 await once(server.stdout, 'data');
 const browser = await chromium.launch({ ...(process.env.DEMO_BROWSER_CHANNEL ? { channel: process.env.DEMO_BROWSER_CHANNEL } : {}), headless: true });
@@ -18,6 +20,7 @@ page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
 const see = async text => page.getByText(text, { exact: true }).waitFor();
 try {
   await verifyNoteSaveSafety(browser, origin);
+  await verifyTemplates(browser, origin);
   const restricted = await browser.newContext({ serviceWorkers: 'block' });
   try {
     await restricted.addInitScript(() => {
@@ -27,14 +30,16 @@ try {
     await restrictedPage.goto(origin);
     await restrictedPage.getByRole('link', { name: 'Launch', exact: true }).nth(5).waitFor();
     await restrictedPage.goto(origin + 'cloud/');
-    await restrictedPage.locator('input[type=file]').setInputFiles({ name: 'restricted-browser.txt', mimeType: 'text/plain', buffer: Buffer.from('local upload') });
+    await restrictedPage.getByLabel('Choose files', { exact: true }).setInputFiles({ name: 'restricted-browser.txt', mimeType: 'text/plain', buffer: Buffer.from('local upload') });
     await restrictedPage.getByRole('cell', { name: 'restricted-browser.txt', exact: true }).waitFor();
+    await verifyFolderUpload(restrictedPage, origin);
     await restrictedPage.reload();
     await restrictedPage.getByRole('cell', { name: 'restricted-browser.txt', exact: true }).waitFor();
   } finally {
     await restricted.close();
   }
   await verifyPortal(page, origin);
+  await verifyFolderUpload(page, origin);
   await verifyBenchmark(browser, origin + 'vault/benchmark.html');
   await page.goto(origin);
   await page.getByRole('heading', { name: /Good|Still up/ }).waitFor();
@@ -43,7 +48,7 @@ try {
   assert.equal(await page.getByRole('link', { name: 'Launch', exact: true }).count(), 6);
   // Upload through the real Cloud XHR control, then verify persistence and exact bytes.
   await page.goto(origin + 'cloud/');
-  await page.locator('input[type=file]').setInputFiles({ name: 'browser-proof.txt', mimeType: 'text/plain', buffer: Buffer.from('persistent browser bytes') });
+  await page.getByLabel('Choose files', { exact: true }).setInputFiles({ name: 'browser-proof.txt', mimeType: 'text/plain', buffer: Buffer.from('persistent browser bytes') });
   await see('browser-proof.txt');
   await page.reload(); await see('browser-proof.txt');
   const bytes = await page.evaluate(async base => {
@@ -54,7 +59,7 @@ try {
   }, new URL(origin).pathname);
   assert.equal(bytes, 'persistent browser bytes');
   // Concurrent uploads must not overwrite each other.
-  await page.locator('input[type=file]').setInputFiles(['one', 'two', 'three'].map(name => ({ name: name + '.txt', mimeType: 'text/plain', buffer: Buffer.from(name) })));
+  await page.getByLabel('Choose files', { exact: true }).setInputFiles(['one', 'two', 'three'].map(name => ({ name: name + '.txt', mimeType: 'text/plain', buffer: Buffer.from(name) })));
   for (const name of ['one', 'two', 'three']) await see(name + '.txt');
   await page.goto(origin + 'tasks/');
   await page.getByRole('textbox', { name: 'New task title' }).fill('Task from browser proof');

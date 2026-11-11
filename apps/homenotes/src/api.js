@@ -45,6 +45,12 @@ function qs(params = {}) {
 }
 
 export const api = {
+  templates: {
+    list: () => request('/homenotes/templates'),
+    create: (noteId, name) => request(`/homenotes/notes/${noteId}/templates`, { method: 'POST', body: JSON.stringify({ name }) }),
+    start: id => request(`/homenotes/templates/${id}/notes`, { method: 'POST', body: '{}' }),
+    remove: id => request(`/homenotes/templates/${id}`, { method: 'DELETE' })
+  },
   login: (username, password) =>
     request("/auth/login", { method: "POST", body: JSON.stringify({ username, password }) }),
   verify2fa: (pendingToken, code) =>

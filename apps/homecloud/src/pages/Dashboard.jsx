@@ -112,13 +112,14 @@ export default function Dashboard({ user, onLogout }) {
   }
 
   function handleLogout() {
+    if (!window.dispatchEvent(new Event('homecloud:before-logout', { cancelable: true }))) return;
     setToken(null);
     onLogout();
     navigate("/login");
   }
 
   function handleUploaded(file) {
-    setFiles((prev) => [file, ...prev]);
+    if (String(file.folderId ?? '') === String(currentFolderId ?? '')) setFiles((prev) => [file, ...prev]);
     setQuota((prev) => (prev ? { ...prev, usedBytes: prev.usedBytes + file.size } : prev));
   }
 
@@ -444,21 +445,12 @@ export default function Dashboard({ user, onLogout }) {
               </button>
             </div>
 
-            <UploadZone
-              onUploaded={handleUploaded}
-              onActivity={blinkLED}
-              onError={(msg) => setError(msg)}
-              folderId={currentFolderId}
-            />
-
-            <FolderGrid
-              folders={folders}
-              onOpen={setCurrentFolderId}
-              onRename={handleRenameFolder}
-              onDelete={handleDeleteFolder}
-            />
           </>
         )}
+
+        <UploadZone showPicker={tab === 'files'} onUploaded={handleUploaded} onActivity={blinkLED}
+          onError={setError} onSettled={refresh} folderId={currentFolderId} />
+        {tab === 'files' && <FolderGrid folders={folders} onOpen={setCurrentFolderId} onRename={handleRenameFolder} onDelete={handleDeleteFolder} />}
 
         {(tab === "files" || tab === "trash") && (
           <>

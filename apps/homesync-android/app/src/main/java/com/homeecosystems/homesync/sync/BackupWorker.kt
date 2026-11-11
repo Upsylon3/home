@@ -22,6 +22,7 @@ import okio.BufferedSink
 import okio.source
 import java.time.Instant
 import kotlinx.coroutines.CancellationException
+import java.io.IOException
 
 /**
  * One backup run: scan → hash → ask the server what it's missing →
@@ -44,26 +45,40 @@ class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker
     private val apiClient = ApiClient(sessionManager)
     private val mediaScanner = MediaScanner(applicationContext)
     private val db = AppDatabase.getInstance(applicationContext)
+    private var total = 0
+    private var uploadedCount = 0
+    private var matched = 0
+    private var failed = 0
+
+    private fun snapshot(phase: String, reason: String? = null) = workDataOf(
+        "phase" to phase, "total" to total, "uploaded" to uploadedCount,
+        "matched" to matched, "failed" to failed, "reason" to reason
+    )
+    private suspend fun report(phase: String) = setProgress(snapshot(phase))
+    private fun completed() = Result.success(snapshot("completed"))
 
     override suspend fun doWork(): Result = try {
         backup()
     } catch (e: SecurityException) {
         permissionFailure()
+    } catch (e: IOException) {
+        Result.retry()
     }
 
-    private fun permissionFailure() = Result.failure(workDataOf("reason" to "media-permission-required"))
+    private fun permissionFailure() = Result.failure(snapshot("failed", "media-permission-required"))
 
     private suspend fun backup(): Result {
         sessionManager.initialize()
-        if (!sessionManager.isSignedIn()) return Result.failure()
+        if (!sessionManager.isSignedIn()) return Result.failure(snapshot("failed", "sign-in-required"))
         val destinationKey = try { apiClient.verifyDestinationKey() }
             catch (e: CancellationException) { throw e }
             catch (e: Exception) { return Result.retry() }
-            ?: return Result.failure(workDataOf("reason" to "account-verification-required"))
+            ?: return Result.failure(snapshot("failed", "account-verification-required"))
+        report("scanning")
 
         val settings = settingsStore.current()
         val categories = settings.enabledCategories()
-        if (categories.isEmpty()) return Result.success()
+        if (categories.isEmpty()) return completed()
         if (MediaAccess.current(applicationContext).blockedCategories(categories).isNotEmpty()) return permissionFailure()
 
         val api = apiClient.getApi()
@@ -73,7 +88,9 @@ class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         val alreadyKnownLocalIds = dao.allSyncedLocalIds(destinationKey).toSet()
 
         val candidates = mediaScanner.scan(categories).filter { it.localId !in alreadyKnownLocalIds }
-        if (candidates.isEmpty()) return Result.success()
+        total = candidates.size
+        if (candidates.isEmpty()) return completed()
+        report("hashing")
 
         // Hashing is CPU-bound and needs no network — do it all up front,
         // so a flaky connection only affects the upload step below.
@@ -82,19 +99,24 @@ class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker
                 mediaScanner.openStream(candidate.localId)?.use { stream -> HashedFile(candidate, FileHasher.sha256(stream)) }
             } catch (e: SecurityException) {
                 throw e
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 null // File deleted or temporarily unreadable; try again next run.
             }
         }
-        if (hashed.isEmpty()) return Result.success()
+        failed = candidates.size - hashed.size
+        if (hashed.isEmpty()) return Result.retry()
+        report("checking")
 
         // Covers cross-device dedup (see homesync-backend/src/sync.js) —
         // batched to respect its 500-entries-per-call cap.
         val alreadySyncedHashes = mutableSetOf<String>()
         for (batch in chunked(hashed, 500)) {
-            val response = runCatching {
+            val response = try {
                 api.check(CheckRequest(batch.map { CheckFileEntry(it.contentHash, it.candidate.sizeBytes) }))
-            }.getOrNull()
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) { null }
             response?.body()?.results?.forEach { if (it.alreadySynced) alreadySyncedHashes += it.hash }
         }
 
@@ -105,25 +127,29 @@ class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         // skip them too instead of re-checking every time.
         for (file in plan.alreadySynced) {
             dao.insert(file.toEntity(destinationKey))
+            matched++
         }
 
-        var anyFailed = false
+        report("uploading")
         for (file in plan.toUpload) {
             val uploaded = try { uploadOne(api, deviceId, file) }
             catch (e: SecurityException) { throw e }
+            catch (e: CancellationException) { throw e }
             catch (e: Exception) { false }
             if (uploaded) {
                 dao.insert(file.toEntity(destinationKey))
+                uploadedCount++
             } else {
-                anyFailed = true
+                failed++
             }
+            report("uploading")
         }
 
         // Only ask WorkManager to retry the whole run if something
         // actually failed — files that succeeded are already recorded and
         // won't be re-attempted regardless, so a partial success still
         // reports Result.retry() to pick up the rest, not Result.failure().
-        return if (anyFailed) Result.retry() else Result.success()
+        return if (failed > 0) Result.retry() else completed()
     }
 
     private fun HashedFile.toEntity(destinationKey: String) = SyncedMediaEntity(
@@ -137,10 +163,11 @@ class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker
 
     private suspend fun ensureDeviceId(api: HomeSyncApi): Int? {
         sessionManager.deviceId.value?.let { return it }
-        return runCatching {
+        return try {
             val response = api.registerDevice(RegisterDeviceRequest(name = Build.MODEL ?: "Android device"))
             response.body()?.device?.id?.also { sessionManager.saveDeviceId(it) }
-        }.getOrNull()
+        } catch (e: CancellationException) { throw e }
+        catch (e: Exception) { null }
     }
 
     private suspend fun uploadOne(api: HomeSyncApi, deviceId: Int, file: HashedFile): Boolean {

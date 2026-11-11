@@ -76,6 +76,13 @@ try {
   for (const app of ['media/', 'monitor/', '#/settings', '#/apps', '#/search']) {
     await page.goto(origin + app); await page.locator('h1').waitFor();
   }
+  for (const app of ['media', 'notes', 'tasks', 'monitor']) {
+    await page.goto(origin + app + '/#/settings');
+    await page.getByRole('link', { name: 'Open HOME account settings', exact: true }).click();
+    await page.getByRole('heading', { name: 'Your account', exact: true }).waitFor();
+    assert.equal(new URL(page.url()).pathname, new URL(origin).pathname);
+    assert.equal(new URL(page.url()).hash, '#/settings');
+  }
   await page.goto(origin + 'media/');
   // A heading or a successful HTTP response does not prove an image decoded.
   const thumbnail = page.locator('.photo-tile').getByRole('img', { name: 'A little room to explore.svg' });

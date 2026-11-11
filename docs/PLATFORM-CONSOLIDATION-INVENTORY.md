@@ -62,6 +62,23 @@ second destination. Do not reset or delete backup history as a shortcut.
 - A repository-wide route/control audit and browser verification are still
   required; this list is not an exhaustive defect inventory.
 
+### Settings/navigation pass, 2026-11-11
+
+| Frontend | Finding and disposition | Proof |
+| --- | --- | --- |
+| HOME | Core-backed security/admin controls complete; loading and narrow-table defects fixed | Real-Core Edge journey; API tests |
+| Cloud | Duplicate global account controls retired; bookmarks retain storage preferences/audit and HOME links | Real-Core compatibility journey and demo links |
+| Media | Minimal appearance page is intentional; stale Cloud account guidance replaced by a HOME link | Source inspection and demo browser navigation |
+| Notes | Same stale account guidance corrected; pending autosave loss addressed separately in PR #115 | Demo navigation; separate save-safety proof |
+| Tasks | Minimal settings retained; stale account guidance replaced by a HOME link | Source inspection and demo browser navigation |
+| Monitor | Minimal settings retained; stale account guidance replaced by a HOME link | Source inspection and demo browser navigation |
+| Vault | Master-password/recovery controls belong to Vault and must stay there | Source review; existing encrypted demo journeys |
+
+Production account links use `/settings`; separate Vite development uses HOME's
+port 5174, and the static demo supplies its own base/hash-router destination.
+The shared helper transfers no credential in a URL. This pass does not claim
+every route, control or Android journey has been audited.
+
 ## Validation evidence
 
 Updated 2026-11-11: HOME builds; 29 targeted Core tests and eight HOME API

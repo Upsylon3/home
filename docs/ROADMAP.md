@@ -57,10 +57,10 @@ authentication authorities.
   [validation](VALIDATION.md#unified-home-accounts) for executed checks.
 - Audit registration/login entry points across the remaining frontends;
   preserve owner setup, compatible auth APIs and existing sessions.
-- Audit other application Settings screens and entry points for links to
-  Cloud account settings; unify navigation without erasing app-specific
-  preferences. Preserve password/2FA/session revocation, user disable,
-  owner setup, admin authorization and existing sessions through migration.
+- ~~Replace stale Cloud account guidance in Media, Notes, Tasks and Monitor
+  Settings with working HOME account links.~~ Their appearance controls and
+  Vault's separate master-password controls remain app-owned. Continue the
+  broader route/control inventory below; registration/login audit remains above.
 - Avoid copying identity tables into other services or introducing another
   account authority. Use additive migrations, compatibility windows,
   disposable test fixtures and documented rollback.

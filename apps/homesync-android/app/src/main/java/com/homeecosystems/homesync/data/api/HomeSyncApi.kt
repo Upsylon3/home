@@ -25,7 +25,9 @@ import retrofit2.http.Part
  */
 interface HomeSyncApi {
 
-    @GET("api/core/auth/me")
+    // Existing compatibility proxy still verifies identity in Core and works
+    // with servers predating the canonical /api/core/auth aliases.
+    @GET("api/homesync/auth/me")
     suspend fun identity(): Response<UserSummary>
 
     @POST("api/homesync/auth/login")

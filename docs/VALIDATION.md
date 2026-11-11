@@ -20,6 +20,19 @@ preference-key or database-schema change is made. The local Windows Gradle
 distribution download was too slow and was cancelled after CI supplied the
 required APK/JVM proof; no local Android build is claimed.
 
+## Cloud folder uploads
+
+Six dependency-free queue tests pass for path validation, directory-reader
+batches, shared folder creation, ASCII NOCASE matching, session changes, bounded
+concurrency, cancellation and failed-file retry. The production Cloud build and
+all seven demo builds pass. The Edge real-Core/Cloud fixture
+`node apps/homecloud/test-support/folder-browser.cjs` uses disposable databases,
+selects an actual nested directory, holds three transfers to prove the bound,
+injects a 503 and retries only that file, verifies exact downloaded bytes and
+existing-folder reuse, switches tabs, rejects navigation and checks 390px layout.
+The demo browser gate also checks directory selection/hierarchy/exact bytes with
+and without service-worker support. These are browser/loopback fixtures, not a
+production deployment or interruption/resume guarantee.
 ## Personal Notes templates
 
 Windows/Node 26.13.0 passed 27 Notes backend tests using real disposable

@@ -9,6 +9,9 @@ export default function AccountAdministration({ currentUserId }) {
   const [users, setUsers] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(null);
+  const [resetTarget, setResetTarget] = useState(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [notice, setNotice] = useState("");
 
   async function refresh() {
     const { data } = await api.accountAdmin.users();
@@ -22,18 +25,23 @@ export default function AccountAdministration({ currentUserId }) {
 
   async function act(id, operation) {
     setError("");
+    setNotice("");
     setBusy(id);
     try { await operation(); await refresh(); }
     catch (err) { setError(err.message); }
     finally { setBusy(null); }
   }
 
-  function resetPassword(u) {
-    const value = window.prompt("Set a temporary password for " + u.username + " (at least 8 characters):");
-    if (value === null) return;
-    if (value.length < 8) { setError("Password must contain at least 8 characters."); return; }
-    if (!window.confirm("Reset " + u.username + "'s password and revoke their sessions?")) return;
-    act(u.id, () => api.accountAdmin.resetPassword(u.id, value));
+  async function resetPassword(e) {
+    e.preventDefault();
+    if (busy !== null || !resetTarget) return;
+    if (!window.confirm("Reset " + resetTarget.username + "'s password and revoke their sessions?")) return;
+    await act(resetTarget.id, async () => {
+      await api.accountAdmin.resetPassword(resetTarget.id, newPassword);
+      setNewPassword("");
+      setResetTarget(null);
+      setNotice("Password reset. This account's existing sessions have been signed out.");
+    });
   }
 
   function setQuota(u) {
@@ -52,6 +60,17 @@ export default function AccountAdministration({ currentUserId }) {
       <h3 id="home-admin-heading" className="panel-title">Account administration</h3>
       <p className="panel-desc">Manage HOME accounts through HomeCore. Storage usage is reported by HomeCloud.</p>
       {error && <p role="alert">{error}</p>}
+      {notice && <p role="status">{notice}</p>}
+      {resetTarget && <form onSubmit={resetPassword} aria-label={`Reset password for ${resetTarget.username}`}>
+        <p>Reset password for <strong>{resetTarget.username}</strong>. Existing sessions will be signed out.</p>
+        <div className="field">
+          <label htmlFor="home-admin-password">New account password</label>
+          <input id="home-admin-password" type="password" autoComplete="new-password" required minLength={8}
+            value={newPassword} disabled={busy !== null} onChange={e => setNewPassword(e.target.value)} />
+        </div>
+        <button className="btn btn-primary btn-sm" disabled={busy !== null}>Reset password and sign out sessions</button>
+        <button className="btn btn-ghost btn-sm" type="button" disabled={busy !== null} onClick={() => { setResetTarget(null); setNewPassword(""); }}>Cancel reset</button>
+      </form>}
       {users === null ? error ? <button className="btn btn-ghost btn-sm" onClick={retry}>Retry</button> : <p>Loading accounts…</p> : (
         <div style={{ overflowX: "auto" }}>
           <table>
@@ -62,7 +81,7 @@ export default function AccountAdministration({ currentUserId }) {
                 <td>{u.totpEnabled ? "Enabled" : "Off"}</td>
                 <td>{formatStorage(u.usedBytes)} / {formatStorage(u.quotaBytes)}</td>
                 <td>
-                  <button className="btn btn-ghost btn-sm" disabled={busy !== null} onClick={() => resetPassword(u)}>Reset password</button>
+                  <button className="btn btn-ghost btn-sm" disabled={busy !== null} onClick={() => { setResetTarget(u); setNewPassword(""); setError(""); setNotice(""); }}>Reset password</button>
                   <button className="btn btn-ghost btn-sm" disabled={busy !== null} onClick={() => setQuota(u)}>Set quota</button>
                   <button className="btn btn-ghost btn-sm" disabled={busy !== null} onClick={() => {
                     const role = u.role === "admin" ? "user" : "admin";

@@ -12,6 +12,7 @@ for (const [app, prefix] of Object.entries(apps)) {
   const appBase = base + (prefix ? prefix + '/' : '');
   await build({
     configFile: false, root: path.join(root, 'apps', app), base: appBase,
+    define: { 'import.meta.env.VITE_HOME_ACCOUNT_URL': JSON.stringify(base + '#/settings') },
     plugins: [demoPlugin(), react()],
     build: { outDir: path.join(root, 'demo-dist', prefix), emptyOutDir: app === 'home', target: 'esnext',
       ...(app === 'homevault' ? { rolldownOptions: { input: { app: path.join(root, 'apps/homevault/index.html'), benchmark: path.join(root, 'apps/homevault/benchmark.html') } } } : {}) }

@@ -10,8 +10,8 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 ### Added
 - HOME account settings now expose Core password changes, TOTP enrollment and
   recovery, personal activity and account administration. Add disposable real-Core
-  browser journeys and frontend API regression tests; retain Cloud compatibility
-  screens pending the remaining navigation/parity work.
+  browser journeys and frontend API regression tests, including masked
+  administrator password reset, emergency 2FA reset and last-admin protection.
 - Experimental signed two-owner server pairing with exact transcript/key approval,
   durable replay and retry receipts, uncached live status, local revocation with
   notification retries and bounded public-HTTPS transport. Keep the protocol off
@@ -27,6 +27,10 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
   security-review gates. Guest authentication remains unimplemented.
 
 ### Changed
+- Cloud account links now open HOME settings. Existing `/cloud/settings` and
+  `/cloud/admin` bookmarks retain appearance/personal storage activity and the
+  administrator storage audit, with links to HOME replacing duplicate account
+  mutations. Authentication/API aliases and stored sessions are unchanged.
 - Restore unfinished application scope and HOME's personal/room-based direction
   from pre-cleanup specifications, checked against current source. Prioritize
   daily single-server app work, distinguish existing features from genuine gaps,

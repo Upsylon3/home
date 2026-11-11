@@ -14,7 +14,12 @@ async function main() {
     const core = await startTestApp();
     const owner = await registerUser(core.baseUrl);
     const member = await registerUser(core.baseUrl);
+    const memberSetup = await member.client.post('/api/auth/2fa/setup');
+    const memberTotp = new TOTP({ issuer: 'homecloud', label: member.username, algorithm: 'SHA1', digits: 6, period: 30,
+      secret: Secret.fromBase32(memberSetup.body.secret) });
+    assert.equal((await member.client.post('/api/auth/2fa/confirm', { code: memberTotp.generate() })).status, 200);
     const root = path.resolve(__dirname, '../dist');
+    const cloudRoot = path.resolve(__dirname, '../../homecloud/dist');
     const types = { '.js': 'application/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.woff': 'font/woff', '.woff2': 'font/woff2' };
     proxy = http.createServer((req, res) => {
       if (req.url.startsWith('/api/')) {
@@ -24,8 +29,11 @@ async function main() {
         upstream.on('error', () => { res.writeHead(502); res.end(); });
         req.pipe(upstream); return;
       }
-      const candidate = path.resolve(root, '.' + new URL(req.url, 'http://fixture').pathname);
-      const file = candidate.startsWith(root + path.sep) && fs.existsSync(candidate) && fs.statSync(candidate).isFile() ? candidate : path.join(root, 'index.html');
+      const pathname = new URL(req.url, 'http://fixture').pathname;
+      const appRoot = pathname.startsWith('/cloud/') ? cloudRoot : root;
+      const appPath = appRoot === cloudRoot ? pathname.slice('/cloud'.length) : pathname;
+      const candidate = path.resolve(appRoot, '.' + appPath);
+      const file = candidate.startsWith(appRoot + path.sep) && fs.existsSync(candidate) && fs.statSync(candidate).isFile() ? candidate : path.join(appRoot, 'index.html');
       res.setHeader('Content-Type', types[path.extname(file)] || 'text/html');
       fs.createReadStream(file).pipe(res);
     });
@@ -44,6 +52,42 @@ async function main() {
     await memberRow.waitFor();
     assert.equal(await admin.getByRole('row').filter({ has: page.getByRole('cell', { name: owner.username, exact: true }) }).getByRole('button', { name: 'Disable', exact: true }).isDisabled(), true);
     await admin.getByText('Unavailable', { exact: false }).first().waitFor();
+    page.once('dialog', dialog => dialog.accept());
+    await admin.getByRole('button', { name: 'Remove admin', exact: true }).click();
+    await admin.getByRole('alert').filter({ hasText: "Can't remove the last remaining admin." }).waitFor();
+    page.once('dialog', dialog => dialog.accept());
+    await memberRow.getByRole('button', { name: 'Reset 2FA', exact: true }).click();
+    await memberRow.getByRole('cell', { name: 'Off', exact: true }).waitFor();
+    assert.equal((await member.client.get('/api/auth/me')).body.totpEnabled, false);
+    await memberRow.getByRole('button', { name: 'Reset password', exact: true }).click();
+    const resetForm = admin.getByRole('form', { name: `Reset password for ${member.username}` });
+    await resetForm.getByLabel('New account password', { exact: true }).fill('TemporaryPassword1');
+    assert.equal(await resetForm.getByLabel('New account password', { exact: true }).getAttribute('type'), 'password');
+    page.once('dialog', dialog => dialog.accept());
+    await resetForm.getByRole('button', { name: 'Reset password and sign out sessions', exact: true }).click();
+    await admin.getByRole('status').filter({ hasText: 'Password reset.' }).waitFor();
+    assert.equal(await resetForm.count(), 0);
+    assert.equal((await member.client.get('/api/auth/me')).status, 401);
+    member.password = 'TemporaryPassword1';
+
+    // Legacy bookmarks retain storage views and lead to the same-origin HOME UI.
+    await page.route('**/api/activity', route => route.fulfill({ status: 503, contentType: 'application/json', body: '{"error":"Storage activity unavailable."}' }));
+    await page.goto(origin + '/cloud/settings');
+    await page.getByRole('heading', { name: 'Cloud preferences', exact: true }).waitFor();
+    await page.getByRole('alert').filter({ hasText: 'Storage activity unavailable.' }).waitFor();
+    assert.equal(await page.getByLabel('Current password', { exact: true }).count(), 0);
+    await page.unroute('**/api/activity');
+    await page.getByRole('button', { name: 'Retry', exact: true }).click();
+    await page.getByRole('table').waitFor();
+    assert.equal(await page.getByRole('link', { name: 'Open HOME account settings', exact: true }).getAttribute('href'), '/settings');
+    await page.getByRole('link', { name: 'Open HOME account settings', exact: true }).click();
+    await page.getByRole('heading', { name: 'Your account', exact: true }).waitFor();
+    await page.goto(origin + '/cloud/admin');
+    await page.getByRole('heading', { name: 'Storage activity', exact: true }).waitFor();
+    await page.getByRole('table').waitFor();
+    assert.equal(await page.getByRole('button', { name: 'Reset password', exact: true }).count(), 0);
+    await page.getByRole('link', { name: 'Open HOME account administration', exact: true }).click();
+    await admin.waitFor();
 
     // Bad proof must stay in Settings, while success replaces the token.
     await page.getByLabel('Current password', { exact: true }).fill('wrong-password');
@@ -138,7 +182,7 @@ async function main() {
     member.client.setToken(fresh.body.token);
     assert.equal((await member.client.get('/api/admin/users')).status, 403);
     assert.deepEqual(errors, []);
-    console.log('Verified real Core password/token lifecycle, TOTP setup/retry/rotation/one-use recovery/disable, admin quota/roles/disable, member access denial and mobile layout.');
+    console.log('Verified real Core password/token lifecycle, TOTP setup/retry/rotation/one-use recovery/disable, masked admin password reset, emergency 2FA reset, last-admin guard, quota/roles/disable, member access denial and mobile layout.');
   } finally {
     if (browser) await browser.close();
     if (proxy) { proxy.closeAllConnections(); await new Promise(resolve => proxy.close(resolve)); }

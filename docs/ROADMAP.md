@@ -51,14 +51,12 @@ authentication authorities.
 
 ### 3. Centralize account ownership in HomeCore and HOME
 
-- Complete the remaining HOME administrator password-reset/emergency-2FA and
-  audit-view browser proof before retiring Cloud account controls. HOME now
-  exposes Core profile/password/sessions/2FA and account administration; see
+- ~~Move Core-backed account settings/administration into HOME and retire
+  duplicate Cloud account controls after API/browser proof.~~ Existing Cloud
+  bookmarks preserve storage preferences/audit and link to HOME. See
   [validation](VALIDATION.md#unified-home-accounts) for executed checks.
-  Keep Cloud file-sharing and storage responsibilities in Cloud.
-- Audit HomeCloud registration, login, Settings, Admin, auth proxy and
-  navigation; replace duplicate account screens with safe links/redirects
-  only after feature parity and access-control tests.
+- Audit registration/login entry points across the remaining frontends;
+  preserve owner setup, compatible auth APIs and existing sessions.
 - Audit other application Settings screens and entry points for links to
   Cloud account settings; unify navigation without erasing app-specific
   preferences. Preserve password/2FA/session revocation, user disable,

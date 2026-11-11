@@ -120,9 +120,11 @@ not authorize changing a real installation or storing real secrets in Vault.
    generation remains open.
 5. **Sync backup feedback.** Show actual queued, waiting-for-constraints, running,
    retrying, failed and completed work, with meaningful run progress/history.
-   The current aggregate totals/last-upload summary and transient request message
-   do not show a live backup queue. Use real worker state rather than an optimistic
-   "backup requested" success; keep phone permission/charging limits visible.
+   Current slice observes manual/automatic WorkManager state, reports real
+   scanning/checking/upload counts and retains the latest manual result. Requests
+   no longer claim a run started, and repeated taps keep active manual work.
+   Durable multi-run history and exact unmet-constraint diagnostics remain open;
+   the UI labels scheduling/constraint waits without guessing their cause.
 6. **Sync changed-file detection.** Stop treating a previously backed-up local
    media ID as proof its contents are unchanged. Design modified-time/size/hash
    rechecks and test an in-place edit, unchanged runs, retry and deduplication.

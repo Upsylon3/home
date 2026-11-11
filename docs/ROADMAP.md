@@ -42,6 +42,9 @@ authentication authorities.
   device IDs, backup settings, queue identity and deduplication history.
   Explicitly define whether each server is a backup destination or a selected
   interactive HOME; never implicitly replicate private data to every server.
+- ~~Bind Android credentials and cached clients to one destination; reject
+  retained-client work after switching/logout and prevent redirect forwarding.~~
+  APK/JVM checks pass; this prerequisite does not enable multiple backup targets.
 - Migrate legacy single-server local data without losing backup history.
   Bind queued WorkManager work to an immutable destination identity, and test
   server switching, logout, retries, token isolation, changed files and

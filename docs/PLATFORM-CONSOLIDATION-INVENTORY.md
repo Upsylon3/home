@@ -39,11 +39,11 @@ separate from Android/device/deployment evidence.
 | Source | Finding | Required remedy |
 | --- | --- | --- |
 | `apps/homesync-android` | Existing native Kotlin/Compose application and Android tests | Evolve in place; avoid a second client |
-| `data/SessionManager.kt` | Single server URL, token and device ID in `homesync_session` | Per-server credentials/device identity and safe legacy migration |
+| `data/SessionManager.kt` | Atomic single-server URL/token snapshot; existing device ID in `homesync_session` | Per-profile credentials/device identity and safe legacy migration still required |
 | `data/local/SyncedMediaEntity.kt` | Unique `localMediaId` across all destinations | Destination-scoped uniqueness, schema migration and test fixtures |
 | `data/local/AppDatabase.kt` | Room version 1, no exported schema | Explicit Room migration and migration tests; never destructive fallback |
 | `sync/BackupWorker.kt` | Reads global session and global dedup history; single `homesync_backup` work name | Bind work to immutable server profile and isolate dedup/queues |
-| `data/api/ApiClient.kt` | Token interceptor reads global active token | Prevent in-flight requests switching credentials across servers |
+| `data/api/ApiClient.kt`, `ServerHttpClient.kt` | Bound URL/client pair; immutable credential snapshot; redirects disabled | Retained-client isolation implemented and APK/JVM checked; destination-bound background work remains |
 
 Do **not** enable multi-server backup simply by adding a server switcher:
 existing globally keyed deduplication could incorrectly skip backup to a
@@ -52,7 +52,7 @@ second destination. Do not reset or delete backup history as a shortcut.
 ## Frontend audit: known concrete items
 
 - HOME Settings previously lacked password, TOTP and general account
-  administration; replacement interfaces now exist on the draft branch.
+  administration; the validated replacement is merged in PR #107.
 - HOME dashboard already consumes Core cross-app activity and app registry;
   avoid reimplementing these APIs.
 - HomeCloud Settings and Admin preserve storage views and bookmarks; global
@@ -89,5 +89,7 @@ browser proof passes masked admin password reset/session revocation, emergency
 2FA reset, last-admin protection and legacy Cloud navigation/storage activity.
 Seven demo builds and its Edge browser journey pass, including account links.
 See [reproduction and limits](VALIDATION.md#unified-home-accounts).
-No Android/device/deployment validation is claimed. Keep the draft status until
-the final revision's applicable checks and remaining account proof pass.
+Android credential isolation additionally passes the real Gradle 9.3.1
+`:app:assembleDebug :app:testDebugUnitTest` CI gate on Java 17/API 37, including
+five loopback HTTP regression tests; see [validation](VALIDATION.md#android-credential-isolation).
+No physical-device, multi-server backup or real deployment validation is claimed.

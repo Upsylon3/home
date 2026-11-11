@@ -107,10 +107,11 @@ not authorize changing a real installation or storing real secrets in Vault.
 2. ~~**Notes templates:** save a personal title/content/tag snapshot and start
    independent editable notes from it.~~ Owner-scoped APIs and the sanitized
    editor are reused; templates need no other server or collaboration.
-3. **Cloud folder upload.** Add folder selection/drop with preserved directory
-   hierarchy, a bounded upload queue and per-file outcomes/retry. Multiple-file
-   selection/drop already exists; do not rebuild it or flatten a folder tree.
-   Use the owning user's existing folder/upload APIs, quota and path checks.
+3. ~~**Cloud folder upload.** Folder selection/drop preserves file hierarchy,
+   reuses owned folders, limits transfers to three and queue entries to 1000,
+   and reports per-file outcomes with retry/cancel.~~ Uses existing authorized
+   folder/upload APIs and quota checks. Real-service and demo browser proof pass;
+   empty directories and persistent/resumable queues remain unsupported.
 4. **Media video posters.** Replace generic video placeholders with bounded,
    cached poster generation through Cloud's authorized file API. Review decoder
    dependency/runtime cost, invalid videos, cache invalidation and fallback first.

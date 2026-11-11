@@ -9,6 +9,7 @@ import { getToken, setToken } from "./session.js";
 export { getToken, setToken };
 
 async function request(path, options = {}) {
+  const { keepSessionOn401 = false, ...fetchOptions } = options;
   const token = getToken();
   const headers = { ...(options.headers || {}) };
   if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -16,10 +17,20 @@ async function request(path, options = {}) {
     headers["Content-Type"] = "application/json";
   }
 
-  const res = await fetch(`/api${path}`, { ...options, headers });
+  const res = await fetch(`/api${path}`, { ...fetchOptions, headers });
 
-  // A wrong password on a re-authentication operation is not an expired session.
-  if (res.status === 401 && !options.keepSessionOn401) {
+  // Sensitive operations also return 401 for a bad password or TOTP code.
+  // Ask Core whether the original session is still valid before expiring it.
+  // A failed network/proxy check is inconclusive and must allow retry.
+  let expired = res.status === 401;
+  if (expired && keepSessionOn401 && token) {
+    try {
+      const session = await fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } });
+      expired = session.status === 401;
+    } catch { expired = false; }
+  }
+  // A late response from a revoked token must not clear a renewed session.
+  if (expired && getToken() === token) {
     setToken(null);
     window.dispatchEvent(new CustomEvent("home:session-expired"));
   }
@@ -100,7 +111,7 @@ export const api = {
   twoFactor: {
     status: () => request("/auth/me"),
     setup: () => request("/auth/2fa/setup", { method: "POST" }),
-    confirm: code => request("/auth/2fa/confirm", { method: "POST", body: JSON.stringify({ code }) }),
+    confirm: code => request("/auth/2fa/confirm", { method: "POST", body: JSON.stringify({ code }), keepSessionOn401: true }),
     disable: password => request("/auth/2fa/disable", { method: "POST", body: JSON.stringify({ password }), keepSessionOn401: true }),
     regenerate: password => request("/auth/2fa/recovery-codes", { method: "POST", body: JSON.stringify({ password }), keepSessionOn401: true })
   },

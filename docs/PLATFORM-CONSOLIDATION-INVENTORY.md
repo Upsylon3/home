@@ -65,6 +65,12 @@ second destination. Do not reset or delete backup history as a shortcut.
 
 ## Validation evidence
 
-Source inspection only. No frontend build, Core integration suite, Android
-Gradle test, physical-device test, or browser journey has been executed for
-this branch. The draft PR must remain unmerged until required checks pass.
+Updated 2026-11-11: HOME builds; 29 targeted Core tests and eight HOME API
+regressions pass on Windows/Node 26.13.0. A real-Core headless Edge journey
+passes password/token lifecycle, TOTP enrollment/retry/rotation/one-use recovery,
+disable, account quotas/roles/suspension, member denial and 390px layout.
+See [reproduction and limits](VALIDATION.md#unified-home-accounts). Earlier
+"tests pending" table entries describe the initial handoff; these checks now
+cover those flows except the remaining admin reset/navigation/audit proof.
+No Android/device/deployment validation is claimed. Keep the draft status until
+the final revision's applicable checks and remaining account proof pass.

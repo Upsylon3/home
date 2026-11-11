@@ -51,13 +51,11 @@ authentication authorities.
 
 ### 3. Centralize account ownership in HomeCore and HOME
 
-- Inventory actual account data/API ownership first: Core already owns
-  authentication, sessions and users; distinguish existing Core APIs from
-  Cloud-hosted account UI and legacy compatibility routes.
-- Move the unified account/profile/security/sessions/2FA and administration
-  experience into HOME, backed by HomeCore. Keep Cloud quota and file-sharing
-  configuration with their appropriate domain owners, exposed through Core
-  administration only where an existing contract supports it.
+- Complete the remaining HOME administrator password-reset/emergency-2FA and
+  audit-view browser proof before retiring Cloud account controls. HOME now
+  exposes Core profile/password/sessions/2FA and account administration; see
+  [validation](VALIDATION.md#unified-home-accounts) for executed checks.
+  Keep Cloud file-sharing and storage responsibilities in Cloud.
 - Audit HomeCloud registration, login, Settings, Admin, auth proxy and
   navigation; replace duplicate account screens with safe links/redirects
   only after feature parity and access-control tests.

@@ -3,6 +3,33 @@
 Outstanding review/device evidence and reproduction notes live here. Run fixtures
 only against disposable data; never equate CI with independent or physical testing.
 
+## Unified HOME accounts
+
+On 2026-11-11, Node 26.13.0 on Windows passed the 29 Core auth/admin/route-alias
+tests and eight HOME API regressions. The production HOME build passed. The
+disposable real-Core browser fixture passed in headless Microsoft Edge: wrong
+password/TOTP retry, password token renewal and old-token refusal, enrollment,
+recovery rotation and one-use codes, disable 2FA, quota reset, role changes,
+disable/re-enable, member admin denial, revoked-session logout and 390px layout.
+Cloud was unavailable during this fixture; account controls remained usable with
+unknown storage usage. This does not establish real deployment/device readiness.
+
+Reproduce after building HOME with Node 26 and an installed Playwright browser:
+
+~~~sh
+node --test homecore/test/auth.test.js homecore/test/admin.test.js homecore/test/routeAliases.test.js
+npm test --workspace=apps/home
+npm run build --workspace=apps/home
+DEMO_BROWSER_CHANNEL=msedge node apps/home/test-support/account-browser.cjs
+~~~
+
+Use `chrome` on CI/Linux or another installed supported channel. In PowerShell,
+set `$env:DEMO_BROWSER_CHANNEL='msedge'` before the fixture. The fixture creates
+only temporary accounts/databases and closes them on completion. Optional
+`HOME_ACCOUNT_SCREENSHOT` writes a screenshot containing test data only.
+Legacy Cloud account screens remain until navigation, administrator password reset,
+emergency 2FA reset and audit-view parity are verified in the replacement.
+
 ## Multi-server pairing
 
 The experimental opt-in has automated two-owner transcript approval, invitation

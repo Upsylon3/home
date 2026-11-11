@@ -8,6 +8,10 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 ## [Unreleased]
 
 ### Added
+- HOME account settings now expose Core password changes, TOTP enrollment and
+  recovery, personal activity and account administration. Add disposable real-Core
+  browser journeys and frontend API regression tests; retain Cloud compatibility
+  screens pending the remaining navigation/parity work.
 - Experimental signed two-owner server pairing with exact transcript/key approval,
   durable replay and retry receipts, uncached live status, local revocation with
   notification retries and bounded public-HTTPS transport. Keep the protocol off
@@ -34,6 +38,10 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
   validation from feature work. Setup, recovery and security requirements remain.
 
 ### Fixed
+- Keep valid HOME sessions after incorrect account passwords or authenticator
+  codes, expire revoked sessions and ignore late failures for replaced tokens.
+  Bound the administrator table on narrow screens, retry failed account/TOTP
+  loads and preserve quota precision when editing existing values.
 - HomeMedia demo pictures load in browsers that reject Blob values in IndexedDB.
 - The browser demo can open and save changes when service workers are unavailable.
 - Wait for originally running containers that transiently restart during

@@ -18,6 +18,7 @@ export default function Settings() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const [displayName, setDisplayName] = useState(user.displayName || "");
   const [savingName, setSavingName] = useState(false);
   const [nameSaved, setNameSaved] = useState(false);
@@ -54,10 +55,10 @@ export default function Settings() {
 
   async function handleChangePassword(e) {
     e.preventDefault();
-    setError("");
+    setPasswordError("");
     setPasswordMessage("");
     if (newPassword !== confirmPassword) {
-      setError("New password and confirmation do not match.");
+      setPasswordError("New password and confirmation do not match.");
       return;
     }
     setChangingPassword(true);
@@ -68,8 +69,10 @@ export default function Settings() {
       setNewPassword("");
       setConfirmPassword("");
       setPasswordMessage("Password updated. Other sessions have been signed out.");
+      api.mySessions().then(({ data }) => { setSessions(data.sessions); setSessionError(false); })
+        .catch(() => setSessionError(true));
     } catch (err) {
-      setError(err.message);
+      setPasswordError(err.message);
     } finally {
       setChangingPassword(false);
     }
@@ -94,7 +97,7 @@ export default function Settings() {
         <h1 className="page-title">Your account</h1>
       </div>
 
-      {error && <div className="error-banner">{error}</div>}
+      {error && <div className="error-banner" role="alert">{error}</div>}
 
       <FollowupControls user={user} />
       <ApplicationAccessControls />
@@ -118,7 +121,9 @@ export default function Settings() {
         <p className="panel-desc">How your name appears across Home. Leave blank to just show your username.</p>
         <form onSubmit={handleSaveName} className="form-row">
           <div className="field">
+            <label htmlFor="home-display-name">Display name</label>
             <input
+              id="home-display-name"
               placeholder={user.username}
               value={displayName}
               onChange={(e) => {
@@ -191,6 +196,7 @@ export default function Settings() {
       <div className="panel">
         <h3 className="panel-title">Password</h3>
         <p className="panel-desc">Changing your password signs out other devices.</p>
+        {passwordError && <p role="alert">{passwordError}</p>}
         {passwordMessage && <p role="status">{passwordMessage}</p>}
         <form onSubmit={handleChangePassword}>
           <div className="field">

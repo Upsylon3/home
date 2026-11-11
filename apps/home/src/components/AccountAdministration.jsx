@@ -14,6 +14,10 @@ export default function AccountAdministration({ currentUserId }) {
     const { data } = await api.accountAdmin.users();
     setUsers(data.users);
   }
+  async function retry() {
+    setError("");
+    try { await refresh(); } catch (err) { setError(err.message); }
+  }
   useEffect(() => { refresh().catch(err => setError(err.message)); }, []);
 
   async function act(id, operation) {
@@ -33,20 +37,22 @@ export default function AccountAdministration({ currentUserId }) {
   }
 
   function setQuota(u) {
-    const value = window.prompt("Storage quota in GB for " + u.username + ". Blank resets to the default.", String((u.quotaBytes / 1024 ** 3).toFixed(2)));
+    const value = window.prompt("Storage quota in GB for " + u.username + ". Blank resets to the default.", String(u.quotaBytes / 1024 ** 3));
     if (value === null) return;
     const trimmed = value.trim();
     const gb = Number(trimmed);
     if (trimmed && (!Number.isFinite(gb) || gb <= 0)) { setError("Enter a positive storage quota."); return; }
-    act(u.id, () => api.accountAdmin.setQuota(u.id, trimmed ? Math.round(gb * 1024 ** 3) : null));
+    const bytes = Math.round(gb * 1024 ** 3);
+    if (trimmed && (!Number.isSafeInteger(bytes) || bytes <= 0)) { setError("Enter a quota between 1 byte and the maximum safe storage size."); return; }
+    act(u.id, () => api.accountAdmin.setQuota(u.id, trimmed ? bytes : null));
   }
 
   return (
-    <div className="panel">
-      <h3 className="panel-title">Account administration</h3>
+    <section className="panel account-administration" aria-labelledby="home-admin-heading">
+      <h3 id="home-admin-heading" className="panel-title">Account administration</h3>
       <p className="panel-desc">Manage HOME accounts through HomeCore. Storage usage is reported by HomeCloud.</p>
       {error && <p role="alert">{error}</p>}
-      {users === null ? <p>Loading accounts…</p> : (
+      {users === null ? error ? <button className="btn btn-ghost btn-sm" onClick={retry}>Retry</button> : <p>Loading accounts…</p> : (
         <div style={{ overflowX: "auto" }}>
           <table>
             <thead><tr><th>Account</th><th>Role</th><th>Status</th><th>2FA</th><th>Storage used / quota</th><th>Actions</th></tr></thead>
@@ -75,6 +81,6 @@ export default function AccountAdministration({ currentUserId }) {
           </table>
         </div>
       )}
-    </div>
+    </section>
   );
 }

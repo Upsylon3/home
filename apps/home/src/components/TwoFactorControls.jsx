@@ -36,11 +36,12 @@ export default function TwoFactorControls() {
   }
 
   return (
-    <div className="panel">
-      <h3 className="panel-title">Two-factor authentication</h3>
+    <section className="panel" aria-labelledby="home-totp-heading" aria-busy={busy}>
+      <h3 id="home-totp-heading" className="panel-title">Two-factor authentication</h3>
       <p className="panel-desc">Protect your HOME account with a time-based authenticator and one-use recovery codes.</p>
       {error && <p role="alert">{error}</p>}
       {enabled === null && !error && <p>Loading…</p>}
+      {enabled === null && error && <button className="btn btn-ghost btn-sm" disabled={busy} onClick={() => run(refresh)}>Retry</button>}
       {recoveryCodes ? (
         <>
           <p role="status">Save these recovery codes securely. They will not be shown again.</p>
@@ -56,11 +57,13 @@ export default function TwoFactorControls() {
             const { data } = await api.twoFactor.confirm(code.trim());
             setRecoveryCodes(data.recoveryCodes);
             setEnabled(true);
+            setSetup(null);
+            setCode("");
           }); }}>
             <div className="field"><label htmlFor="home-totp-code">Authenticator code</label>
               <input id="home-totp-code" autoComplete="one-time-code" inputMode="numeric" required value={code} onChange={e => setCode(e.target.value)} /></div>
             <button className="btn btn-primary btn-sm" disabled={busy}>Confirm and enable</button>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setSetup(null)}>Cancel</button>
+            <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={() => { setSetup(null); setCode(""); setError(""); }}>Cancel</button>
           </form>
         </>
       ) : enabled === false ? (
@@ -86,6 +89,6 @@ export default function TwoFactorControls() {
           </form>
         </>
       ) : null}
-    </div>
+    </section>
   );
 }

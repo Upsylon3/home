@@ -33,6 +33,30 @@ existing-folder reuse, switches tabs, rejects navigation and checks 390px layout
 The demo browser gate also checks directory selection/hierarchy/exact bytes with
 and without service-worker support. These are browser/loopback fixtures, not a
 production deployment or interruption/resume guarantee.
+## Personal Notes templates
+
+Windows/Node 26.13.0 passed 27 Notes backend tests using real disposable
+Core/Cloud/Notes, 21 Notes frontend tests, six demo API tests and the production
+Notes build. The real-service Edge journey covers immediate-edit snapshot
+creation, title/Markdown/tag copying, list persistence and failure/retry,
+independent editing, template removal with source/generated notes retained and
+390px layout. The same template journey runs in the seven-app demo browser gate.
+Backend cases additionally prove owner isolation, case-insensitive name conflicts,
+the 100-template cap, trashed-source refusal and exclusion of actual Cloud
+attachments/folders/favorites/versions.
+
+~~~sh
+npm test --workspace=apps/homenotes-backend
+npm test --workspace=apps/homenotes
+npm run build --workspace=apps/homenotes
+DEMO_BROWSER_CHANNEL=msedge node apps/homenotes/test-support/save-browser.cjs
+npm run build:demo
+DEMO_BROWSER_CHANNEL=msedge npm run test:demo:browser
+~~~
+
+Use PowerShell's `$env:DEMO_BROWSER_CHANNEL='msedge'` on Windows. The additive
+`note_templates` table is included in Notes database backups; old binaries ignore
+it on downgrade. No real accounts or installations are used by these fixtures.
 
 ## Notes save safety
 

@@ -12,6 +12,11 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
   folders and provides a bounded three-transfer queue with progress, per-file
   retry/cancel and navigation protection. Keep the original destination while
   browsing; refresh loses the queue but retains completed files/created folders.
+- Personal Notes templates: save a note's title/Markdown/tags as a named private
+  snapshot, then create independent editable notes. Keep source notes and created
+  notes when removing a template; exclude attachments, folders, favorites and
+  version history. Add bounded owner-scoped APIs, autosave-safe creation, list
+  retry/empty states and desktop/mobile navigation.
 - HOME account settings now expose Core password changes, TOTP enrollment and
   recovery, personal activity and account administration. Add disposable real-Core
   browser journeys and frontend API regression tests, including masked

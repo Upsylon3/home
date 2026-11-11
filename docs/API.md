@@ -626,6 +626,10 @@ A Markdown notes workspace, with version history and folders.
 | GET | `/api/homenotes/notes/:id/versions` | Version history |
 | POST | `/api/homenotes/notes/:id/versions/:versionId/restore` | Roll back to a version |
 | GET | `/api/homenotes/tags` | Tags in use across all notes |
+| GET | `/api/homenotes/templates` | Personal template summaries (name, original title, tags, creation time; no body) |
+| POST | `/api/homenotes/notes/:id/templates` | Save own active note snapshot with `{name}` (1–100 characters; unique per owner; max 100 templates) |
+| POST | `/api/homenotes/templates/:id/notes` | Create an independent own note with copied title/content/tags |
+| DELETE | `/api/homenotes/templates/:id` | Remove own template; retain source/created notes |
 | POST/DELETE | `/api/homenotes/notes/:id/attachments` \| `/attachments/link` \| `/attachments/:fileId` | Attach / link / remove a HomeCloud file on a note |
 | GET/POST | `/api/homenotes/note-folders` | List / create note folders |
 | GET | `/api/homenotes/note-folders/all` | Full folder tree |

@@ -104,10 +104,9 @@ not authorize changing a real installation or storing real secrets in Vault.
    failed-save retry.~~ Verified against real disposable services and the demo.
    Persistent offline drafts, crash recovery and concurrent-edit conflicts remain
    in the separately designed offline workspace below.
-2. **Notes templates.** Restore the deferred reusable-note workflow: create a
-   personal template and start an independent editable note from it. Define
-   title/content/tag copying and ownership; reuse Notes' existing APIs and
-   sanitized editor. Templates must not require another server or collaboration.
+2. ~~**Notes templates:** save a personal title/content/tag snapshot and start
+   independent editable notes from it.~~ Owner-scoped APIs and the sanitized
+   editor are reused; templates need no other server or collaboration.
 3. ~~**Cloud folder upload.** Folder selection/drop preserves file hierarchy,
    reuses owned folders, limits transfers to three and queue entries to 1000,
    and reports per-file outcomes with retry/cancel.~~ Uses existing authorized

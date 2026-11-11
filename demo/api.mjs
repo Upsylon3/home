@@ -194,6 +194,19 @@ async function route(s, request, base) {
     return json({ folder });
   }
   if (p === '/homenotes/tags') return json({ tags: [...new Set(s.notes.filter(active).flatMap(n => n.tags))].map(name => ({ name, count: s.notes.filter(n => active(n) && n.tags.includes(name)).length })) });
+  if (p === '/homenotes/templates' || p.startsWith('/homenotes/templates/')) {
+    s.templates ||= [];
+    const [, , , id, action] = p.split('/');
+    if (!id && method === 'GET') return json({ templates: s.templates.map(({ content, ...summary }) => summary).sort((a, b) => a.name.localeCompare(b.name)) });
+    const template = find(s.templates, id);
+    if (method === 'DELETE' && !action) { remove(s.templates, template); return json({ ok: true }); }
+    if (method === 'POST' && action === 'notes') {
+      const note = create(s.notes, { title: template.title, content: template.content, tags: [...template.tags], folderId: null,
+        attachments: [], isFavorite: false, deletedAt: null, versions: [] });
+      return json({ note: clean(note) }, 201);
+    }
+    fail('Not found.', 404);
+  }
   if (p.startsWith('/homenotes/notes')) {
     const [, , , id, action, subId, subAction] = p.split('/');
     if (!id || id === 'trash') {
@@ -206,7 +219,18 @@ async function route(s, request, base) {
       return json({ notes: notes.map(n => ({ ...clean(n), excerpt: n.content.slice(0, 160) })) });
     }
     const note = find(s.notes, id);
-    if (action === 'restore') note.deletedAt = null;
+    if (action === 'templates' && method === 'POST') {
+      if (!active(note)) fail('Note not found.', 404);
+      s.templates ||= [];
+      const name = valid(body.name, 'Template name');
+      if (name.length > 100) fail('Template name must be 1–100 characters.');
+      if (s.templates.some(t => t.name.toLowerCase() === name.toLowerCase())) fail('A template with this name already exists.', 409);
+      if (s.templates.length >= 100) fail('You can keep up to 100 templates.', 409);
+      const template = create(s.templates, { name, title: note.title, content: note.content, tags: [...note.tags] });
+      const { content, ...summary } = template;
+      return json({ template: summary }, 201);
+    }
+    else if (action === 'restore') note.deletedAt = null;
     else if (action === 'permanent' && method === 'DELETE') remove(s.notes, note);
     else if (action === 'versions') {
       if (method === 'GET') return json({ versions: note.versions });

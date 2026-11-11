@@ -262,6 +262,23 @@ Empty directories, chunked/resumable uploads and persistent queues are not
 implemented. Cancellation/partial failure keeps folders/files already committed;
 a retry after an ambiguous network failure can upload another copy. Rollback
 restores the previous frontend: no API or database migration is involved.
+## Personal Notes templates
+
+An owner can save an active note as a named, immutable template snapshot after
+the editor successfully flushes pending title/content/tag saves. The name is
+1–100 characters, unique per owner using SQLite NOCASE, with at most 100 personal
+templates. Lists expose summaries rather than whole Markdown bodies.
+Starting from a template creates an independent note with the original title,
+Markdown and tags. Folder, favorite state, Cloud attachment references and version
+history are excluded. Markdown links remain literal text, so links in a template
+still point to their original resources and keep their normal authorization.
+Removing a template never removes source notes, generated notes or Cloud files.
+Changing either a source or generated note never mutates the saved snapshot.
+
+The owning Notes database adds `note_templates`; existing rows/APIs are unchanged.
+Older binaries ignore the additive table on rollback. Retain it and its snapshots
+rather than dropping user data. Template bodies use the existing sanitized Notes
+editor and do not introduce shared/collaborative or cross-server permissions.
 
 ## Notes save safety
 

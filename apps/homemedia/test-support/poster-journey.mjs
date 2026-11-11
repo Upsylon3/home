@@ -14,18 +14,24 @@ export async function verifyVideoPosters(page, { mediaUrl, apiBase, token }) {
   await page.goto(mediaUrl);
   await page.getByRole('heading', { name: 'Library', exact: true }).waitFor();
   await page.bringToFront();
-  const ids = await page.evaluate(async ({ apiBase, token }) => {
+  let sourceDeadline;
+  const ids = await Promise.race([page.evaluate(async ({ apiBase, token }) => {
     const canvas = document.createElement('canvas'); canvas.width = 160; canvas.height = 90;
     canvas.style.cssText = 'position:fixed;top:0;left:0;width:160px;height:90px;z-index:2147483647';
     document.body.append(canvas);
     const context = canvas.getContext('2d');
     const paint = () => { context.fillStyle = '#00c000'; context.fillRect(0, 0, 160, 90); };
     paint();
+    // captureStream also requests an initial frame. Flush the green paint before
+    // creating it so that frame is not a headless compositor's blank surface.
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     const stream = canvas.captureStream(0), chunks = [];
     const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8' });
     recorder.ondataavailable = event => { if (event.data.size) chunks.push(event.data); };
     const stopped = new Promise(resolve => { recorder.onstop = resolve; });
-    const started = new Promise(resolve => { recorder.onstart = resolve; }); recorder.start(); await started;
+    // A manually driven track must send frames before an encoder may emit
+    // onstart. Waiting for onstart here can deadlock on an already-painted canvas.
+    recorder.start();
     for (let index = 0; index < 6; index++) {
       paint(); context.fillStyle = `rgb(${index},192,0)`; context.fillRect(0, 0, 1, 1);
       await new Promise(resolve => requestAnimationFrame(resolve));
@@ -42,7 +48,9 @@ export async function verifyVideoPosters(page, { mediaUrl, apiBase, token }) {
       ids.push((await response.json()).file.id);
     }
     return ids;
-  }, { apiBase, token });
+  }, { apiBase, token }), new Promise((_, reject) => {
+    sourceDeadline = setTimeout(() => reject(new Error('Video fixture recording/upload timed out')), 20_000);
+  })]).finally(() => clearTimeout(sourceDeadline));
   let tickets = 0;
   const count = request => { if (request.url().includes(`/homemedia/${ids[0]}/poster-ticket`)) tickets++; };
   page.on('request', count);

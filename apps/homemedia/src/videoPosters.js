@@ -57,7 +57,7 @@ async function decodePoster(file, signal) {
   const abort = () => controller.abort();
   signal.addEventListener('abort', abort, { once: true });
   const timer = setTimeout(abort, 8000);
-  let video, sourceUrl;
+  let video, sourceUrl, frameCallback;
   try {
     if (signal.aborted) throw new DOMException('Preview cancelled.', 'AbortError');
     const url = await api.posterTicket(file.id, controller.signal);
@@ -69,7 +69,10 @@ async function decodePoster(file, signal) {
       video = document.createElement('video');
       video.muted = true; video.playsInline = true; video.preload = 'auto';
       video.onerror = () => reject(new Error('This video has no supported preview.'));
-      video.onloadeddata = () => {
+      let captured = false;
+      const capture = () => {
+        if (captured) return; captured = true;
+        video.pause();
         const { videoWidth: width, videoHeight: height } = video;
         if (!width || !height || width * height > 16_777_216) { reject(new Error('Video dimensions exceed the preview limit.')); return; }
         const scale = Math.min(1, 640 / Math.max(width, height));
@@ -82,11 +85,16 @@ async function decodePoster(file, signal) {
           }, 'image/jpeg', 0.8);
         } catch { reject(new Error('Could not draw a video preview.')); }
       };
+      // loadeddata can precede presentation, notably for fast Blob sources.
+      // Wait for the decoder's actual frame rather than drawing a black surface.
+      if (video.requestVideoFrameCallback) frameCallback = video.requestVideoFrameCallback(capture);
+      else video.onloadeddata = capture;
       video.src = url; video.load();
+      video.play().catch(error => { if (!captured) reject(error); });
     });
   } finally {
     clearTimeout(timer); signal.removeEventListener('abort', abort);
-    if (video) { video.onloadeddata = null; video.onerror = null; video.removeAttribute('src'); video.load(); }
+    if (video) { video.pause(); if (frameCallback != null) video.cancelVideoFrameCallback(frameCallback); video.onloadeddata = null; video.onerror = null; video.removeAttribute('src'); video.load(); }
     if (sourceUrl?.startsWith('blob:')) URL.revokeObjectURL(sourceUrl);
   }
 }

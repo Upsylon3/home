@@ -198,7 +198,7 @@ The [roadmap](ROADMAP.md) owns unfinished work and its order.
 |---|---|---|
 | Home | Greeting, installed-app launcher, Cloud quota, Core health/activity, notifications, settings and administration | A useful personal daily overview; preserve hierarchy and quiet working space as more apps become useful |
 | Core | Local identity/2FA/sessions, preferences, registry lifecycle, events/notifications, scoped Cloud application keys and fixed-purpose delegations | Current permission scopes are bounded; future AI/other consumers need explicit consent and appropriate audience/resource enforcement |
-| Cloud | Owned files/folders, multiple-file uploads, search/sort, ZIP downloads, share links and Trash; storage APIs for apps | Folder-tree uploads, versioning and designed encryption at rest; public links are not same-HOME shared-folder ACLs |
+| Cloud | Owned files/folders, file/folder-tree uploads with a bounded queue, search/sort, ZIP downloads, share links and Trash; storage APIs for apps | Versioning and designed encryption at rest; public links are not same-HOME shared-folder ACLs |
 | Media | Cloud-backed gallery/timeline, albums/favorites/search, EXIF, image thumbnails, browser uploads and image/video/audio playback | Video posters, duplicate review and local-family shared albums; retain Cloud as the single file store |
 | Notes | Markdown preview, folders/tags/search/favorites, debounced autosave, versions/restore and Cloud attachments | Save/draft safety, templates, designed offline editing and local collaboration; history is not conflict resolution |
 | Sync | Android media categories and optional Downloads scanning, WorkManager scheduling/retry, hash dedup and aggregate backup summary | Live run/queue feedback, changed-file detection and chosen document/folder access; physical/background validation remains open |
@@ -245,6 +245,23 @@ Versioned assignment writes reject stale lookups/clients; completion rechecks
 access and repeat creation in one immediate transaction. No assignment email,
 push, project collaboration or multi-server identity is introduced. Restored
 assignment ACLs must be revoked offline before reopening Tasks.
+
+## Cloud folder uploads
+
+Cloud's browser queue sends at most three whole-file uploads concurrently and
+retains at most 1000 rows. Folder selection/drop preserves relative paths of
+files, validates depth/names, reuses owned folders with SQLite ASCII NOCASE
+semantics and creates missing folders through the ordinary authorized API.
+Each selection captures its starting folder and session; a changed session fails
+closed. The server still enforces ownership, quota and upload validation.
+
+Rows expose progress, failures and explicit retry/cancel; switching file tabs
+retains the queue. Internal navigation/sign-out confirms cancellation, while
+reload/close uses the native browser prompt. Refresh loses in-memory state.
+Empty directories, chunked/resumable uploads and persistent queues are not
+implemented. Cancellation/partial failure keeps folders/files already committed;
+a retry after an ambiguous network failure can upload another copy. Rollback
+restores the previous frontend: no API or database migration is involved.
 
 ## Notes save safety
 

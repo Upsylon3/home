@@ -8,6 +8,10 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 ## [Unreleased]
 
 ### Added
+- Cloud folder selection/drop preserves directory hierarchy, reuses existing
+  folders and provides a bounded three-transfer queue with progress, per-file
+  retry/cancel and navigation protection. Keep the original destination while
+  browsing; refresh loses the queue but retains completed files/created folders.
 - HOME account settings now expose Core password changes, TOTP enrollment and
   recovery, personal activity and account administration. Add disposable real-Core
   browser journeys and frontend API regression tests, including masked

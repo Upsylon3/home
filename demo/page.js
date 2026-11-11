@@ -26,16 +26,18 @@ export function usePageApi(base) {
     headers = new Headers();
     open(method, url) { this.method = method; this.url = url; }
     setRequestHeader(name, value) { this.headers.set(name, value); }
+    abort() { this.cancelled = true; this.controller?.abort(); this.onabort?.(); }
     async send(body) {
+      this.controller = new AbortController();
       try {
-        const response = await fetch(this.url, { method: this.method, headers: this.headers, body });
+        const response = await fetch(this.url, { method: this.method, headers: this.headers, body, signal: this.controller.signal });
         this.status = response.status;
         this.responseText = await response.text();
       } catch {
-        this.onerror();
+        if (!this.cancelled) this.onerror?.();
         return;
       }
-      this.onload();
+      if (!this.cancelled) this.onload?.();
     }
   };
 }

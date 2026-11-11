@@ -61,6 +61,10 @@ independent review and public-network drills remain unfinished; see the
 - App backends verify sessions with Core. Successful identities may be cached
   for at most five seconds; expired entries are not reused during outages.
   Verification has a five-second deadline and bounded caches/in-flight work.
+- Browser request handlers only clear the shared login for a 401 when the token
+  still matches the request's captured token. Delayed old-session failures remain
+  errors for that request but cannot sign out a replacement session; a current
+  session's 401 still expires it. Media applies this to images and uploads too.
 - Backends enforce roles and ownership. Frontend hiding is never authorization.
   Monitor is admin-only; Cloud files/folders are owner-only.
 - Media revalidates cached EXIF/thumbnails through Cloud's authorized download

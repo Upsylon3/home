@@ -24,7 +24,7 @@ export async function verifyFolderUpload(page, origin) {
     }, new URL(origin).pathname);
     assert.deepEqual(result.sort(), [['nested.txt', 'nested bytes'], ['top.txt', 'top bytes']]);
     await page.reload();
-    await page.getByText('Folder proof', { exact: true }).waitFor();
+    await page.locator('.folder-open').filter({ hasText: 'Folder proof' }).waitFor();
   } finally {
     const target = path.resolve(fixture);
     assert.ok(target.startsWith(fs.realpathSync(os.tmpdir()) + path.sep) && path.basename(target).startsWith('home-demo-folders-'));

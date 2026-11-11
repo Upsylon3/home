@@ -8,6 +8,11 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 ## [Unreleased]
 
 ### Added
+- Browser-native video posters in Media library/favorites/albums/covers/picker,
+  with lazy bounded decoding and a small session-only cache. Add owner-authorized
+  short-lived range tickets with byte/request/deadline limits, unsupported-file
+  fallback and real-video browser proof. Keep original bytes in Cloud; no new
+  server decoder, database migration or persistent browser cache.
 - Android backup feedback observes real manual/automatic WorkManager state,
   scanning/checking/uploading stages, per-run file outcomes and the latest retained
   manual result. Report queued/retrying/failed/cancelled states without claiming
@@ -65,6 +70,12 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
   its destination; recheck those files through the server before recording new
   scoped history. Capture Core identity verification against one session pair.
   Device/profile/job isolation and multi-server enablement remain separate work.
+- Sandbox bearer media responses so directly opening uploaded HTML/SVG cannot
+  create an active same-origin document. Preserve ordinary media-element playback.
+- Media cached thumbnails and EXIF now recheck Cloud's authorized source download
+  before returning derivatives. Permanent source deletion, permission denial and
+  Cloud outages cannot fall back to old cache entries; use private/no-store
+  responses and a bounded HEAD check without downloading the original again.
 - Bind Android HTTP clients to an immutable server URL/token snapshot, publish
   cached URLs/clients together and reject new requests after a server switch or
   logout. Disable automatic redirects so login bodies and uploads cannot follow
@@ -77,9 +88,14 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
   restore/Trash, retry failed note loads and ignore late old-session failures.
 - Keep valid HOME sessions after incorrect account passwords or authenticator
   codes, expire revoked sessions and ignore late failures for replaced tokens.
+  Apply replacement-token protection to Media, Tasks, Monitor and Vault, including
+  Media image downloads and XHR uploads; retain genuine current-session expiry.
   Bound the administrator table on narrow screens, retry failed account/TOTP
   loads and preserve quota precision when editing existing values.
 - HomeMedia demo pictures load in browsers that reject Blob values in IndexedDB.
+- Media gallery tiles now support Tab/Enter/Space, expose favorite state and keep
+  focus visible. The media viewer uses a native modal dialog, contains keyboard
+  focus, closes with Escape and restores the opener.
 - The browser demo can open and save changes when service workers are unavailable.
 - Wait for originally running containers that transiently restart during
   snapshot recovery; retain strict preflight and foreign-writer checks.

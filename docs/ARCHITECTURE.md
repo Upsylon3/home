@@ -199,7 +199,7 @@ The [roadmap](ROADMAP.md) owns unfinished work and its order.
 | Home | Greeting, installed-app launcher, Cloud quota, Core health/activity, notifications, settings and administration | A useful personal daily overview; preserve hierarchy and quiet working space as more apps become useful |
 | Core | Local identity/2FA/sessions, preferences, registry lifecycle, events/notifications, scoped Cloud application keys and fixed-purpose delegations | Current permission scopes are bounded; future AI/other consumers need explicit consent and appropriate audience/resource enforcement |
 | Cloud | Owned files/folders, file/folder-tree uploads with a bounded queue, search/sort, ZIP downloads, share links and Trash; storage APIs for apps | Versioning and designed encryption at rest; public links are not same-HOME shared-folder ACLs |
-| Media | Cloud-backed gallery/timeline, albums/favorites/search, EXIF, image thumbnails, browser uploads and image/video/audio playback | Video posters, duplicate review and local-family shared albums; retain Cloud as the single file store |
+| Media | Cloud-backed gallery/timeline, albums/favorites/search, EXIF, image thumbnails, bounded video posters, browser uploads and image/video/audio playback | Duplicate review and local-family shared albums; retain Cloud as the single file store |
 | Notes | Markdown preview, folders/tags/search/favorites, debounced autosave, versions/restore and Cloud attachments | Save/draft safety, templates, designed offline editing and local collaboration; history is not conflict resolution |
 | Sync | Android media categories and optional Downloads scanning, WorkManager scheduling/retry, live work state/stages/counts, hash dedup and aggregate backup summary | Durable run history, exact unmet-constraint diagnostics, changed-file detection and chosen document/folder access; physical/background validation remains open |
 | Tasks | Personal projects/dates/priorities/search, completion history, fixed repeats, opt-in reminders and local task assignment | Richer recurrence; keep owner control and distinguish individual assignments from collaborative projects |
@@ -269,6 +269,38 @@ application ID changes and no destructive Room fallback are permitted. Preserve
 an offline database backup before upgrade; downgrade to v1 cannot read Room v2.
 Use an isolated pre-upgrade recovery copy rather than deleting columns/history or
 trying to recreate global uniqueness after scoped duplicates have been recorded.
+
+## Media video posters
+
+Posters use the browser's existing video decoder, not a new server executable.
+This retains the current codec-support boundary and avoids adding FFmpeg/runtime
+dependencies. An offscreen video captures its first decoded frame into a JPEG
+with maximum dimension 640px; it stops after eight seconds and refuses canvas
+capture above 16,777,216 source pixels. It never plays audio or stores originals.
+Unsupported/corrupt sources, queue overflow and exhausted budgets retain the
+generic video placeholder. It does not sample a representative scene.
+
+Visible tiles request at most two concurrent decodes and queue at most 24 jobs.
+The memory-only cache keeps at most 48 entries/4 MiB of JPEGs, expires successes
+after five minutes and failures after 30 seconds, and keys entries by Cloud ID,
+size, creation time and MIME type. A changed login clears entries and rejects old
+results; sign-out unmount clears the cache. Library/favorites/album grids, covers
+and the picker reuse it. Optional cover metadata times out after five seconds;
+album names/counts remain usable if Cloud previews are unavailable.
+
+An authenticated poster ticket probes Cloud ownership with one byte, then permits
+at most eight range requests, 2 MiB per reservation and 16 MiB total, with a fixed
+15-second deadline and no-store responses. Limits are reserved before network
+awaits; ignored ranges and oversized streams fail closed. Each use still goes
+through Cloud's authorized download. Public media responses carry a sandbox CSP
+so navigating to an uploaded HTML/SVG cannot execute it as a HOME document.
+
+This is a session cache of already delivered client pixels, not an authorization
+or offline store. Existing Cloud file IDs have immutable bytes; any future file
+replacement/version API must update poster invalidation. No schema migration or
+new decoder dependency is required. Rolling back the backend makes new poster
+requests fall back; ordinary playback endpoints remain compatible.
+
 ## Android backup feedback
 
 The Home screen observes both unique manual/periodic WorkManager flows. Worker

@@ -132,6 +132,12 @@ jobs:
           DEMO_BROWSER_CHANNEL: chrome
         run: node apps/hometasks-backend/test-support/assignment-browser.cjs
 
+      - name: Exercise video posters through real Cloud storage
+        if: contains(fromJSON(needs.scope.outputs.builds), 'apps/homemedia') && needs.scope.outputs.native != 'false'
+        env:
+          DEMO_BROWSER_CHANNEL: chrome
+        run: node apps/homemedia/test-support/poster-browser.cjs
+
   windows:
     name: Windows install and native SQLite smoke test
     needs: scope

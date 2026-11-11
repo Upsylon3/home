@@ -61,8 +61,20 @@ independent review and public-network drills remain unfinished; see the
 - App backends verify sessions with Core. Successful identities may be cached
   for at most five seconds; expired entries are not reused during outages.
   Verification has a five-second deadline and bounded caches/in-flight work.
+- Browser request handlers only clear the shared login for a 401 when the token
+  still matches the request's captured token. Delayed old-session failures remain
+  errors for that request but cannot sign out a replacement session; a current
+  session's 401 still expires it. Media applies this to images and uploads too.
 - Backends enforce roles and ownership. Frontend hiding is never authorization.
   Monitor is admin-only; Cloud files/folders are owner-only.
+- Media revalidates cached EXIF/thumbnails through Cloud's authorized download
+  before serving them. Source deletion/denial or an unavailable Cloud fails
+  closed; derivative responses are private/no-store. This cannot recall copies
+  already delivered to a client.
+- Browser video posters use owner-authorized, fixed-deadline source tickets with
+  shared request/byte budgets; the browser cache is bounded and never persisted.
+  No server video decoder is added. All bearer media responses sandbox uploaded
+  document content, including HTML/SVG, while media elements can decode bytes.
 - Share links use high-entropy tokens, separate rate limits and immediate
   invalidation when the underlying file is trashed.
 - Upload caps, per-user quotas, input/path validation and safe Markdown rendering

@@ -57,6 +57,16 @@ preference-key or database-schema change is made. The local Windows Gradle
 distribution download was too slow and was cancelled after CI supplied the
 required APK/JVM proof; no local Android build is claimed.
 
+## Media derivative source checks
+
+The regression fixture reproduced HTTP 200 for a warm thumbnail after permanent
+Cloud deletion. Windows/Node 26.13.0 now passes all 30 Media backend test entries
+(28 behavioral tests plus two helper-file discovery entries). Real isolated
+Core/Cloud/Media tests verify thumbnail/EXIF priming, source deletion and 404s;
+injected Cloud 401/403/500/network failures prove fail-closed status handling,
+HEAD-only checks, private/no-store responses and recovery with the cache intact.
+No decoder, database migration or production deployment is part of this fix.
+
 ## Android live backup feedback
 
 Windows/JBR 21 with the repository's exact Gradle 9.3.1 passed `assembleDebug`,
@@ -108,6 +118,15 @@ DEMO_BROWSER_CHANNEL=msedge npm run test:demo:browser
 Use PowerShell's `$env:DEMO_BROWSER_CHANNEL='msedge'` on Windows. The additive
 `note_templates` table is included in Notes database backups; old binaries ignore
 it on downgrade. No real accounts or installations are used by these fixtures.
+
+## Sibling session renewal
+
+Before the fix, all four new delayed-401 fixtures reproduced a replacement login
+being cleared in Media, Tasks, Monitor and Vault. Sixteen focused API regressions
+now pass: stale/current 401s, preserved 403s, original captured authorization,
+expiry events and Media's image/XHR request paths. They use disposable token
+strings and controlled responses, not real accounts. Core remains the authority;
+Vault cryptography and unlock behavior are unchanged by these response guards.
 
 ## Notes save safety
 
@@ -595,3 +614,41 @@ Original exported values are preserved below, compacted without changing data.
 ~~~json
 {"schema":1,"source":{"revision":"7d9f944114960ce31a55cec1375c1fad4cc828f5","workingTreeDirty":false},"execution":"Automated headless browser on the local host; foreground page, no CPU throttling. Not representative minimum hardware.","browserVersion":"145.0.7632.6","host":{"platform":"win32","architecture":"x64","cpuModel":"Intel(R) Core(TM) i7-4790K CPU @ 4.00GHz","logicalProcessors":8,"memoryGiB":16},"runs":[{"schema":1,"algorithm":"Argon2id","implementation":"hash-wasm / production deriveMasterKeyBits","execution":"browser-main-thread","kdfParams":{"m":19456,"t":2,"p":1},"saltBytes":16,"derivedKeyBytes":32,"measuredAt":"2026-11-04T13:51:36.829Z","firstDerivationMs":55,"steadyMs":[49.19999998807907,48.5,298.19999998807907,46.19999998807907,47.10000002384186,73.89999997615814,67.10000002384186],"summary":{"minMs":46.19999998807907,"medianMs":49.19999998807907,"maxMs":298.19999998807907},"packageVersion":"1.7.0","deviceLabel":"Automated browser check; not a minimum-device certification","runInPage":1,"browser":{"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36","reportedLogicalProcessors":8,"reportedDeviceMemoryGiB":8},"scope":"Synthetic KDF timing only. Not total unlock time, a minimum-device certification, or a security review."},{"schema":1,"algorithm":"Argon2id","implementation":"hash-wasm / production deriveMasterKeyBits","execution":"browser-main-thread","kdfParams":{"m":19456,"t":2,"p":1},"saltBytes":16,"derivedKeyBytes":32,"measuredAt":"2026-11-04T13:51:38.332Z","firstDerivationMs":74.10000002384186,"steadyMs":[51.89999997615814,48.5,68.10000002384186,86.39999997615814,85.69999998807907,45.39999997615814,49.10000002384186],"summary":{"minMs":45.39999997615814,"medianMs":51.89999997615814,"maxMs":86.39999997615814},"packageVersion":"1.7.0","deviceLabel":"Automated browser check; not a minimum-device certification","runInPage":1,"browser":{"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36","reportedLogicalProcessors":8,"reportedDeviceMemoryGiB":8},"scope":"Synthetic KDF timing only. Not total unlock time, a minimum-device certification, or a security review."},{"schema":1,"algorithm":"Argon2id","implementation":"hash-wasm / production deriveMasterKeyBits","execution":"browser-main-thread","kdfParams":{"m":19456,"t":2,"p":1},"saltBytes":16,"derivedKeyBytes":32,"measuredAt":"2026-11-04T13:51:39.756Z","firstDerivationMs":47.69999998807907,"steadyMs":[45.80000001192093,48.40000003576279,78.40000003576279,46.59999996423721,46.80000001192093,47.5,129.69999998807907],"summary":{"minMs":45.80000001192093,"medianMs":47.5,"maxMs":129.69999998807907},"packageVersion":"1.7.0","deviceLabel":"Automated browser check; not a minimum-device certification","runInPage":1,"browser":{"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36","reportedLogicalProcessors":8,"reportedDeviceMemoryGiB":8},"scope":"Synthetic KDF timing only. Not total unlock time, a minimum-device certification, or a security review."}]}
 ~~~
+
+## Media keyboard navigation
+
+The production Media build and all seven demo builds pass. The Edge demo browser
+gate exercises actual Tab order, Enter/Space gallery activation, initial modal
+focus, repeated Tab containment, Escape close, opener restoration and independently
+focused favorites. A 390px viewer layout was also inspected. This uses the actual
+Media frontend with browser-local demo data; it is not a screen-reader audit or
+new backend authorization proof. Video posters are verified separately below.
+
+## Media video posters
+
+Windows/Node 26.13.0 passed ten Media frontend tests, 33 backend test entries
+(including two helper discovery entries), six demo API tests, four deployment
+artifact tests and 14 CI-policy tests. The production Media and all seven demo
+builds pass, as does the complete Edge demo gate with/without service workers.
+The real-Core/Cloud/Media browser fixture records a genuine canvas WebM, uploads
+it through Cloud, reads the resulting JPEG pixel to prove the green video frame
+was decoded, and checks unsupported-file fallback, normal playback and warm-cache
+reuse in favorites, album grids/covers and the picker. It also injects cover
+metadata failure while retaining album access, and verifies direct uploaded HTML
+cannot execute inside the response sandbox. The generated gallery was inspected.
+
+~~~sh
+npm run test --workspace=apps/homemedia --workspace=apps/homemedia-backend
+npm run build --workspace=apps/homemedia
+DEMO_BROWSER_CHANNEL=msedge node apps/homemedia/test-support/poster-browser.cjs
+npm run build:demo
+DEMO_BROWSER_CHANNEL=msedge npm run test:demo:browser
+~~~
+
+Use PowerShell environment assignment on Windows. CI runs the real-service
+journey when native dependencies and Media builds are selected. Test fixtures
+prove WebM/VP8 on Edge/Chrome, not all MP4/HEVC/MKV combinations or phone memory
+budgets. Unsupported, corrupt, oversized, slow and over-budget sources retain
+the fallback; no independent video security audit or new server decoder is
+claimed. Native/browser limits and the memory-cache rollback are documented in
+[architecture](ARCHITECTURE.md#media-video-posters).

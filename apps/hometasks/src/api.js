@@ -22,7 +22,7 @@ async function request(path, options = {}) {
 
   // 401 = "not logged in (any more)". Forget the token and tell App.jsx,
   // which then shows the sign-in screen.
-  if (res.status === 401) {
+  if (res.status === 401 && getToken() === token) {
     setToken(null);
     window.dispatchEvent(new CustomEvent("hometasks:session-expired"));
   }

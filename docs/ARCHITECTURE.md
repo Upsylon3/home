@@ -246,6 +246,23 @@ access and repeat creation in one immediate transaction. No assignment email,
 push, project collaboration or multi-server identity is introduced. Restored
 assignment ACLs must be revoked offline before reopening Tasks.
 
+## Notes save safety
+
+Notes serializes title/content/tag autosaves in the current editor. Internal
+navigation offers save-and-leave, keep-editing or explicit queued-change discard;
+save failures retain fields in memory for retry. Reload/close asks the browser's
+native unsaved-work question, and intentional sign-out confirms discard. A request
+already sent may complete even if queued edits are discarded. Attachment refreshes
+update metadata without replacing draft text; version restore/Trash flush edits
+first. A new note route owns a fresh queue, and late old-token failures cannot
+clear a newer session. Core remains the authority and ordinary Notes APIs remain
+unchanged.
+
+Draft plaintext is not written to localStorage/IndexedDB or retained across logout,
+session expiry or a confirmed page close. This prevents an implicit offline cache;
+browser/OS termination can still lose unsaved work. Multi-tab/user conflicts and
+persistent offline recovery need their own privacy and conflict design.
+
 ## Cross-app search
 
 Home's Search submits explicitly to optional Bridge. Bridge verifies the live

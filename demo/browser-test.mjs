@@ -4,6 +4,7 @@ import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { verifyPortal } from '../server/portal/browser-proof.mjs';
 import { verifyBenchmark } from '../apps/homevault/test-support/benchmark-proof.mjs';
+import { verifyNoteSaveSafety } from '../apps/homenotes/test-support/save-journey.mjs';
 const server = spawn(process.execPath, ['demo/serve.mjs'], { env: { ...process.env, PORT: '4174' }, stdio: ['ignore', 'pipe', 'inherit'] });
 await once(server.stdout, 'data');
 const browser = await chromium.launch({ ...(process.env.DEMO_BROWSER_CHANNEL ? { channel: process.env.DEMO_BROWSER_CHANNEL } : {}), headless: true });
@@ -16,6 +17,7 @@ page.on('pageerror', e => errors.push(e.message));
 page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
 const see = async text => page.getByText(text, { exact: true }).waitFor();
 try {
+  await verifyNoteSaveSafety(browser, origin);
   const restricted = await browser.newContext({ serviceWorkers: 'block' });
   try {
     await restricted.addInitScript(() => {

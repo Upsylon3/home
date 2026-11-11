@@ -50,6 +50,7 @@ export default function Layout({ user, onLogout }) {
   }
 
   function handleLogout() {
+    if (!window.dispatchEvent(new Event('homenotes:before-logout', { cancelable: true }))) return;
     setToken(null);
     onLogout();
     navigate("/login");

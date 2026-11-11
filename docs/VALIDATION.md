@@ -18,6 +18,11 @@ generated v2 contract, preserve every seeded v1 field/ID, check server/account
 uniqueness, and roll back an injected migration failure. CI runs these checks
 after generating the schema and rejects uncommitted schema drift.
 
+After integrating the merged live-feedback slice, all 25 JVM tests, both APK
+builds and both SQLite migration checks passed again locally; the generated
+Room schema remained unchanged. Destination-scoped DAO reads/writes and retained
+legacy-history notices remain intact. This adds no runtime migration execution.
+
 ~~~sh
 cd apps/homesync-android
 gradle --no-daemon --console=plain :app:assembleDebug :app:testDebugUnitTest :app:assembleDebugAndroidTest

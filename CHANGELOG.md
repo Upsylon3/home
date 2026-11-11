@@ -42,6 +42,11 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
   validation from feature work. Setup, recovery and security requirements remain.
 
 ### Fixed
+- Bind Android HTTP clients to an immutable server URL/token snapshot, publish
+  cached URLs/clients together and reject new requests after a server switch or
+  logout. Disable automatic redirects so login bodies and uploads cannot follow
+  an unconfirmed destination. Existing preferences, application ID and Room data
+  remain unchanged; multi-server backup still requires scoped data/jobs.
 - Preserve pending Notes edits when navigating before autosave. Serialize text/tag
   saves, retain failed fields for retry, require save or explicit discard before
   internal navigation, and warn on reload/close or intentional sign-out. Keep

@@ -38,6 +38,10 @@ function Editor({ noteId }) {
   const [versions, setVersions] = useState(null);
   const [restoring, setRestoring] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [showTemplateForm, setShowTemplateForm] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+  const [creatingTemplate, setCreatingTemplate] = useState(false);
+  const [templateNotice, setTemplateNotice] = useState('');
 
   const latest = useRef({ title: "", content: "" });
   const loadGeneration = useRef(0);
@@ -120,7 +124,7 @@ function Editor({ noteId }) {
 
   function addTag(e) {
     e.preventDefault();
-    if (restoring) return;
+    if (restoring || creatingTemplate) return;
     const name = tagDraft.trim();
     if (!name || tags.some((t) => t.toLowerCase() === name.toLowerCase())) {
       setTagDraft("");
@@ -133,7 +137,7 @@ function Editor({ noteId }) {
   }
 
   function removeTag(name) {
-    if (restoring) return;
+    if (restoring || creatingTemplate) return;
     const nextTags = tags.filter((t) => t !== name);
     setTags(nextTags);
     queue.edit({ tags: nextTags });
@@ -220,6 +224,25 @@ function Editor({ noteId }) {
   return (
     <div className="note-editor">
       {error && <div className="error-banner" role="alert">{error}</div>}
+      {templateNotice && <p role="status">{templateNotice}</p>}
+      {showTemplateForm ? <form aria-label="Save note as template" onSubmit={async e => {
+        e.preventDefault();
+        if (creatingTemplate || restoring) return;
+        setCreatingTemplate(true); setTemplateNotice('');
+        try {
+          if (!await queue.flush()) return;
+          await api.templates.create(noteId, templateName.trim());
+          setShowTemplateForm(false); setTemplateName('');
+          setTemplateNotice('Template saved. Open Templates to start a new note.');
+        } catch (err) { setError(err.message); }
+        finally { setCreatingTemplate(false); }
+      }}>
+        <div className="field"><label htmlFor="template-name">Template name</label>
+          <input id="template-name" required maxLength={100} value={templateName} disabled={creatingTemplate} onChange={e => setTemplateName(e.target.value)} /></div>
+        <p>Copies the saved title, Markdown and tags. Attachments, folder, favorites and history stay with this note.</p>
+        <button className="btn btn-primary btn-sm" disabled={creatingTemplate || restoring}>Save template</button>
+        <button type="button" className="btn btn-ghost btn-sm" disabled={creatingTemplate} onClick={() => { setShowTemplateForm(false); setTemplateName(''); }}>Cancel template</button>
+      </form> : <button className="btn btn-ghost btn-sm" disabled={restoring} onClick={() => { setShowTemplateForm(true); setTemplateName(title || 'Untitled'); setTemplateNotice(''); }}>Save as template</button>}
       {blocker.state === 'blocked' && <section role="alertdialog" aria-labelledby="unsaved-note-title" aria-describedby="unsaved-note-description" className="panel">
         <h2 id="unsaved-note-title">Unsaved note changes</h2>
         <p id="unsaved-note-description">Save your changes before leaving, or stay here to keep editing. Failed saves remain in this editor for retry. A save already sent to the server may still complete.</p>
@@ -235,7 +258,7 @@ function Editor({ noteId }) {
       <input
         className="note-editor-title"
         aria-label="Note title"
-        disabled={restoring}
+        disabled={restoring || creatingTemplate}
         value={title}
         onChange={(e) => handleTitleChange(e.target.value)}
         placeholder="Untitled"
@@ -290,7 +313,7 @@ function Editor({ noteId }) {
           <textarea
             className="note-editor-textarea"
             aria-label="Note content"
-            disabled={restoring}
+            disabled={restoring || creatingTemplate}
             value={content}
             onChange={(e) => handleContentChange(e.target.value)}
             placeholder="Start writing in Markdown…"
@@ -358,7 +381,7 @@ function Editor({ noteId }) {
               <div key={v.id} className="version-item">
                 <div className="version-item-date">{timeAgo(v.createdAt)}</div>
                 <div className="version-item-preview">{v.content.slice(0, 140) || "(empty)"}</div>
-                <button className="btn btn-ghost btn-sm" disabled={restoring} onClick={() => restoreVersion(v.id)}>
+                <button className="btn btn-ghost btn-sm" disabled={restoring || creatingTemplate} onClick={() => restoreVersion(v.id)}>
                   Restore this version
                 </button>
               </div>

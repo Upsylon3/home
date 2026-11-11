@@ -3,6 +3,43 @@
 Outstanding review/device evidence and reproduction notes live here. Run fixtures
 only against disposable data; never equate CI with independent or physical testing.
 
+## Android destination ledger migration
+
+Room v2 preserves legacy rows with an unknown destination and scopes new rows by
+canonical server URL plus Core account ID. Existing sessions verify identity
+through the compatible Sync-to-Core `/api/homesync/auth/me` proxy; no JWT claims
+are decoded as account authority. Legacy rows never suppress scoped backups.
+
+Windows/JDK 21/Gradle 9.3.1 executed `assembleDebug`, `testDebugUnitTest` and
+`assembleDebugAndroidTest` successfully. Android CI also compiles the runtime
+fixture and runs the JVM suite. Two Node 26 SQLite tests execute the production
+migration statements, compare the resulting columns/defaults/index with Room's
+generated v2 contract, preserve every seeded v1 field/ID, check server/account
+uniqueness, and roll back an injected migration failure. CI runs these checks
+after generating the schema and rejects uncommitted schema drift.
+
+After integrating the merged live-feedback slice, all 25 JVM tests, both APK
+builds and both SQLite migration checks passed again locally; the generated
+Room schema remained unchanged. Destination-scoped DAO reads/writes and retained
+legacy-history notices remain intact. This adds no runtime migration execution.
+
+~~~sh
+cd apps/homesync-android
+gradle --no-daemon --console=plain :app:assembleDebug :app:testDebugUnitTest :app:assembleDebugAndroidTest
+node --test test/destination-migration.test.mjs
+adb -s DISPOSABLE_SERIAL shell am instrument -w -e homeFixture disposable -e class com.homeecosystems.homesync.DestinationLedgerMigrationTest com.homeecosystems.homesync.test/androidx.test.runner.AndroidJUnitRunner
+~~~
+
+The instrumentation fixture is compiled, **not executed** in this evidence. The
+host has no Android emulator acceleration driver; a fresh software-only API-34
+AVD remained ADB-offline and was stopped. No personal AVD or phone was used and
+no host driver/settings were changed. SQLite/schema proof does not claim actual
+Android Room open/upgrade, physical-device or multi-server-worker verification.
+Keep this runtime evidence gap explicit; the PR remains a draft pending its
+runtime migration acceptance gate. Device/profile/settings/job isolation remains
+unfinished independently. Preserve a pre-upgrade offline database copy for
+rollback; never use destructive fallback or drop retained legacy history.
+
 ## Android credential isolation
 
 The [Android CI run](https://github.com/Upsylon3/home/actions/runs/43057804190)

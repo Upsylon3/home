@@ -65,6 +65,11 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
   validation from feature work. Setup, recovery and security requirements remain.
 
 ### Fixed
+- Scope Android local backup deduplication and offline totals by canonical
+  server/account identity. Room v2 retains every legacy record without assuming
+  its destination; recheck those files through the server before recording new
+  scoped history. Capture Core identity verification against one session pair.
+  Device/profile/job isolation and multi-server enablement remain separate work.
 - Sandbox bearer media responses so directly opening uploaded HTML/SVG cannot
   create an active same-origin document. Preserve ordinary media-element playback.
 - Media cached thumbnails and EXIF now recheck Cloud's authorized source download

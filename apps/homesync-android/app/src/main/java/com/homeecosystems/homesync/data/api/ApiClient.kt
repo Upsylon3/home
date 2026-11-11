@@ -2,9 +2,11 @@ package com.homeecosystems.homesync.data.api
 
 import com.homeecosystems.homesync.BuildConfig
 import com.homeecosystems.homesync.data.SessionManager
+import com.homeecosystems.homesync.data.ServerSession
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.io.IOException
 
 /**
  * Builds (and rebuilds, when needed) the Retrofit client used for every
@@ -14,6 +16,19 @@ import retrofit2.converter.gson.GsonConverterFactory
  * and this caches one client per address rather than assuming it's fixed.
  */
 class ApiClient(private val sessionManager: SessionManager) {
+
+    fun currentDestinationKey(): String? = sessionManager.currentDestinationKey()
+
+    /** No JWT parsing: ask Core for the authenticated local account ID. */
+    suspend fun verifyDestinationKey(): String? {
+        val expected = sessionManager.currentSession()
+        val identity = build(expected.serverUrl.orEmpty(), expected).identity()
+        if (identity.code() == 401 || identity.code() == 403) return null
+        if (!identity.isSuccessful) throw IOException("HOME account verification is unavailable.")
+        val id = identity.body()?.id?.takeIf { it > 0 } ?: throw IOException("Invalid HOME account response.")
+        if (!sessionManager.bindAccount(expected, id)) return null
+        return sessionManager.currentDestinationKey()
+    }
 
     private data class CachedApi(val url: String, val api: HomeSyncApi)
     @Volatile private var cached: CachedApi? = null
@@ -46,8 +61,8 @@ class ApiClient(private val sessionManager: SessionManager) {
         cached = null
     }
 
-    private fun build(rawUrl: String): HomeSyncApi {
-        val clientBuilder = serverHttpClient(normalizeServerUrl(rawUrl), sessionManager::currentSession).newBuilder()
+    private fun build(rawUrl: String, captured: ServerSession? = null): HomeSyncApi {
+        val clientBuilder = serverHttpClient(normalizeServerUrl(rawUrl)) { captured ?: sessionManager.currentSession() }.newBuilder()
 
         // Full request/response logging only in debug builds. This would
         // otherwise print auth tokens straight to Logcat on every request

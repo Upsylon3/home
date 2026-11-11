@@ -32,6 +32,7 @@ fun backupFeedback(
         WorkInfo.State.FAILED -> when (reason) {
             "media-permission-required" -> "Review media access before trying again."
             "sign-in-required" -> "Sign in before trying again."
+            "account-verification-required" -> "Sign in again to verify this backup destination."
             else -> "The run could not finish. Review access and connection, then try again."
         }
         WorkInfo.State.CANCELLED -> "Work was cancelled; files already received by the server are kept."

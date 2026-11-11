@@ -70,6 +70,10 @@ class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker
     private suspend fun backup(): Result {
         sessionManager.initialize()
         if (!sessionManager.isSignedIn()) return Result.failure(snapshot("failed", "sign-in-required"))
+        val destinationKey = try { apiClient.verifyDestinationKey() }
+            catch (e: CancellationException) { throw e }
+            catch (e: Exception) { return Result.retry() }
+            ?: return Result.failure(snapshot("failed", "account-verification-required"))
         report("scanning")
 
         val settings = settingsStore.current()
@@ -81,7 +85,7 @@ class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         val deviceId = ensureDeviceId(api) ?: return Result.retry()
 
         val dao = db.syncedMediaDao()
-        val alreadyKnownLocalIds = dao.allSyncedLocalIds().toSet()
+        val alreadyKnownLocalIds = dao.allSyncedLocalIds(destinationKey).toSet()
 
         val candidates = mediaScanner.scan(categories).filter { it.localId !in alreadyKnownLocalIds }
         total = candidates.size
@@ -122,7 +126,7 @@ class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         // likely) — record locally without re-uploading, so future runs
         // skip them too instead of re-checking every time.
         for (file in plan.alreadySynced) {
-            dao.insert(file.toEntity())
+            dao.insert(file.toEntity(destinationKey))
             matched++
         }
 
@@ -133,7 +137,7 @@ class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker
             catch (e: CancellationException) { throw e }
             catch (e: Exception) { false }
             if (uploaded) {
-                dao.insert(file.toEntity())
+                dao.insert(file.toEntity(destinationKey))
                 uploadedCount++
             } else {
                 failed++
@@ -148,7 +152,8 @@ class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         return if (failed > 0) Result.retry() else completed()
     }
 
-    private fun HashedFile.toEntity() = SyncedMediaEntity(
+    private fun HashedFile.toEntity(destinationKey: String) = SyncedMediaEntity(
+        destinationKey = destinationKey,
         localMediaId = candidate.localId,
         contentHash = contentHash,
         category = candidate.category.toApiValue(),

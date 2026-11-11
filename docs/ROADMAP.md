@@ -46,6 +46,8 @@ authentication authorities.
   retained-client work after switching/logout and prevent redirect forwarding.~~
   APK/JVM checks pass; this prerequisite does not enable multiple backup targets.
 - Migrate legacy single-server local data without losing backup history.
+  The destination/account ledger slice is implemented in PR #118; retain its
+  Android runtime validation gap until the disposable fixture has executed.
   Bind queued WorkManager work to an immutable destination identity, and test
   server switching, logout, retries, token isolation, changed files and
   destination-specific deduplication.

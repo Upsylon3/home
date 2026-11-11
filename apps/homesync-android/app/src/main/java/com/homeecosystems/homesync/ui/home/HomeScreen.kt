@@ -69,6 +69,7 @@ fun HomeScreen(
         )
 
         LastBackupCard(state)
+        state.historyNotice?.let { Text(it, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 12.dp)) }
 
         Card(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -130,7 +131,7 @@ private fun LastBackupCard(state: HomeUiState) {
             val summary = state.summary
             if (summary == null || summary.fileCount == 0) {
                 Text(
-                    "No backups yet",
+                    if (summary == null) { if (state.isRefreshing) "Loading backup history…" else "Backup history unavailable" } else "No backups yet",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp)

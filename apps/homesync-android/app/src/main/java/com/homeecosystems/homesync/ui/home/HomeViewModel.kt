@@ -24,6 +24,7 @@ data class HomeUiState(
     val settings: BackupSettings = BackupSettings(),
     val summary: HistorySummary? = null,
     val isRefreshing: Boolean = false,
+    val historyNotice: String? = null,
     val message: String? = null,
     val work: List<BackupFeedback> = emptyList()
 )
@@ -57,6 +58,10 @@ class HomeViewModel(
     fun refreshSummary() {
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true) }
+            val legacyCount = localDao.legacyCount()
+            val legacyNotice = if (legacyCount > 0) "$legacyCount legacy local backup records are retained. Backup will verify these files again for this server and account." else null
+            _uiState.update { it.copy(historyNotice = legacyNotice) }
+            runCatching { apiClient.verifyDestinationKey() }
             val fromServer = runCatching { apiClient.getApi().history() }.getOrNull()
             val serverSummary = fromServer?.takeIf { it.isSuccessful }?.body()?.summary
             if (serverSummary != null) {
@@ -64,9 +69,15 @@ class HomeViewModel(
                 return@launch
             }
 
-            val count = localDao.count()
-            val bytes = localDao.totalBytes()
-            val lastAtMs = localDao.lastUploadedAtEpochMs()
+            val destinationKey = apiClient.currentDestinationKey()
+            if (destinationKey == null) {
+                _uiState.update { it.copy(summary = null, isRefreshing = false,
+                    historyNotice = "Connect to verify this account before showing local backup totals. Existing records are retained.") }
+                return@launch
+            }
+            val count = localDao.count(destinationKey)
+            val bytes = localDao.totalBytes(destinationKey)
+            val lastAtMs = localDao.lastUploadedAtEpochMs(destinationKey)
             _uiState.update {
                 it.copy(
                     summary = HistorySummary(count, bytes, lastAtMs?.let { ms -> Instant.ofEpochMilli(ms).toString() }),

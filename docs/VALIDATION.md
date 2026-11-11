@@ -82,6 +82,15 @@ Use PowerShell's `$env:DEMO_BROWSER_CHANNEL='msedge'` on Windows. The additive
 `note_templates` table is included in Notes database backups; old binaries ignore
 it on downgrade. No real accounts or installations are used by these fixtures.
 
+## Sibling session renewal
+
+Before the fix, all four new delayed-401 fixtures reproduced a replacement login
+being cleared in Media, Tasks, Monitor and Vault. Sixteen focused API regressions
+now pass: stale/current 401s, preserved 403s, original captured authorization,
+expiry events and Media's image/XHR request paths. They use disposable token
+strings and controlled responses, not real accounts. Core remains the authority;
+Vault cryptography and unlock behavior are unchanged by these response guards.
+
 ## Notes save safety
 
 On 2026-11-11, the pre-fix demo reproduced lost text: type a title and immediately

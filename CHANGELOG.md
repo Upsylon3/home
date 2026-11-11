@@ -76,6 +76,8 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
   restore/Trash, retry failed note loads and ignore late old-session failures.
 - Keep valid HOME sessions after incorrect account passwords or authenticator
   codes, expire revoked sessions and ignore late failures for replaced tokens.
+  Apply replacement-token protection to Media, Tasks, Monitor and Vault, including
+  Media image downloads and XHR uploads; retain genuine current-session expiry.
   Bound the administrator table on narrow screens, retry failed account/TOTP
   loads and preserve quota precision when editing existing values.
 - HomeMedia demo pictures load in browsers that reject Blob values in IndexedDB.

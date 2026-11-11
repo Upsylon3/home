@@ -4,7 +4,7 @@ const sharp = require("sharp");
 const exifr = require("exifr");
 const { db, thumbnailPath } = require("./db");
 const { asyncHandler } = require("./asyncHandler");
-const { listMediaFiles, downloadFile } = require("./homecloudClient");
+const { listMediaFiles, downloadFile, canReadFile } = require("./homecloudClient");
 const { KINDS, kindOfFile } = require("./mediaKinds");
 
 const router = express.Router();
@@ -88,10 +88,12 @@ router.get(
     const fileId = Number(req.params.fileId);
     if (!Number.isInteger(fileId)) return res.status(400).json({ error: "Invalid file id." });
 
+    res.set('Cache-Control', 'private, no-store');
     const cached = db
       .prepare("SELECT exif_json FROM media_index WHERE file_id = ? AND user_id = ?")
       .get(fileId, req.user.id);
     if (cached) {
+      if (!await canReadFile(req.token, fileId)) return res.status(404).json({ error: 'File not found.' });
       return res.json({ exif: cached.exif_json ? JSON.parse(cached.exif_json) : null });
     }
 
@@ -137,7 +139,9 @@ router.get(
     if (!Number.isInteger(fileId)) return res.status(400).json({ error: "Invalid file id." });
 
     const cachePath = thumbnailPath(req.user.id, fileId);
+    res.set('Cache-Control', 'private, no-store');
     if (fs.existsSync(cachePath)) {
+      if (!await canReadFile(req.token, fileId)) return res.status(404).json({ error: 'File not found.' });
       return res.type("image/jpeg").sendFile(cachePath);
     }
 

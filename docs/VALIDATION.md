@@ -20,6 +20,16 @@ preference-key or database-schema change is made. The local Windows Gradle
 distribution download was too slow and was cancelled after CI supplied the
 required APK/JVM proof; no local Android build is claimed.
 
+## Media derivative source checks
+
+The regression fixture reproduced HTTP 200 for a warm thumbnail after permanent
+Cloud deletion. Windows/Node 26.13.0 now passes all 30 Media backend test entries
+(28 behavioral tests plus two helper-file discovery entries). Real isolated
+Core/Cloud/Media tests verify thumbnail/EXIF priming, source deletion and 404s;
+injected Cloud 401/403/500/network failures prove fail-closed status handling,
+HEAD-only checks, private/no-store responses and recovery with the cache intact.
+No decoder, database migration or production deployment is part of this fix.
+
 ## Personal Notes templates
 
 Windows/Node 26.13.0 passed 27 Notes backend tests using real disposable

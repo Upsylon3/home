@@ -63,6 +63,10 @@ independent review and public-network drills remain unfinished; see the
   Verification has a five-second deadline and bounded caches/in-flight work.
 - Backends enforce roles and ownership. Frontend hiding is never authorization.
   Monitor is admin-only; Cloud files/folders are owner-only.
+- Media revalidates cached EXIF/thumbnails through Cloud's authorized download
+  before serving them. Source deletion/denial or an unavailable Cloud fails
+  closed; derivative responses are private/no-store. This cannot recall copies
+  already delivered to a client.
 - Share links use high-entropy tokens, separate rate limits and immediate
   invalidation when the underlying file is trashed.
 - Upload caps, per-user quotas, input/path validation and safe Markdown rendering

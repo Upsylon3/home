@@ -358,6 +358,13 @@ HomeCloud (in a top-level `HomeMedia` folder).
 | POST/DELETE | `/api/homemedia/albums/:id/items` \| `/items/:fileId` | Add / remove a photo from an album |
 | POST/DELETE | `/api/homemedia/favorites/:fileId` | Favorite / unfavorite a file |
 
+EXIF/thumbnail responses use `Cache-Control: private, no-store`. A warm derivative
+still checks Cloud's owner-authorized download with HEAD (five-second deadline);
+404 returns not found, 401/403 are preserved, and upstream failure returns 502.
+Cache hits never authorize a file or provide an outage fallback. Cloud's existing
+Trash-download behavior is retained; permanent deletion makes derivatives
+unavailable. Already delivered browser copies cannot be recalled.
+
 ## HomeMonitor backend (`/api/homemonitor`)
 
 Server, service and backup visibility. Browser routes are **administrators

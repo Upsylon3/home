@@ -51,6 +51,10 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
   validation from feature work. Setup, recovery and security requirements remain.
 
 ### Fixed
+- Media cached thumbnails and EXIF now recheck Cloud's authorized source download
+  before returning derivatives. Permanent source deletion, permission denial and
+  Cloud outages cannot fall back to old cache entries; use private/no-store
+  responses and a bounded HEAD check without downloading the original again.
 - Bind Android HTTP clients to an immutable server URL/token snapshot, publish
   cached URLs/clients together and reject new requests after a server switch or
   logout. Disable automatic redirects so login bodies and uploads cannot follow

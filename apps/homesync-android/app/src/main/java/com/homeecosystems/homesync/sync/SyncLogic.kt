@@ -28,7 +28,8 @@ data class CandidateFile(
     val mimeType: String,
     val sizeBytes: Long,
     val capturedAtEpochMs: Long?,
-    val category: BackupCategory
+    val category: BackupCategory,
+    val sourceVersion: String? = null
 )
 
 /** Same file, once its content hash has been computed. */

@@ -128,10 +128,9 @@ not authorize changing a real installation or storing real secrets in Vault.
    no longer claim a run started, and repeated taps keep active manual work.
    Durable multi-run history and exact unmet-constraint diagnostics remain open;
    the UI labels scheduling/constraint waits without guessing their cause.
-6. **Sync changed-file detection.** Stop treating a previously backed-up local
-   media ID as proof its contents are unchanged. Design modified-time/size/hash
-   rechecks and test an in-place edit, unchanged runs, retry and deduplication.
-   Preserve whole-file retry and WorkManager's battery constraints.
+6. ~~**Sync changed-file detection.** Recheck a file after an in-place edit and
+   skip confirmed unchanged content while preserving WorkManager constraints
+   and whole-file retry.~~ [Validation](VALIDATION.md#homesync-edited-backups)
 
 Entry points: [Notes editor](../apps/homenotes/src/pages/NoteEditor.jsx),
 [Cloud uploads](../apps/homecloud/src/components/UploadZone.jsx),

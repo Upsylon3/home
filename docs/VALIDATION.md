@@ -3,6 +3,30 @@
 Outstanding review/device evidence and reproduction notes live here. Run fixtures
 only against disposable data; never equate CI with independent or physical testing.
 
+## HomeSync edited backups
+
+On 2026-11-18, a disposable x86_64 AOSP API-34 emulator on Windows ran three
+instrumentation tests using app and test APKs from
+[Android CI](https://github.com/Upsylon3/home/actions/runs/44356448043).
+The backup journey exercised real isolated HomeCore, HomeCloud and HomeSync
+over a loopback fixture. After the first constrained backup, an unchanged
+run had zero candidates. The fixture rewrote the same MediaStore URI and
+returned one HTTP 503 for its edited upload. WorkManager retried, recorded
+one edited upload and skipped the next unchanged run. The fixture verified
+both stored byte sequences, both SHA-256 records and one registered device.
+
+Room opened seeded v1 and v2 databases through the production migrations.
+The tests verified retained legacy rows, scoped hashes and timestamps, and
+guarded revision updates by destination and hash. Three Node 26 SQLite tests
+matched the v2/v3 schema contracts and checked transaction rollback. The
+JVM suite also verified that a same-length byte change during an upload
+fails the streamed hash check. The 18 HomeSync backend tests passed locally
+on Windows with the committed npm lockfile.
+
+Physical-device behavior and battery measurements remain open.
+The API-34 fixture exercised MediaStore revision-based skipping. Older Android
+versions use the streaming hash fallback.
+
 ## Android destination ledger migration
 
 Room v2 preserves legacy rows with an unknown destination and scopes new rows by
@@ -505,7 +529,7 @@ From an already provisioned disposable emulator host:
 adb reverse tcp:18083 tcp:18083
 cd apps/homesync-android
 gradle --no-daemon --console=plain :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.homeFixture=disposable -Pandroid.testInstrumentationRunnerArguments.class=com.homeecosystems.homesync.BackupJourneyTest
-curl -fsS http://127.0.0.1:18083/__fixture__/verify
+curl -fsS http://127.0.0.1:18083/__fixture__/edited-verify
 ~~~
 
 For denial/picker cases, install app/test APKs fresh with `adb install -t`

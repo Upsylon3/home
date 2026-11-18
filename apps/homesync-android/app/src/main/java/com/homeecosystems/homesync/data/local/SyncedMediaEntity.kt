@@ -12,11 +12,9 @@ import androidx.room.PrimaryKey
  * while /check catches files backed up *from a different device*, which
  * this table can't know about on its own).
  *
- * [localMediaId] is unique within [destinationKey], because BackupWorker filters
- * MediaScanner's results down to genuinely new candidates
- * candidates for one server/account. The same local file can be recorded for
- * another destination independently. Legacy empty-destination rows remain as
- * history but cannot suppress new work.
+ * [localMediaId] is unique within [destinationKey]. The recorded hash and
+ * observed source revision let BackupWorker detect changes to that local file.
+ * Legacy empty-destination rows remain as history and are excluded from dedup.
  */
 @Entity(
     tableName = "synced_media",
@@ -46,5 +44,8 @@ data class SyncedMediaEntity(
     val sizeBytes: Long,
 
     @ColumnInfo(name = "uploadedAtEpochMs")
-    val uploadedAtEpochMs: Long
+    val uploadedAtEpochMs: Long,
+
+    /** MediaStore revision observed when this content was confirmed backed up. */
+    val sourceVersion: String? = null
 )

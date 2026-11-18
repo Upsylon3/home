@@ -5,6 +5,8 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 
+data class SyncedMediaVersion(val localMediaId: String, val contentHash: String, val sourceVersion: String?)
+
 /**
  * All database access for [SyncedMediaEntity] goes through here — Room
  * generates the actual implementation of this interface at compile time
@@ -15,14 +17,11 @@ import androidx.room.Query
 @Dao
 interface SyncedMediaDao {
 
-    /**
-     * Everything BackupWorker needs to know before scanning: which
-     * on-device files (by MediaScanner's localId) have already been
-     * recorded as synced, so they can be filtered out of this run's
-     * candidates before any hashing happens — see BackupWorker.doWork.
-     */
-    @Query("SELECT localMediaId FROM synced_media WHERE destinationKey = :destinationKey AND destinationKey != ''")
-    suspend fun allSyncedLocalIds(destinationKey: String): List<String>
+    @Query("SELECT localMediaId, contentHash, sourceVersion FROM synced_media WHERE destinationKey = :destinationKey AND destinationKey != ''")
+    suspend fun syncedVersions(destinationKey: String): List<SyncedMediaVersion>
+
+    @Query("UPDATE synced_media SET sourceVersion = :sourceVersion WHERE destinationKey = :destinationKey AND localMediaId = :localMediaId AND contentHash = :contentHash")
+    suspend fun rememberSourceVersion(destinationKey: String, localMediaId: String, contentHash: String, sourceVersion: String)
 
     /**
      * REPLACE rather than the default ABORT: BackupWorker calls this for

@@ -65,6 +65,9 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
   validation from feature work. Setup, recovery and security requirements remain.
 
 ### Fixed
+- Back up in-place Android media edits even when MediaStore keeps the same ID.
+  Confirmed revisions skip unchanged files. Files without a confirmed revision
+  are hashed locally, and changed content follows the whole-file retry path.
 - Scope Android local backup deduplication and offline totals by canonical
   server/account identity. Room v2 retains every legacy record without assuming
   its destination; recheck those files through the server before recording new

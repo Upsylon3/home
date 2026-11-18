@@ -74,7 +74,8 @@ class MainActivity : ComponentActivity() {
                             applicationContext,
                             app.settingsStore,
                             app.apiClient,
-                            AppDatabase.getInstance(applicationContext).syncedMediaDao()
+                            AppDatabase.getInstance(applicationContext).syncedMediaDao(),
+                            AppDatabase.getInstance(applicationContext).backupRunDao()
                         )
                     )
                 }

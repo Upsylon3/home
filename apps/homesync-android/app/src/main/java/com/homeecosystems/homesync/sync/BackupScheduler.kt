@@ -11,6 +11,8 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkRequest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 /**
@@ -62,6 +64,9 @@ object BackupScheduler {
     fun cancelPeriodic(context: Context) {
         WorkManager.getInstance(context).cancelUniqueWork(BackupWorker.WORK_NAME)
     }
+
+    suspend fun isManualWork(context: Context, id: UUID): Boolean =
+        WorkManager.getInstance(context).getWorkInfosForUniqueWorkFlow(MANUAL_WORK_NAME).first().any { it.id == id }
 
     /** For the Home screen's progress indicator while a manual run is active. */
     fun observeManualWork(context: Context) =

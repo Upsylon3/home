@@ -9,6 +9,9 @@ import com.homeecosystems.homesync.data.SettingsStore
 import com.homeecosystems.homesync.data.api.ApiClient
 import com.homeecosystems.homesync.data.api.HistorySummary
 import com.homeecosystems.homesync.data.local.SyncedMediaDao
+import com.homeecosystems.homesync.data.local.BackupRun
+import com.homeecosystems.homesync.data.local.BackupRunDao
+import kotlinx.coroutines.flow.collectLatest
 import com.homeecosystems.homesync.sync.MediaAccess
 import com.homeecosystems.homesync.sync.BackupCategory
 import com.homeecosystems.homesync.sync.BackupScheduler
@@ -26,27 +29,41 @@ data class HomeUiState(
     val isRefreshing: Boolean = false,
     val historyNotice: String? = null,
     val message: String? = null,
-    val work: List<BackupFeedback> = emptyList()
+    val work: List<BackupFeedback> = emptyList(),
+    val recentRuns: List<BackupRun> = emptyList()
 )
 
 class HomeViewModel(
     private val appContext: Context,
     private val settingsStore: SettingsStore,
     private val apiClient: ApiClient,
-    private val localDao: SyncedMediaDao
+    private val localDao: SyncedMediaDao,
+    private val runDao: BackupRunDao
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+    private val historyDestination = MutableStateFlow(apiClient.currentDestinationKey())
 
     init {
         viewModelScope.launch {
             settingsStore.settings.collect { settings -> _uiState.update { it.copy(settings = settings) } }
         }
         viewModelScope.launch {
+            historyDestination.collectLatest { destination ->
+                _uiState.update { it.copy(recentRuns = emptyList()) }
+                if (destination != null) {
+                    runDao.recent(destination).collect { runs ->
+                        _uiState.update { it.copy(recentRuns = runs) }
+                    }
+                }
+            }
+        }
+        viewModelScope.launch {
             BackupScheduler.observeBackupWork(appContext).collect { work ->
                 val previous = _uiState.value.work
                 _uiState.update { it.copy(work = work) }
+                work.filter { it.cancelled }.forEach { runDao.cancel(it.id, System.currentTimeMillis()) }
                 if (work.any { row -> !row.active && previous.any { it.id == row.id && it.active } } ||
                     previous.any { old -> old.running && work.none { it.id == old.id && it.running } }) refreshSummary()
             }
@@ -62,6 +79,7 @@ class HomeViewModel(
             val legacyNotice = if (legacyCount > 0) "$legacyCount legacy local backup records are retained. Backup will verify these files again for this server and account." else null
             _uiState.update { it.copy(historyNotice = legacyNotice) }
             runCatching { apiClient.verifyDestinationKey() }
+            historyDestination.value = apiClient.currentDestinationKey()
             val fromServer = runCatching { apiClient.getApi().history() }.getOrNull()
             val serverSummary = fromServer?.takeIf { it.isSuccessful }?.body()?.summary
             if (serverSummary != null) {
@@ -141,10 +159,11 @@ class HomeViewModel(
         private val appContext: Context,
         private val settingsStore: SettingsStore,
         private val apiClient: ApiClient,
-        private val localDao: SyncedMediaDao
+        private val localDao: SyncedMediaDao,
+        private val runDao: BackupRunDao
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            HomeViewModel(appContext, settingsStore, apiClient, localDao) as T
+            HomeViewModel(appContext, settingsStore, apiClient, localDao, runDao) as T
     }
 }

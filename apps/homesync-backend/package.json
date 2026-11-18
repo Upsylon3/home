@@ -13,12 +13,12 @@
     "@home/homecore-client": "^1.0.0",
     "better-sqlite3": "^12.11.1",
     "cors": "^2.8.5",
-    "dotenv": "^18.0.9",
+    "dotenv": "^18.0.10",
     "express": "^5.3.0",
     "helmet": "^8.3.0",
     "multer": "^2.5.0"
   },
   "devDependencies": {
-    "otpauth": "^9.5.1"
+    "otpauth": "^9.6.0"
   }
 }

@@ -23,7 +23,7 @@ JVM suite also verified that a same-length byte change during an upload
 fails the streamed hash check. The 18 HomeSync backend tests passed locally
 on Windows with the committed npm lockfile.
 
-Wear, battery life and provider behavior on physical phones remain unmeasured.
+Physical-device behavior and battery measurements remain open.
 The API-34 fixture exercised MediaStore revision-based skipping. Older Android
 versions use the streaming hash fallback.
 

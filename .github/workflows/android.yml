@@ -89,7 +89,7 @@ jobs:
       # testDebugUnitTest = the JUnit tests (SyncLogicTest.kt, which covers
       #                     the hashing/dedup logic).
       - name: Build and test
-        run: gradle --no-daemon --console=plain :app:assembleDebug :app:testDebugUnitTest
+        run: gradle --no-daemon --console=plain :app:assembleDebug :app:testDebugUnitTest :app:assembleDebugAndroidTest
 
       # Keeps the APK for 14 days so you can download it from the run's page.
       # Debug-signed, contains no secrets, not suitable for publishing.
@@ -100,6 +100,26 @@ jobs:
           name: homesync-debug-apk
           path: apps/homesync-android/app/build/outputs/apk/debug/*.apk
           retention-days: 14
+
+      # Compile migration fixtures here; execute them only on an explicitly
+      # provisioned disposable emulator/device, never implicitly in CI.
+      - name: Save the instrumentation APK and Room schemas
+        if: success()
+        uses: actions/upload-artifact@v7
+        with:
+          name: homesync-migration-fixtures
+          path: |
+            apps/homesync-android/app/build/outputs/apk/androidTest/debug/*.apk
+            apps/homesync-android/app/schemas/
+          retention-days: 14
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+      - name: Verify migration SQL against the generated Room contract
+        run: |
+          node --test test/destination-migration.test.mjs
+          git diff --exit-code -- app/schemas
 
       # If the build failed, keep the HTML test/lint reports for debugging.
       - name: Save reports on failure

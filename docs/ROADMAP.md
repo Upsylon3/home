@@ -45,8 +45,11 @@ authentication authorities.
 - ~~Bind Android credentials and cached clients to one destination; reject
   retained-client work after switching/logout and prevent redirect forwarding.~~
   APK/JVM checks pass; this prerequisite does not enable multiple backup targets.
-- Migrate legacy single-server local data without losing backup history.
-  Bind queued WorkManager work to an immutable destination identity, and test
+- ~~Scope the local backup ledger by verified server and account and preserve
+  v1 history through the Room upgrade.~~ [Validation](VALIDATION.md#android-destination-ledger-migration)
+- Migrate legacy single-server profiles, device IDs and backup settings without
+  losing local history. Bind queued WorkManager work to an immutable
+  destination identity, and test
   server switching, logout, retries, token isolation, changed files and
   destination-specific deduplication.
 - Define conflicts, offline behavior, encryption/transport, trust, revocation
@@ -125,10 +128,9 @@ not authorize changing a real installation or storing real secrets in Vault.
    no longer claim a run started, and repeated taps keep active manual work.
    Durable multi-run history and exact unmet-constraint diagnostics remain open;
    the UI labels scheduling/constraint waits without guessing their cause.
-6. **Sync changed-file detection.** Stop treating a previously backed-up local
-   media ID as proof its contents are unchanged. Design modified-time/size/hash
-   rechecks and test an in-place edit, unchanged runs, retry and deduplication.
-   Preserve whole-file retry and WorkManager's battery constraints.
+6. ~~**Sync changed-file detection.** Recheck a file after an in-place edit and
+   skip confirmed unchanged content while preserving WorkManager constraints
+   and whole-file retry.~~ [Validation](VALIDATION.md#homesync-edited-backups)
 
 Entry points: [Notes editor](../apps/homenotes/src/pages/NoteEditor.jsx),
 [Cloud uploads](../apps/homecloud/src/components/UploadZone.jsx),

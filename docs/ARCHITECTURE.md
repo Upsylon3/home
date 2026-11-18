@@ -201,7 +201,7 @@ The [roadmap](ROADMAP.md) owns unfinished work and its order.
 | Cloud | Owned files/folders, file/folder-tree uploads with a bounded queue, search/sort, ZIP downloads, share links and Trash; storage APIs for apps | Versioning and designed encryption at rest; public links are not same-HOME shared-folder ACLs |
 | Media | Cloud-backed gallery/timeline, albums/favorites/search, EXIF, image thumbnails, bounded video posters, browser uploads and image/video/audio playback | Duplicate review and local-family shared albums; retain Cloud as the single file store |
 | Notes | Markdown preview, folders/tags/search/favorites, debounced autosave, versions/restore and Cloud attachments | Save/draft safety, templates, designed offline editing and local collaboration; history is not conflict resolution |
-| Sync | Android media categories and optional Downloads scanning, WorkManager scheduling/retry, live work state/stages/counts, hash dedup and aggregate backup summary | Durable run history, exact unmet-constraint diagnostics, changed-file detection and chosen document/folder access; physical/background validation remains open |
+| Sync | Android media categories and optional Downloads scanning, WorkManager scheduling/retry, live work state/stages/counts, edited-media detection, hash dedup and aggregate backup summary | Durable run history, exact unmet-constraint diagnostics and chosen document/folder access; physical/background validation remains open |
 | Tasks | Personal projects/dates/priorities/search, completion history, fixed repeats, opt-in reminders and local task assignment | Richer recurrence; keep owner control and distinguish individual assignments from collaborative projects |
 | Vault | v0 encrypted login/note/card items, create/unlock/recover, Trash, password/recovery-key changes, administrator reset and client benchmark | Independent review is still required before real secrets; broader structured secret workflows remain design targets |
 | Monitor | v0 read-only CPU/memory/network/disk, application health, backup freshness, storage forecast and alerts | Preserve read-only scope; Docker Desktop metrics describe its VM, and health/freshness checks do not certify physical disks or recoverability |
@@ -245,6 +245,40 @@ Versioned assignment writes reject stale lookups/clients; completion rechecks
 access and repeat creation in one immediate transaction. No assignment email,
 push, project collaboration or multi-server identity is introduced. Restored
 assignment ACLs must be revoked offline before reopening Tasks.
+
+## Android destination ledger
+
+Room v2 adds a destination key to backup records and replaces global media-ID
+uniqueness with `(destinationKey, localMediaId)`. The key hashes the canonical
+configured gateway URL (including scheme/port/path) and the authenticated local
+Core account ID, never a bearer token. Login responses establish that account;
+legacy sessions verify identity through Core using a captured URL/token pair.
+Queued work does not yet support multiple profiles.
+
+The v1 ledger recorded no destination, so its rows keep their original IDs,
+hashes, sizes and timestamps with an empty legacy destination. They remain
+retained history and are excluded from destination deduplication/totals. A first
+scoped run hashes/checks these files again; Cloud's per-user hash dedup avoids
+uploading content the server already has. Do not assign all old rows to whichever
+account happens to be active at upgrade. Offline totals require a previously
+verified account; an unknown legacy session reports unavailable history.
+
+Room v3 adds an optional source revision to each scoped record. On Android 11
+and later, the worker combines the MediaStore volume version, row generation,
+modified time and size. A matching confirmed revision skips reading the file.
+A missing or changed revision triggers a streaming SHA-256 check. A matching
+local hash refreshes the revision without an upload, and a different hash still
+uses the server's per-account deduplication. Android versions without generation
+metadata hash candidates during each run. The worker also checks the streamed
+upload against the chosen hash before completing the multipart body.
+
+This is a persistence prerequisite, not multi-server backup enablement. Device
+IDs, settings, profiles and WorkManager inputs/names must still be scoped. No
+application ID changes and no destructive Room fallback are permitted. Preserve
+an offline database copy before upgrading. A rollback to an earlier Room
+version uses that pre-upgrade copy.
+Use an isolated pre-upgrade recovery copy rather than deleting columns/history or
+trying to recreate global uniqueness after scoped duplicates have been recorded.
 
 ## Media video posters
 

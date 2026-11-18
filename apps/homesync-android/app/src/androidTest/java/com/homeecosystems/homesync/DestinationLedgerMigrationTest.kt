@@ -20,7 +20,7 @@ import java.util.UUID
 class DestinationLedgerMigrationTest {
     @Test fun upgradeRetainsLegacyRowsAndScopesNewBackups() = runBlocking {
         check(InstrumentationRegistry.getArguments().getString("homeFixture") == "disposable")
-        check(Build.MODEL.contains("sdk") || Build.FINGERPRINT.contains("generic"))
+        check(Build.MODEL.contains("sdk", ignoreCase = true) || Build.FINGERPRINT.contains("generic"))
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val name = "ledger-migration-${UUID.randomUUID()}.db"
         // Exact v1 table/index from the shipped SyncedMediaEntity, including IDs.

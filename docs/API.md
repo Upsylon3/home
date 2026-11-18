@@ -724,7 +724,7 @@ The API the Android app talks to. No web frontend of its own.
 | DELETE | `/api/homesync/devices/:id` | Remove a device |
 | POST | `/api/homesync/check` | Ask "has this content hash already been uploaded?" before sending bytes |
 | POST | `/api/homesync/upload` | Upload one file (multipart, field `file`) |
-| GET | `/api/homesync/history` | Backup history (file count/size per run) |
+| GET | `/api/homesync/history` | Recent backed-up files and aggregate totals for the account |
 
 ## Health checks
 

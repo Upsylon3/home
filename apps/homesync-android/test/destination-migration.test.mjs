@@ -1,5 +1,5 @@
 // Execute the production migration SQL on real SQLite and compare the result
-// to Room's generated v2 and v3 schemas. No service, emulator or npm install is needed.
+// to Room's generated v2, v3 and v4 schemas. No service, emulator or npm install is needed.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -7,6 +7,7 @@ import { DatabaseSync } from 'node:sqlite';
 const root = new URL('../', import.meta.url);
 const schema = JSON.parse(readFileSync(new URL('app/schemas/com.homeecosystems.homesync.data.local.AppDatabase/2.json', root), 'utf8')).database;
 const updatedSchema = JSON.parse(readFileSync(new URL('app/schemas/com.homeecosystems.homesync.data.local.AppDatabase/3.json', root), 'utf8')).database;
+const runSchema = JSON.parse(readFileSync(new URL('app/schemas/com.homeecosystems.homesync.data.local.AppDatabase/4.json', root), 'utf8')).database;
 const source = readFileSync(new URL('app/src/main/java/com/homeecosystems/homesync/data/local/AppDatabase.kt', root), 'utf8');
 function migrationStatements(name, end, length) {
   const body = source.split(`val ${name} =`)[1]?.split(end)[0];
@@ -16,17 +17,19 @@ function migrationStatements(name, end, length) {
   return statements;
 }
 const statements = migrationStatements('MIGRATION_1_2', 'val MIGRATION_2_3', 3);
-const updatedStatements = migrationStatements('MIGRATION_2_3', '@Volatile', 1);
+const updatedStatements = migrationStatements('MIGRATION_2_3', 'val MIGRATION_3_4', 1);
+const runStatements = migrationStatements('MIGRATION_3_4', '@Volatile', 3);
 const legacySql = 'CREATE TABLE synced_media (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, localMediaId TEXT NOT NULL, contentHash TEXT NOT NULL, category TEXT NOT NULL, sizeBytes INTEGER NOT NULL, uploadedAtEpochMs INTEGER NOT NULL); CREATE UNIQUE INDEX index_synced_media_localMediaId ON synced_media(localMediaId)';
-const shape = db => ({
-  columns: db.prepare('PRAGMA table_info(synced_media)').all().map(({ name, type, notnull, dflt_value, pk }) => ({ name, type, notnull, dflt_value, pk })).sort((a, b) => a.name.localeCompare(b.name)),
-  indexes: db.prepare('PRAGMA index_list(synced_media)').all().map(({ name, unique }) => ({ name, unique, columns: db.prepare(`PRAGMA index_info(${name})`).all().map(row => row.name) })).sort((a, b) => a.name.localeCompare(b.name))
+const shape = (db, table = 'synced_media') => ({
+  columns: db.prepare(`PRAGMA table_info(${table})`).all().map(({ name, type, notnull, dflt_value, pk }) => ({ name, type, notnull, dflt_value, pk })).sort((a, b) => a.name.localeCompare(b.name)),
+  indexes: db.prepare(`PRAGMA index_list(${table})`).all().map(({ name, unique }) => ({ name, unique, columns: db.prepare(`PRAGMA index_info(${name})`).all().map(row => row.name) })).sort((a, b) => a.name.localeCompare(b.name))
 });
 
 function createSchema(db, contract) {
-  const entity = contract.entities[0];
-  db.exec(entity.createSql.replaceAll('${TABLE_NAME}', entity.tableName));
-  for (const index of entity.indices) db.exec(index.createSql.replaceAll('${TABLE_NAME}', entity.tableName));
+  for (const entity of contract.entities) {
+    db.exec(entity.createSql.replaceAll('${TABLE_NAME}', entity.tableName));
+    for (const index of entity.indices) db.exec(index.createSql.replaceAll('${TABLE_NAME}', entity.tableName));
+  }
 }
 
 test('v1 upgrade retains complete history and matches the generated Room v2 contract', () => {
@@ -65,6 +68,23 @@ test('v2 upgrade preserves scoped and legacy history and matches the generated R
     assert.deepEqual(shape(actual), shape(expected));
     assert.deepEqual(actual.prepare('SELECT * FROM synced_media ORDER BY id').all().map(row => ({ ...row })),
       previousRows.map(row => ({ ...row, sourceVersion: null })));
+  } finally { actual.close(); expected.close(); }
+});
+
+test('v3 upgrade adds run history and keeps the scoped media ledger intact', () => {
+  const actual = new DatabaseSync(':memory:'), expected = new DatabaseSync(':memory:');
+  try {
+    createSchema(actual, updatedSchema);
+    actual.exec("INSERT INTO synced_media VALUES (41, 'server-a', 'images:1', 'hash-a', 'Photos', 123, 456, 'revision-1')");
+    const previous = actual.prepare('SELECT * FROM synced_media').get();
+    actual.exec('BEGIN');
+    for (const statement of runStatements) actual.exec(statement);
+    actual.exec('COMMIT');
+    createSchema(expected, runSchema);
+    assert.deepEqual(shape(actual), shape(expected));
+    assert.deepEqual(shape(actual, 'backup_runs'), shape(expected, 'backup_runs'));
+    assert.deepEqual(actual.prepare('SELECT * FROM synced_media').get(), previous);
+    assert.equal(actual.prepare('SELECT count(*) AS total FROM backup_runs').get().total, 0);
   } finally { actual.close(); expected.close(); }
 });
 

@@ -3,6 +3,24 @@
 Outstanding review/device evidence and reproduction notes live here. Run fixtures
 only against disposable data; never equate CI with independent or physical testing.
 
+## HomeSync backup run history
+
+On 2026-11-18, a disposable x86_64 Android 14 emulator installed the app APK
+from [Android CI](https://github.com/Upsylon3/home/actions/runs/44363295519)
+with the normal Android test-device install command. Four instrumentation tests
+passed against isolated Core, Cloud and Sync services. The end-to-end journey
+recorded manual and automatic work, including a zero-upload automatic run.
+The edited-upload retry stayed under one run entry. Both backup versions kept
+their expected bytes and SHA-256 values. After an Android force-stop and cold
+launch, the timeline still displayed both manual and automatic outcomes.
+
+The Room tests opened seeded v1 and v2 ledgers through the production migration
+chain. The history DAO test verified reopening, account separation, retry
+continuation, a new iteration for a reused periodic work ID, cancellation and
+retention. Four Node 26 SQLite checks verified the generated schema contracts,
+v3 media-ledger preservation and rollback. Physical-phone behavior and
+same-certificate application replacement remain open for this APK.
+
 ## HomeSync edited backups
 
 On 2026-11-18, a disposable x86_64 AOSP API-34 emulator on Windows ran three
@@ -106,8 +124,9 @@ terminal-count assertions; building the test APK does not execute those tests.
 No emulator/physical-device execution of this new feedback slice is claimed.
 This feedback slice was built while the available emulator was ADB-offline.
 [Room upgrade proof](#android-destination-ledger-migration) was later executed in
-a separate fixture. Durable run history, precise constraint diagnostics and
-destination-bound jobs remain roadmap work.
+a separate fixture. [Backup run history](#homesync-backup-run-history) now has
+its own runtime evidence. Precise constraint diagnostics and destination-bound
+jobs remain roadmap work.
 
 ## Cloud folder uploads
 

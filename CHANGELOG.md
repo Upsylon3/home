@@ -8,6 +8,9 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 ## [Unreleased]
 
 ### Added
+- Show the last 20 HomeSync backup runs on Android, scoped to the server and
+  account. Manual and automatic outcomes remain available after restart, and
+  retries update the run already in the timeline.
 - Browser-native video posters in Media library/favorites/albums/covers/picker,
   with lazy bounded decoding and a small session-only cache. Add owner-authorized
   short-lived range tickets with byte/request/deadline limits, unsupported-file
@@ -16,8 +19,8 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 - Android backup feedback observes real manual/automatic WorkManager state,
   scanning/checking/uploading stages, per-run file outcomes and the latest retained
   manual result. Report queued/retrying/failed/cancelled states without claiming
-  an enqueue started a backup; keep active manual work on repeated taps. Durable
-  multi-run history and exact unmet-constraint diagnostics remain open.
+  an enqueue started a backup; keep active manual work on repeated taps. Exact
+  unmet-constraint diagnostics remain open.
 - Cloud folder selection/drop preserves directory hierarchy, reuses existing
   folders and provides a bounded three-transfer queue with progress, per-file
   retry/cancel and navigation protection. Keep the original destination while

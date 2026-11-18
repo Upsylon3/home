@@ -11,6 +11,7 @@ import com.homeecosystems.homesync.data.destinationKey
 import com.homeecosystems.homesync.data.local.AppDatabase
 import com.homeecosystems.homesync.data.local.SyncedMediaEntity
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.flow.first
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -35,7 +36,7 @@ class DestinationLedgerMigrationTest {
         old.writableDatabase.execSQL("INSERT INTO synced_media VALUES (41, 'images:1', 'legacy-hash', 'Photos', 123, 456)")
         old.close()
         val migrated = Room.databaseBuilder(context, AppDatabase::class.java, name)
-            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3).build()
+            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4).build()
         try {
             // Opening Room runs both the real migration and generated schema validation.
             migrated.openHelper.writableDatabase.query("SELECT * FROM synced_media WHERE id=41").use { row ->
@@ -96,7 +97,7 @@ class DestinationLedgerMigrationTest {
         old.writableDatabase.execSQL("INSERT INTO synced_media VALUES (42, ?, 'images:1', 'hash-b', 'Photos', 234, 567)", arrayOf(b))
         old.close()
         val migrated = Room.databaseBuilder(context, AppDatabase::class.java, name)
-            .addMigrations(AppDatabase.MIGRATION_2_3).build()
+            .addMigrations(AppDatabase.MIGRATION_2_3, AppDatabase.MIGRATION_3_4).build()
         try {
             val dao = migrated.syncedMediaDao()
             assertNull(dao.syncedVersions(a).single().sourceVersion)
@@ -109,5 +110,44 @@ class DestinationLedgerMigrationTest {
             assertEquals(123L, dao.totalBytes(a))
             assertEquals(456L, dao.lastUploadedAtEpochMs(a))
         } finally { migrated.close(); context.deleteDatabase(name) }
+    }
+
+    @Test fun historySurvivesReopenAndSeparatesRetriesFromPeriodicRuns() = runBlocking {
+        check(InstrumentationRegistry.getArguments().getString("homeFixture") == "disposable")
+        check(Build.MODEL.contains("sdk", ignoreCase = true) || Build.FINGERPRINT.contains("generic"))
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val name = "run-history-${UUID.randomUUID()}.db"
+        val key = destinationKey("http://a.test/", 1)
+        val other = destinationKey("http://a.test/", 2)
+        val db = Room.databaseBuilder(context, AppDatabase::class.java, name).build()
+        try {
+            val dao = db.backupRunDao()
+            val run = dao.begin("periodic-work", key, false, 100)
+            dao.checkpoint(run.id, "RETRY", null, uploaded = 2, skipped = 3, failed = 1)
+            val retry = dao.begin("periodic-work", key, false, 200)
+            assertEquals(run.id, retry.id)
+            assertEquals(100L, retry.startedAt)
+            assertEquals(2, retry.attempts)
+            assertEquals(2, retry.uploaded)
+            dao.checkpoint(run.id, "COMPLETED", 300, uploaded = 3, skipped = 1, failed = 0)
+            val next = dao.begin("periodic-work", key, false, 400)
+            assertNotEquals(run.id, next.id)
+            dao.cancel(next.workId, 500)
+            dao.checkpoint(next.id, "RUNNING", null, uploaded = 0, skipped = 0, failed = 0)
+            assertTrue(dao.recent(other).first().isEmpty())
+        } finally { db.close() }
+        val reopened = Room.databaseBuilder(context, AppDatabase::class.java, name).build()
+        try {
+            val runs = reopened.backupRunDao().recent(key).first()
+            assertEquals(listOf("CANCELLED", "COMPLETED"), runs.map { it.status })
+            assertEquals(3, runs.last().uploaded)
+            val dao = reopened.backupRunDao()
+            repeat(25) { i ->
+                val run = dao.begin("manual-$i", key, true, 600)
+                dao.checkpoint(run.id, "COMPLETED", 700, uploaded = 0, skipped = 0, failed = 0)
+            }
+            dao.prune(key)
+            assertEquals((24 downTo 5).map { "manual-$it" }, dao.recent(key).first().map { it.workId })
+        } finally { reopened.close(); context.deleteDatabase(name) }
     }
 }

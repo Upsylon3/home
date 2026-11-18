@@ -12,10 +12,14 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
@@ -23,6 +27,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.homeecosystems.homesync.sync.MediaAccess
+import com.homeecosystems.homesync.data.local.BackupRun
+import java.time.Instant
 import com.homeecosystems.homesync.sync.BackupCategory
 import kotlinx.coroutines.delay
 import java.time.LocalDateTime
@@ -79,7 +85,6 @@ fun HomeScreen(
                     Text("${work.kind}: ${work.status}", style = MaterialTheme.typography.titleSmall)
                     Text(work.detail, style = MaterialTheme.typography.bodyMedium)
                 }
-                Text("Shows current work and the latest retained manual outcome. Automatic work returns to Scheduled after each run; this is not a complete run history.", style = MaterialTheme.typography.bodySmall)
             }
         }
 
@@ -120,6 +125,41 @@ fun HomeScreen(
         )
         CategoryToggleRow("Wi-Fi only", state.settings.wifiOnly, viewModel::setWifiOnly)
         CategoryToggleRow("Only while charging", state.settings.chargingOnly, viewModel::setChargingOnly)
+        BackupRunHistory(state.recentRuns)
+    }
+}
+
+@Composable
+private fun BackupRunHistory(runs: List<BackupRun>) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    Card(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Recent backup runs", style = MaterialTheme.typography.titleMedium)
+            if (runs.isEmpty()) Text("New backup runs will appear here after they start.")
+            runs.take(if (expanded) runs.size else 3).forEach { run ->
+                val status = when (run.status) {
+                    "COMPLETED" -> "Completed"
+                    "FAILED" -> "Failed"
+                    "CANCELLED" -> "Cancelled"
+                    "RETRY" -> "Retry queued"
+                    "INTERRUPTED" -> "Interrupted"
+                    else -> "Started"
+                }
+                val kind = if (run.manual) "Manual" else "Automatic"
+                val date = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
+                    .withZone(ZoneId.systemDefault()).format(Instant.ofEpochMilli(run.finishedAt ?: run.startedAt))
+                Text("$kind run · $status", style = MaterialTheme.typography.titleSmall)
+                Text(date, style = MaterialTheme.typography.bodySmall)
+                Text("${run.uploaded} uploaded", style = MaterialTheme.typography.bodyMedium)
+                val latest = if (run.attempts > 1) " in the latest attempt" else ""
+                Text("${run.skipped} skipped · ${run.failed} need retry$latest", style = MaterialTheme.typography.bodyMedium)
+            }
+            if (runs.size > 3) {
+                TextButton(onClick = { expanded = !expanded }) {
+                    Text(if (expanded) "Show fewer runs" else "Show all ${runs.size} runs")
+                }
+            }
+        }
     }
 }
 

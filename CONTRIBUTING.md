@@ -164,10 +164,21 @@ From the Android project directory:
 gradle --no-daemon --console=plain :app:assembleDebug :app:testDebugUnitTest
 ~~~
 
-Enter the gateway address in the app, not a private backend port. CI checks
-APK/JVM behavior only; instrumentation fixtures remain available for explicit
-local runs. [Device validation](docs/VALIDATION.md#homesync) records what
-has and has not been exercised.
+For phone testing, download the `homesync-debug-apk` artifact from a passing
+Android workflow and extract the APK. On Android 8.0 or newer, open it and allow
+installation from the source app if Android prompts. A fresh install requires
+sign-in and media permissions. Enter the HOME gateway address reachable from
+the phone, select backup categories, then tap **Back Up Now**. WorkManager
+still applies the network, battery and charging settings.
+
+An in-place update requires the existing package ID and signing certificate.
+CI debug builds can have different certificates per run. If Android rejects an
+update, retain the installed copy and its local history while arranging an APK
+signed with the original key.
+
+[Device validation](docs/VALIDATION.md#homesync) records emulator and device
+coverage. Android CI builds the APKs and runs JVM checks. Instrumentation
+fixtures can be run locally on a disposable emulator.
 
 ### Optional features and diagnostics
 

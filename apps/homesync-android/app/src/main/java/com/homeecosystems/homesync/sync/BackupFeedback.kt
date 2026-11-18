@@ -2,7 +2,7 @@ package com.homeecosystems.homesync.sync
 
 import androidx.work.WorkInfo
 
-data class BackupFeedback(val id: String, val kind: String, val status: String, val detail: String, val active: Boolean, val running: Boolean)
+data class BackupFeedback(val id: String, val kind: String, val status: String, val detail: String, val active: Boolean, val running: Boolean, val cancelled: Boolean = false)
 
 /** State comes from WorkManager, never from the button requesting work. */
 fun backupFeedback(
@@ -38,5 +38,5 @@ fun backupFeedback(
         WorkInfo.State.CANCELLED -> "Work was cancelled; files already received by the server are kept."
         else -> if (phase == null) "No per-file counts were recorded for this run." else counts
     }
-    return BackupFeedback(id, kind, status, detail, !state.isFinished, state == WorkInfo.State.RUNNING)
+    return BackupFeedback(id, kind, status, detail, !state.isFinished, state == WorkInfo.State.RUNNING, state == WorkInfo.State.CANCELLED)
 }

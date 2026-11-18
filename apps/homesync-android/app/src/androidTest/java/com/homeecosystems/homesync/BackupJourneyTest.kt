@@ -17,6 +17,11 @@ import androidx.test.rule.GrantPermissionRule
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.homeecosystems.homesync.sync.BackupWorker
+import com.homeecosystems.homesync.sync.BackupScheduler
+import com.homeecosystems.homesync.data.local.AppDatabase
+import com.homeecosystems.homesync.HomeSyncApplication
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import com.homeecosystems.homesync.ui.MainActivity
 import java.net.HttpURLConnection
 import java.net.URL
@@ -142,8 +147,22 @@ class BackupJourneyTest {
             assertTrue(editedProof.getBoolean("bytesMatch")); assertTrue(editedProof.getBoolean("hashMatches"))
             assertEquals(0, repeatBackup().outputData.getInt("total", -1))
             assertEquals(2, status("edited-status").getInt("files"))
+            val runDao = AppDatabase.getInstance(context).backupRunDao()
+            val destination = checkNotNull((context.applicationContext as HomeSyncApplication).apiClient.currentDestinationKey())
+            fun recentRuns() = runBlocking { runDao.recent(destination).first() }
+            val editedHistory = recentRuns().single { it.workId == editedRun.id.toString() }
+            assertEquals(1, editedHistory.uploaded)
+            assertTrue(editedHistory.attempts > 1)
+            assertEquals(0, editedHistory.failed)
+
+            BackupScheduler.schedulePeriodic(context, wifiOnly = false, chargingOnly = false)
+            waitFor { recentRuns().any { !it.manual && it.status == "COMPLETED" } }
+            val automatic = recentRuns().first { !it.manual }
+            assertEquals(0, automatic.uploaded)
+            assertEquals(1, automatic.skipped)
             compose.activityRule.scenario.recreate()
             waitFor { compose.onAllNodesWithText("2 files", substring = true).fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText("Automatic run · Completed").performScrollTo().assertExists()
             // UTP can uninstall the app after a connected test, removing its
             // external-files directory. Keep this disposable screenshot in a
             // shell-owned location until the workflow pulls the evidence.

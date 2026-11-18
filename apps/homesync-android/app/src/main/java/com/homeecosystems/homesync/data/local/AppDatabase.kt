@@ -8,7 +8,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 /**
- * The app's one local database — currently just [SyncedMediaEntity], the
+ * The app's local database stores [BackupRun] outcomes and [SyncedMediaEntity], the
  * on-device record of what's already been backed up (see SyncedMediaDao's
  * header comment for why this exists alongside the server's own /check
  * endpoint rather than instead of it).
@@ -16,10 +16,11 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * Version 2 retains unscoped v1 rows. Version 3 adds an optional media revision.
  * Existing scoped rows keep their confirmed hashes and recheck on the next scan.
  */
-@Database(entities = [SyncedMediaEntity::class], version = 3, exportSchema = true)
+@Database(entities = [SyncedMediaEntity::class, BackupRun::class], version = 4, exportSchema = true)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun syncedMediaDao(): SyncedMediaDao
+    abstract fun backupRunDao(): BackupRunDao
 
     companion object {
         val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -34,6 +35,14 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE synced_media ADD COLUMN sourceVersion TEXT")
+            }
+        }
+
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS backup_runs (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, destinationKey TEXT NOT NULL, workId TEXT NOT NULL, manual INTEGER NOT NULL, startedAt INTEGER NOT NULL, finishedAt INTEGER, status TEXT NOT NULL, attempts INTEGER NOT NULL, uploaded INTEGER NOT NULL, skipped INTEGER NOT NULL, failed INTEGER NOT NULL)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_backup_runs_destinationKey_id ON backup_runs (destinationKey, id)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_backup_runs_workId_destinationKey ON backup_runs (workId, destinationKey)")
             }
         }
 
@@ -57,7 +66,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "homesync.db"
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { INSTANCE = it }
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build().also { INSTANCE = it }
             }
         }
     }

@@ -2,6 +2,7 @@ package com.homeecosystems.homesync.sync
 
 import android.content.Context
 import android.os.Build
+import androidx.work.WorkInfo
 import androidx.work.workDataOf
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
@@ -14,6 +15,7 @@ import com.homeecosystems.homesync.data.api.HomeSyncApi
 import com.homeecosystems.homesync.data.api.RegisterDeviceRequest
 import com.homeecosystems.homesync.data.local.AppDatabase
 import com.homeecosystems.homesync.data.local.SyncedMediaEntity
+import com.homeecosystems.homesync.data.local.BackupRun
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
@@ -23,6 +25,9 @@ import okio.HashingSource
 import okio.source
 import java.time.Instant
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
+import android.database.sqlite.SQLiteException
 import java.io.IOException
 
 /**
@@ -50,20 +55,67 @@ class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker
     private var uploadedCount = 0
     private var matched = 0
     private var failed = 0
+    private var unchanged = 0
+    private var history: BackupRun? = null
 
     private fun snapshot(phase: String, reason: String? = null) = workDataOf(
         "phase" to phase, "total" to total, "uploaded" to uploadedCount,
         "matched" to matched, "failed" to failed, "reason" to reason
     )
-    private suspend fun report(phase: String) = setProgress(snapshot(phase))
+    private suspend fun report(phase: String) {
+        checkpoint("RUNNING")
+        setProgress(snapshot(phase))
+    }
     private fun completed() = Result.success(snapshot("completed"))
 
-    override suspend fun doWork(): Result = try {
-        backup()
-    } catch (e: SecurityException) {
-        permissionFailure()
-    } catch (e: IOException) {
-        Result.retry()
+    override suspend fun doWork(): Result {
+        try {
+            val result = try {
+                backup()
+            } catch (_: SecurityException) {
+                permissionFailure()
+            } catch (_: IOException) {
+                Result.retry()
+            }
+            when (result) {
+                is Result.Success -> checkpoint("COMPLETED", true)
+                is Result.Failure -> checkpoint("FAILED", true)
+                else -> checkpoint("RETRY")
+            }
+            return result
+        } catch (e: CancellationException) {
+            withContext(NonCancellable) {
+                if (stopReason == WorkInfo.STOP_REASON_CANCELLED_BY_APP) checkpoint("CANCELLED", true)
+                else checkpoint("INTERRUPTED")
+            }
+            throw e
+        } catch (e: Exception) {
+            checkpoint("FAILED", true)
+            throw e
+        }
+    }
+
+    private suspend fun startHistory(destinationKey: String) {
+        if (history?.destinationKey == destinationKey) return
+        if (history != null) checkpoint("INTERRUPTED", true)
+        history = try {
+            val manual = BackupScheduler.isManualWork(applicationContext, id)
+            db.backupRunDao().begin(id.toString(), destinationKey, manual, System.currentTimeMillis())
+        } catch (_: SQLiteException) {
+            null
+        }
+    }
+
+    private suspend fun checkpoint(status: String, finished: Boolean = false) {
+        val run = history ?: return
+        val dao = db.backupRunDao()
+        try {
+            dao.checkpoint(run.id, status, if (finished) System.currentTimeMillis() else null,
+                run.uploaded + uploadedCount, unchanged + matched, failed)
+            if (finished) dao.prune(run.destinationKey)
+        } catch (_: SQLiteException) {
+            // A history write must not change the outcome reported to WorkManager.
+        }
     }
 
     private fun permissionFailure() = Result.failure(snapshot("failed", "media-permission-required"))
@@ -71,10 +123,12 @@ class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker
     private suspend fun backup(): Result {
         sessionManager.initialize()
         if (!sessionManager.isSignedIn()) return Result.failure(snapshot("failed", "sign-in-required"))
+        apiClient.currentDestinationKey()?.let { startHistory(it) }
         val destinationKey = try { apiClient.verifyDestinationKey() }
             catch (e: CancellationException) { throw e }
             catch (e: Exception) { return Result.retry() }
             ?: return Result.failure(snapshot("failed", "account-verification-required"))
+        startHistory(destinationKey)
         report("scanning")
 
         val settings = settingsStore.current()
@@ -87,10 +141,12 @@ class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker
 
         val dao = db.syncedMediaDao()
         val syncedVersions = dao.syncedVersions(destinationKey).associateBy { it.localMediaId }
-        val candidates = mediaScanner.scan(categories).filter { candidate ->
+        val scanned = mediaScanner.scan(categories)
+        val candidates = scanned.filter { candidate ->
             candidate.sourceVersion == null || candidate.sourceVersion != syncedVersions[candidate.localId]?.sourceVersion
         }
         total = candidates.size
+        unchanged = scanned.size - total
         if (candidates.isEmpty()) return completed()
         report("hashing")
 

@@ -121,13 +121,10 @@ not authorize changing a real installation or storing real secrets in Vault.
    unsupported or over-budget sources keep the fallback. No server decoder or
    persistent poster store is introduced. Cross-browser/codec coverage beyond the
    recorded WebM fixture remains an explicit validation limit.
-5. **Sync backup feedback.** Show actual queued, waiting-for-constraints, running,
-   retrying, failed and completed work, with meaningful run progress/history.
-   Current slice observes manual/automatic WorkManager state, reports real
-   scanning/checking/upload counts and retains the latest manual result. Requests
-   no longer claim a run started, and repeated taps keep active manual work.
-   Durable multi-run history and exact unmet-constraint diagnostics remain open;
-   the UI labels scheduling/constraint waits without guessing their cause.
+5. **Sync constraint diagnostics.** Identify which scheduling requirements are
+   unmet when Android exposes reliable evidence. The app already shows live
+   work and keeps a durable timeline of manual and automatic runs.
+   [Validation](VALIDATION.md#homesync-backup-run-history)
 6. ~~**Sync changed-file detection.** Recheck a file after an in-place edit and
    skip confirmed unchanged content while preserving WorkManager constraints
    and whole-file retry.~~ [Validation](VALIDATION.md#homesync-edited-backups)

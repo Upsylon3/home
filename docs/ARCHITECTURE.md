@@ -201,7 +201,7 @@ The [roadmap](ROADMAP.md) owns unfinished work and its order.
 | Cloud | Owned files/folders, file/folder-tree uploads with a bounded queue, search/sort, ZIP downloads, share links and Trash; storage APIs for apps | Versioning and designed encryption at rest; public links are not same-HOME shared-folder ACLs |
 | Media | Cloud-backed gallery/timeline, albums/favorites/search, EXIF, image thumbnails, bounded video posters, browser uploads and image/video/audio playback | Duplicate review and local-family shared albums; retain Cloud as the single file store |
 | Notes | Markdown preview, folders/tags/search/favorites, debounced autosave, versions/restore and Cloud attachments | Save/draft safety, templates, designed offline editing and local collaboration; history is not conflict resolution |
-| Sync | Android media categories and optional Downloads scanning, WorkManager scheduling/retry, live work state/stages/counts, edited-media detection, hash dedup and aggregate backup summary | Durable run history, exact unmet-constraint diagnostics and chosen document/folder access; physical/background validation remains open |
+| Sync | Android media categories and optional Downloads scanning, WorkManager scheduling/retry, live work state/stages/counts, local run history, edited-media detection, hash dedup and aggregate backup summary | Exact unmet-constraint diagnostics and chosen document/folder access; physical/background validation remains open |
 | Tasks | Personal projects/dates/priorities/search, completion history, fixed repeats, opt-in reminders and local task assignment | Richer recurrence; keep owner control and distinguish individual assignments from collaborative projects |
 | Vault | v0 encrypted login/note/card items, create/unlock/recover, Trash, password/recovery-key changes, administrator reset and client benchmark | Independent review is still required before real secrets; broader structured secret workflows remain design targets |
 | Monitor | v0 read-only CPU/memory/network/disk, application health, backup freshness, storage forecast and alerts | Preserve read-only scope; Docker Desktop metrics describe its VM, and health/freshness checks do not certify physical disks or recoverability |
@@ -271,6 +271,14 @@ local hash refreshes the revision without an upload, and a different hash still
 uses the server's per-account deduplication. Android versions without generation
 metadata hash candidates during each run. The worker also checks the streamed
 upload against the chosen hash before completing the multipart body.
+
+Room v4 adds a device-local timeline alongside the media ledger. Started work
+records manual or automatic runs against the same verified destination key.
+Retries and interruptions resume the open record for that WorkManager request.
+Once a run finishes, the next periodic execution can create a new entry even
+though WorkManager reuses the request ID. The app shows the latest 20 entries.
+The timeline records total confirmed uploads and the latest attempt's skipped
+and retry counts. It starts collecting when the updated app runs new work.
 
 This is a persistence prerequisite, not multi-server backup enablement. Device
 IDs, settings, profiles and WorkManager inputs/names must still be scoped. No

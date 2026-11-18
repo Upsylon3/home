@@ -60,7 +60,7 @@ class LoginViewModel(
                     body.requires2fa == true && body.pendingToken != null ->
                         _uiState.update { it.copy(pendingToken = body.pendingToken) }
                     body.token != null -> {
-                        sessionManager.saveSession(state.serverUrl.trim(), body.token)
+                        sessionManager.saveSession(state.serverUrl.trim(), body.token, body.user?.id)
                         onSuccess()
                     }
                     else -> _uiState.update { it.copy(errorMessage = "Unexpected response from the server.") }
@@ -89,7 +89,7 @@ class LoginViewModel(
                 val response = apiClient.getApi().verify2fa(TwoFactorVerifyRequest(pendingToken, state.code.trim()))
                 val body = response.body()
                 if (response.isSuccessful && body?.token != null) {
-                    sessionManager.saveSession(state.serverUrl.trim(), body.token)
+                    sessionManager.saveSession(state.serverUrl.trim(), body.token, body.user?.id)
                     onSuccess()
                 } else {
                     _uiState.update { it.copy(errorMessage = "That code didn't work — try again.") }

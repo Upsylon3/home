@@ -6,6 +6,22 @@ const base = '/home/';
 const call = (state, path, method = 'GET', body) => handle(state, new Request('https://example.test' + base + 'demo-api' + path, { method, headers: { Authorization: 'Bearer browser-demo', ...(body && !(body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}) }, body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined }), base);
 const data = async (...args) => { const res = await call(...args); assert.ok(res.ok, await res.clone().text()); return res.json(); };
 
+test('personal template snapshots survive persistence and create independent notes', async () => {
+  let state = seed(base);
+  const original = state.notes[0];
+  const content = original.content;
+  const { template } = await data(state, `/homenotes/notes/${original.id}/templates`, 'POST', { name: 'Weekly' });
+  state = structuredClone(state);
+  await data(state, `/homenotes/notes/${original.id}`, 'PATCH', { content: 'changed source' });
+  const { note } = await data(state, `/homenotes/templates/${template.id}/notes`, 'POST', {});
+  assert.equal(note.content, content);
+  assert.deepEqual(note.attachments, []);
+  await data(state, `/homenotes/notes/${note.id}`, 'PATCH', { content: 'independent edit' });
+  await data(state, `/homenotes/templates/${template.id}`, 'DELETE');
+  assert.equal((await data(state, `/homenotes/notes/${note.id}`)).note.content, 'independent edit');
+  assert.deepEqual((await data(state, '/homenotes/templates')).templates, []);
+});
+
 test('bundled app uninstall and reinstall preserves browser data and requires enablement', async () => {
   let state = seed(base);
   const note = state.notes[0];

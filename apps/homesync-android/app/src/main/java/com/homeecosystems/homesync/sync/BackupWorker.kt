@@ -19,8 +19,11 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okio.BufferedSink
+import okio.HashingSource
 import okio.source
 import java.time.Instant
+import kotlinx.coroutines.CancellationException
+import java.io.IOException
 
 /**
  * One backup run: scan → hash → ask the server what it's missing →
@@ -43,32 +46,53 @@ class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker
     private val apiClient = ApiClient(sessionManager)
     private val mediaScanner = MediaScanner(applicationContext)
     private val db = AppDatabase.getInstance(applicationContext)
+    private var total = 0
+    private var uploadedCount = 0
+    private var matched = 0
+    private var failed = 0
+
+    private fun snapshot(phase: String, reason: String? = null) = workDataOf(
+        "phase" to phase, "total" to total, "uploaded" to uploadedCount,
+        "matched" to matched, "failed" to failed, "reason" to reason
+    )
+    private suspend fun report(phase: String) = setProgress(snapshot(phase))
+    private fun completed() = Result.success(snapshot("completed"))
 
     override suspend fun doWork(): Result = try {
         backup()
     } catch (e: SecurityException) {
         permissionFailure()
+    } catch (e: IOException) {
+        Result.retry()
     }
 
-    private fun permissionFailure() = Result.failure(workDataOf("reason" to "media-permission-required"))
+    private fun permissionFailure() = Result.failure(snapshot("failed", "media-permission-required"))
 
     private suspend fun backup(): Result {
         sessionManager.initialize()
-        if (!sessionManager.isSignedIn()) return Result.failure()
+        if (!sessionManager.isSignedIn()) return Result.failure(snapshot("failed", "sign-in-required"))
+        val destinationKey = try { apiClient.verifyDestinationKey() }
+            catch (e: CancellationException) { throw e }
+            catch (e: Exception) { return Result.retry() }
+            ?: return Result.failure(snapshot("failed", "account-verification-required"))
+        report("scanning")
 
         val settings = settingsStore.current()
         val categories = settings.enabledCategories()
-        if (categories.isEmpty()) return Result.success()
+        if (categories.isEmpty()) return completed()
         if (MediaAccess.current(applicationContext).blockedCategories(categories).isNotEmpty()) return permissionFailure()
 
         val api = apiClient.getApi()
         val deviceId = ensureDeviceId(api) ?: return Result.retry()
 
         val dao = db.syncedMediaDao()
-        val alreadyKnownLocalIds = dao.allSyncedLocalIds().toSet()
-
-        val candidates = mediaScanner.scan(categories).filter { it.localId !in alreadyKnownLocalIds }
-        if (candidates.isEmpty()) return Result.success()
+        val syncedVersions = dao.syncedVersions(destinationKey).associateBy { it.localMediaId }
+        val candidates = mediaScanner.scan(categories).filter { candidate ->
+            candidate.sourceVersion == null || candidate.sourceVersion != syncedVersions[candidate.localId]?.sourceVersion
+        }
+        total = candidates.size
+        if (candidates.isEmpty()) return completed()
+        report("hashing")
 
         // Hashing is CPU-bound and needs no network — do it all up front,
         // so a flaky connection only affects the upload step below.
@@ -77,74 +101,99 @@ class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker
                 mediaScanner.openStream(candidate.localId)?.use { stream -> HashedFile(candidate, FileHasher.sha256(stream)) }
             } catch (e: SecurityException) {
                 throw e
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 null // File deleted or temporarily unreadable; try again next run.
             }
         }
-        if (hashed.isEmpty()) return Result.success()
+        failed = candidates.size - hashed.size
+        val needsServerCheck = mutableListOf<HashedFile>()
+        for (file in hashed) {
+            if (syncedVersions[file.candidate.localId]?.contentHash == file.contentHash) {
+                file.candidate.sourceVersion?.let { version ->
+                    dao.rememberSourceVersion(destinationKey, file.candidate.localId, file.contentHash, version)
+                }
+                matched++
+            } else {
+                needsServerCheck += file
+            }
+        }
+        if (needsServerCheck.isEmpty()) return if (failed > 0) Result.retry() else completed()
+        report("checking")
 
         // Covers cross-device dedup (see homesync-backend/src/sync.js) —
         // batched to respect its 500-entries-per-call cap.
         val alreadySyncedHashes = mutableSetOf<String>()
-        for (batch in chunked(hashed, 500)) {
-            val response = runCatching {
+        for (batch in chunked(needsServerCheck, 500)) {
+            val response = try {
                 api.check(CheckRequest(batch.map { CheckFileEntry(it.contentHash, it.candidate.sizeBytes) }))
-            }.getOrNull()
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) { null }
             response?.body()?.results?.forEach { if (it.alreadySynced) alreadySyncedHashes += it.hash }
         }
 
-        val plan = planSync(hashed, alreadySyncedHashes)
+        val plan = planSync(needsServerCheck, alreadySyncedHashes)
 
         // Server already has these (backed up from another device, most
         // likely) — record locally without re-uploading, so future runs
         // skip them too instead of re-checking every time.
         for (file in plan.alreadySynced) {
-            dao.insert(file.toEntity())
+            dao.insert(file.toEntity(destinationKey))
+            matched++
         }
 
-        var anyFailed = false
+        report("uploading")
         for (file in plan.toUpload) {
             val uploaded = try { uploadOne(api, deviceId, file) }
             catch (e: SecurityException) { throw e }
+            catch (e: CancellationException) { throw e }
             catch (e: Exception) { false }
             if (uploaded) {
-                dao.insert(file.toEntity())
+                dao.insert(file.toEntity(destinationKey))
+                uploadedCount++
             } else {
-                anyFailed = true
+                failed++
             }
+            report("uploading")
         }
 
         // Only ask WorkManager to retry the whole run if something
         // actually failed — files that succeeded are already recorded and
         // won't be re-attempted regardless, so a partial success still
         // reports Result.retry() to pick up the rest, not Result.failure().
-        return if (anyFailed) Result.retry() else Result.success()
+        return if (failed > 0) Result.retry() else completed()
     }
 
-    private fun HashedFile.toEntity() = SyncedMediaEntity(
+    private fun HashedFile.toEntity(destinationKey: String) = SyncedMediaEntity(
+        destinationKey = destinationKey,
         localMediaId = candidate.localId,
         contentHash = contentHash,
         category = candidate.category.toApiValue(),
         sizeBytes = candidate.sizeBytes,
-        uploadedAtEpochMs = System.currentTimeMillis()
+        uploadedAtEpochMs = System.currentTimeMillis(),
+        sourceVersion = candidate.sourceVersion
     )
 
     private suspend fun ensureDeviceId(api: HomeSyncApi): Int? {
         sessionManager.deviceId.value?.let { return it }
-        return runCatching {
+        return try {
             val response = api.registerDevice(RegisterDeviceRequest(name = Build.MODEL ?: "Android device"))
             response.body()?.device?.id?.also { sessionManager.saveDeviceId(it) }
-        }.getOrNull()
+        } catch (e: CancellationException) { throw e }
+        catch (e: Exception) { null }
     }
 
     private suspend fun uploadOne(api: HomeSyncApi, deviceId: Int, file: HashedFile): Boolean {
         val length = file.candidate.sizeBytes
-        val stream = mediaScanner.openStream(file.candidate.localId) ?: return false
         // Streams straight from the on-device file into the multipart body
         // rather than buffering it into a ByteArray first — buffering a
         // multi-hundred-MB video into memory on a phone is a real OOM risk
-        // this specifically avoids. The stream is closed by writeTo() below.
-        val body = streamingRequestBody(file.candidate.mimeType.toMediaTypeOrNull(), stream, length)
+        // this specifically avoids. Validate the streamed bytes before OkHttp
+        // finishes the multipart body, so an edit during upload is retried.
+        val body = streamingRequestBody(file.candidate.mimeType.toMediaTypeOrNull(), length, file.contentHash) {
+            mediaScanner.openStream(file.candidate.localId)
+        }
         val filePart = MultipartBody.Part.createFormData("file", file.candidate.displayName, body)
         val plainText = "text/plain".toMediaTypeOrNull()
 
@@ -163,11 +212,23 @@ class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker
     }
 }
 
-private fun streamingRequestBody(contentType: okhttp3.MediaType?, inputStream: java.io.InputStream, length: Long): RequestBody =
-    object : RequestBody() {
-        override fun contentType() = contentType
-        override fun contentLength() = length
-        override fun writeTo(sink: BufferedSink) {
-            inputStream.source().use { source -> sink.writeAll(source) }
+internal fun streamingRequestBody(
+    contentType: okhttp3.MediaType?,
+    length: Long,
+    expectedHash: String,
+    openStream: () -> java.io.InputStream?
+): RequestBody = object : RequestBody() {
+    override fun contentType() = contentType
+    override fun contentLength() = length
+    override fun isOneShot() = true
+
+    override fun writeTo(sink: BufferedSink) {
+        val stream = openStream() ?: throw IOException("Backup media is unavailable.")
+        HashingSource.sha256(stream.source()).use { source ->
+            val written = sink.writeAll(source)
+            if (written != length || source.hash.hex() != expectedHash) {
+                throw IOException("Backup media changed while uploading.")
+            }
         }
     }
+}

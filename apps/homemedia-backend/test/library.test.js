@@ -190,3 +190,43 @@ test("thumbnail for a non-image file 404s instead of erroring", async () => {
   const res = await client.get(`/api/homemedia/${upload.body.file.id}/thumbnail`);
   assert.equal(res.status, 404);
 });
+
+test("cached previews and EXIF cannot outlive permanent deletion in Cloud", async () => {
+  const { client, homecloudClient } = await setUpUserWithUploads({ username: "media_deleted_cache" });
+  const file = await uploadToHomeCloud(homecloudClient, { name: "deleted.jpg", blob: await jpegWithExifBlob() });
+  for (const suffix of ['thumbnail', 'exif']) assert.equal((await client.get(`/api/homemedia/${file.id}/${suffix}`)).status, 200);
+  assert.equal((await homecloudClient.delete(`/api/homecloud/files/${file.id}`)).status, 200);
+  // Trash is intentionally downloadable; permanent removal revokes the source.
+  assert.equal((await homecloudClient.delete(`/api/homecloud/files/${file.id}/permanent`)).status, 200);
+  for (const suffix of ['thumbnail', 'exif']) {
+    assert.equal((await client.get(`/api/homemedia/${file.id}/${suffix}`)).status, 404, `${suffix} must recheck Cloud`);
+  }
+});
+
+test("warm derivatives fail closed on Cloud denial/outage and recover without downloading bytes", async () => {
+  const { client, homecloudClient } = await setUpUserWithUploads({ username: "media_cache_outage" });
+  const file = await uploadToHomeCloud(homecloudClient, { name: "cached.jpg", blob: await jpegWithExifBlob() });
+  for (const suffix of ['thumbnail', 'exif']) {
+    const res = await client.get(`/api/homemedia/${file.id}/${suffix}`);
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get('cache-control'), 'private, no-store');
+  }
+  const networkFetch = global.fetch;
+  let denial, checks = 0;
+  global.fetch = async (url, options) => {
+    if (String(url).startsWith(homecloudBackend.baseUrl + '/api/homecloud/files/')) {
+      assert.equal(options.method, 'HEAD'); checks++;
+      if (denial === 'offline') throw new Error('Injected Cloud outage');
+      return new Response(null, { status: denial });
+    }
+    return networkFetch(url, options);
+  };
+  try {
+    for (const [upstream, expected] of [[401, 401], [403, 403], [500, 502], ['offline', 502]]) {
+      denial = upstream;
+      for (const suffix of ['thumbnail', 'exif']) assert.equal((await client.get(`/api/homemedia/${file.id}/${suffix}`)).status, expected);
+    }
+    assert.equal(checks, 8);
+  } finally { global.fetch = networkFetch; }
+  for (const suffix of ['thumbnail', 'exif']) assert.equal((await client.get(`/api/homemedia/${file.id}/${suffix}`)).status, 200);
+});

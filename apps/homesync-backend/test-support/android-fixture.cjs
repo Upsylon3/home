@@ -30,18 +30,28 @@ async function main() {
       hashMatches: JSON.stringify(synced.map(file => file.content_hash).sort()) === JSON.stringify(expected.map(photo => crypto.createHash("sha256").update(photo).digest("hex")).sort()) };
   }
   let stopping = false;
+  let failNextUpload = false;
   const server = http.createServer((req, res) => {
     if (["/__fixture__/picker-selected.png", "/__fixture__/picker-unselected.png", "/__fixture__/picker-reselected.png"].includes(req.url) && req.method === "GET") {
       res.writeHead(200, { "Content-Type": "image/png" });
       res.end(req.url.endsWith("picker-selected.png") ? PHOTO : req.url.endsWith("picker-reselected.png") ? RESELECTED_PHOTO : UNSELECTED_PHOTO); return;
     }
-    if (["/__fixture__/status", "/__fixture__/denied-status", "/__fixture__/settings-status", "/__fixture__/picker-status", "/__fixture__/picker-reselection-status"].includes(req.url) && req.method === "GET") {
-      try { const result = status(fixtureUser(req.url), req.url.includes("reselection") ? [PHOTO, RESELECTED_PHOTO] : [PHOTO]); res.writeHead(200, { "Content-Type": "application/json" }); res.end(JSON.stringify(result)); }
+    if (req.url === "/__fixture__/retry-upload" && req.method === "POST") {
+      failNextUpload = true;
+      res.writeHead(204); res.end(); return;
+    }
+    if (req.url === "/api/homesync/upload" && req.method === "POST" && failNextUpload) {
+      failNextUpload = false;
+      req.resume();
+      res.writeHead(503); res.end(); return;
+    }
+    if (["/__fixture__/edited-status", "/__fixture__/status", "/__fixture__/denied-status", "/__fixture__/settings-status", "/__fixture__/picker-status", "/__fixture__/picker-reselection-status"].includes(req.url) && req.method === "GET") {
+      try { const result = status(fixtureUser(req.url), /reselection|edited/.test(req.url) ? [PHOTO, RESELECTED_PHOTO] : [PHOTO]); res.writeHead(200, { "Content-Type": "application/json" }); res.end(JSON.stringify(result)); }
       catch { res.writeHead(500, { "Content-Type": "application/json" }); res.end(JSON.stringify({ error: "Fixture verification failed." })); }
       return;
     }
-    if (["/__fixture__/verify", "/__fixture__/denied-verify", "/__fixture__/settings-verify", "/__fixture__/picker-verify", "/__fixture__/picker-reselection-verify"].includes(req.url) && req.method === "GET") {
-      try { const expected = req.url.includes("reselection") ? [PHOTO, RESELECTED_PHOTO] : [PHOTO];
+    if (["/__fixture__/edited-verify", "/__fixture__/verify", "/__fixture__/denied-verify", "/__fixture__/settings-verify", "/__fixture__/picker-verify", "/__fixture__/picker-reselection-verify"].includes(req.url) && req.method === "GET") {
+      try { const expected = /reselection|edited/.test(req.url) ? [PHOTO, RESELECTED_PHOTO] : [PHOTO];
         assert.deepEqual(status(fixtureUser(req.url), expected), { files: expected.length, synced: expected.length, devices: 1, bytesMatch: true, hashMatches: true });
         res.writeHead(200); res.end(`ok emulator upload bytes, SHA-256, ${expected.length} file(s), one device and dedup\n`); }
       catch { res.writeHead(500); res.end("Emulator backup proof incomplete.\n"); }

@@ -12,6 +12,7 @@ for (const [app, prefix] of Object.entries(apps)) {
   const appBase = base + (prefix ? prefix + '/' : '');
   await build({
     configFile: false, root: path.join(root, 'apps', app), base: appBase,
+    define: { 'import.meta.env.VITE_HOME_ACCOUNT_URL': JSON.stringify(base + '#/settings') },
     plugins: [demoPlugin(), react()],
     build: { outDir: path.join(root, 'demo-dist', prefix), emptyOutDir: app === 'home', target: 'esnext',
       ...(app === 'homevault' ? { rolldownOptions: { input: { app: path.join(root, 'apps/homevault/index.html'), benchmark: path.join(root, 'apps/homevault/benchmark.html') } } } : {}) }
@@ -38,6 +39,7 @@ function demoPlugin() {
       }
       if (id.endsWith('UploadZone.jsx')) code = code.replace('up to 1 GB per file', 'up to 100 MB per file in this demo');
       if (id.endsWith('main.jsx')) {
+        code = code.replaceAll('createBrowserRouter', 'createHashRouter').replace(', { basename: import.meta.env.BASE_URL }', '');
         code = code.replaceAll('BrowserRouter', 'HashRouter').replace(/ basename=\{(?:import.meta.env.BASE_URL|basename)\}/g, '').replace('&& import.meta.env.PROD', '&& false');
         code = `await import(${JSON.stringify(base + 'demo-bootstrap.js')}).catch(error => { document.getElementById("root").textContent = "HOME demo could not start: " + error.message; throw error; });\n` + code;
       }

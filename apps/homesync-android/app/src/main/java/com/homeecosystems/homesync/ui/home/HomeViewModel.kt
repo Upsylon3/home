@@ -12,7 +12,7 @@ import com.homeecosystems.homesync.data.local.SyncedMediaDao
 import com.homeecosystems.homesync.sync.MediaAccess
 import com.homeecosystems.homesync.sync.BackupCategory
 import com.homeecosystems.homesync.sync.BackupScheduler
-import kotlinx.coroutines.delay
+import com.homeecosystems.homesync.sync.BackupFeedback
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,7 +24,9 @@ data class HomeUiState(
     val settings: BackupSettings = BackupSettings(),
     val summary: HistorySummary? = null,
     val isRefreshing: Boolean = false,
-    val message: String? = null
+    val historyNotice: String? = null,
+    val message: String? = null,
+    val work: List<BackupFeedback> = emptyList()
 )
 
 class HomeViewModel(
@@ -41,6 +43,14 @@ class HomeViewModel(
         viewModelScope.launch {
             settingsStore.settings.collect { settings -> _uiState.update { it.copy(settings = settings) } }
         }
+        viewModelScope.launch {
+            BackupScheduler.observeBackupWork(appContext).collect { work ->
+                val previous = _uiState.value.work
+                _uiState.update { it.copy(work = work) }
+                if (work.any { row -> !row.active && previous.any { it.id == row.id && it.active } } ||
+                    previous.any { old -> old.running && work.none { it.id == old.id && it.running } }) refreshSummary()
+            }
+        }
         refreshSummary()
     }
 
@@ -48,6 +58,10 @@ class HomeViewModel(
     fun refreshSummary() {
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true) }
+            val legacyCount = localDao.legacyCount()
+            val legacyNotice = if (legacyCount > 0) "$legacyCount legacy local backup records are retained. Backup will verify these files again for this server and account." else null
+            _uiState.update { it.copy(historyNotice = legacyNotice) }
+            runCatching { apiClient.verifyDestinationKey() }
             val fromServer = runCatching { apiClient.getApi().history() }.getOrNull()
             val serverSummary = fromServer?.takeIf { it.isSuccessful }?.body()?.summary
             if (serverSummary != null) {
@@ -55,9 +69,15 @@ class HomeViewModel(
                 return@launch
             }
 
-            val count = localDao.count()
-            val bytes = localDao.totalBytes()
-            val lastAtMs = localDao.lastUploadedAtEpochMs()
+            val destinationKey = apiClient.currentDestinationKey()
+            if (destinationKey == null) {
+                _uiState.update { it.copy(summary = null, isRefreshing = false,
+                    historyNotice = "Connect to verify this account before showing local backup totals. Existing records are retained.") }
+                return@launch
+            }
+            val count = localDao.count(destinationKey)
+            val bytes = localDao.totalBytes(destinationKey)
+            val lastAtMs = localDao.lastUploadedAtEpochMs(destinationKey)
             _uiState.update {
                 it.copy(
                     summary = HistorySummary(count, bytes, lastAtMs?.let { ms -> Instant.ofEpochMilli(ms).toString() }),
@@ -112,11 +132,7 @@ class HomeViewModel(
             return
         }
         BackupScheduler.backupNow(appContext, settings.wifiOnly, settings.chargingOnly)
-        _uiState.update { it.copy(message = "Backup started.") }
-        viewModelScope.launch {
-            delay(4000) // give it a moment to make progress before refreshing
-            refreshSummary()
-        }
+        _uiState.update { it.copy(message = "Backup requested. Android will run it when requirements are met.") }
     }
 
     fun messageShown() = _uiState.update { it.copy(message = null) }

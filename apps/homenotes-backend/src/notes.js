@@ -89,6 +89,50 @@ function maybeSnapshotVersion(note) {
   }
 }
 
+// Personal reusable snapshots, separate from ordinary note ownership/history.
+function templateSummary(row) {
+  return { id: row.id, name: row.name, title: row.title, tags: JSON.parse(row.tags_json), createdAt: row.created_at };
+}
+
+router.get('/templates', (req, res) => {
+  const rows = db.prepare('SELECT id, name, title, tags_json, created_at FROM note_templates WHERE user_id = ? ORDER BY name COLLATE NOCASE').all(req.user.id);
+  res.json({ templates: rows.map(templateSummary) });
+});
+
+router.post('/notes/:id/templates', (req, res) => {
+  const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+  if (!name || name.length > 100) return res.status(400).json({ error: 'Template name must be 1–100 characters.' });
+  const note = db.prepare('SELECT * FROM notes WHERE id = ? AND user_id = ? AND deleted_at IS NULL').get(req.params.id, req.user.id);
+  if (!note) return res.status(404).json({ error: 'Note not found.' });
+  if (db.prepare('SELECT id FROM note_templates WHERE user_id = ? AND name = ?').get(req.user.id, name)) {
+    return res.status(409).json({ error: 'A template with this name already exists.' });
+  }
+  if (db.prepare('SELECT COUNT(*) AS n FROM note_templates WHERE user_id = ?').get(req.user.id).n >= 100) {
+    return res.status(409).json({ error: 'You can keep up to 100 templates. Remove one before adding another.' });
+  }
+  const tags = serializeNoteDetail(note).tags;
+  const id = db.prepare('INSERT INTO note_templates (user_id, name, title, content, tags_json) VALUES (?, ?, ?, ?, ?)')
+    .run(req.user.id, name, note.title, note.content, JSON.stringify(tags)).lastInsertRowid;
+  res.status(201).json({ template: templateSummary(db.prepare('SELECT * FROM note_templates WHERE id = ?').get(id)) });
+});
+
+router.post('/templates/:id/notes', (req, res) => {
+  const template = db.prepare('SELECT * FROM note_templates WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
+  if (!template) return res.status(404).json({ error: 'Template not found.' });
+  const id = db.transaction(() => {
+    const inserted = db.prepare('INSERT INTO notes (user_id, title, content) VALUES (?, ?, ?)').run(req.user.id, template.title, template.content);
+    setTags(inserted.lastInsertRowid, req.user.id, JSON.parse(template.tags_json));
+    return inserted.lastInsertRowid;
+  })();
+  res.status(201).json({ note: serializeNoteDetail(db.prepare('SELECT * FROM notes WHERE id = ?').get(id)) });
+});
+
+router.delete('/templates/:id', (req, res) => {
+  const removed = db.prepare('DELETE FROM note_templates WHERE id = ? AND user_id = ?').run(req.params.id, req.user.id);
+  if (!removed.changes) return res.status(404).json({ error: 'Template not found.' });
+  res.json({ ok: true });
+});
+
 // GET /notes?folderId=&tag=&favorite=true&search=
 router.get(
   "/notes",

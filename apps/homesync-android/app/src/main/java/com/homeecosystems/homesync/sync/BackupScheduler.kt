@@ -10,6 +10,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkRequest
+import kotlinx.coroutines.flow.combine
 import java.util.concurrent.TimeUnit
 
 /**
@@ -55,7 +56,7 @@ object BackupScheduler {
             .setConstraints(buildConstraints(wifiOnly, chargingOnly))
             .build()
 
-        WorkManager.getInstance(context).enqueueUniqueWork(MANUAL_WORK_NAME, ExistingWorkPolicy.REPLACE, request)
+        WorkManager.getInstance(context).enqueueUniqueWork(MANUAL_WORK_NAME, ExistingWorkPolicy.KEEP, request)
     }
 
     fun cancelPeriodic(context: Context) {
@@ -65,4 +66,16 @@ object BackupScheduler {
     /** For the Home screen's progress indicator while a manual run is active. */
     fun observeManualWork(context: Context) =
         WorkManager.getInstance(context).getWorkInfosForUniqueWorkLiveData(MANUAL_WORK_NAME)
+
+    fun observeBackupWork(context: Context) = WorkManager.getInstance(context).let { manager ->
+        combine(manager.getWorkInfosForUniqueWorkFlow(MANUAL_WORK_NAME),
+            manager.getWorkInfosForUniqueWorkFlow(BackupWorker.WORK_NAME)) { manual, automatic ->
+            (manual.map { "Manual" to it } + automatic.map { "Automatic" to it }).map { (kind, info) ->
+                val data = if (info.state.isFinished) info.outputData else info.progress
+                backupFeedback(info.id.toString(), kind, info.state, info.runAttemptCount,
+                    data.getString("phase"), data.getInt("total", 0), data.getInt("uploaded", 0),
+                    data.getInt("matched", 0), data.getInt("failed", 0), data.getString("reason"))
+            }
+        }
+    }
 }

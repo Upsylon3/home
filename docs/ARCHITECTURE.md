@@ -198,10 +198,10 @@ The [roadmap](ROADMAP.md) owns unfinished work and its order.
 |---|---|---|
 | Home | Greeting, installed-app launcher, Cloud quota, Core health/activity, notifications, settings and administration | A useful personal daily overview; preserve hierarchy and quiet working space as more apps become useful |
 | Core | Local identity/2FA/sessions, preferences, registry lifecycle, events/notifications, scoped Cloud application keys and fixed-purpose delegations | Current permission scopes are bounded; future AI/other consumers need explicit consent and appropriate audience/resource enforcement |
-| Cloud | Owned files/folders, multiple-file uploads, search/sort, ZIP downloads, share links and Trash; storage APIs for apps | Folder-tree uploads, versioning and designed encryption at rest; public links are not same-HOME shared-folder ACLs |
-| Media | Cloud-backed gallery/timeline, albums/favorites/search, EXIF, image thumbnails, browser uploads and image/video/audio playback | Video posters, duplicate review and local-family shared albums; retain Cloud as the single file store |
+| Cloud | Owned files/folders, file/folder-tree uploads with a bounded queue, search/sort, ZIP downloads, share links and Trash; storage APIs for apps | Versioning and designed encryption at rest; public links are not same-HOME shared-folder ACLs |
+| Media | Cloud-backed gallery/timeline, albums/favorites/search, EXIF, image thumbnails, bounded video posters, browser uploads and image/video/audio playback | Duplicate review and local-family shared albums; retain Cloud as the single file store |
 | Notes | Markdown preview, folders/tags/search/favorites, debounced autosave, versions/restore and Cloud attachments | Save/draft safety, templates, designed offline editing and local collaboration; history is not conflict resolution |
-| Sync | Android media categories and optional Downloads scanning, WorkManager scheduling/retry, hash dedup and aggregate backup summary | Live run/queue feedback, changed-file detection and chosen document/folder access; physical/background validation remains open |
+| Sync | Android media categories and optional Downloads scanning, WorkManager scheduling/retry, live work state/stages/counts, edited-media detection, hash dedup and aggregate backup summary | Durable run history, exact unmet-constraint diagnostics and chosen document/folder access; physical/background validation remains open |
 | Tasks | Personal projects/dates/priorities/search, completion history, fixed repeats, opt-in reminders and local task assignment | Richer recurrence; keep owner control and distinguish individual assignments from collaborative projects |
 | Vault | v0 encrypted login/note/card items, create/unlock/recover, Trash, password/recovery-key changes, administrator reset and client benchmark | Independent review is still required before real secrets; broader structured secret workflows remain design targets |
 | Monitor | v0 read-only CPU/memory/network/disk, application health, backup freshness, storage forecast and alerts | Preserve read-only scope; Docker Desktop metrics describe its VM, and health/freshness checks do not certify physical disks or recoverability |
@@ -245,6 +245,139 @@ Versioned assignment writes reject stale lookups/clients; completion rechecks
 access and repeat creation in one immediate transaction. No assignment email,
 push, project collaboration or multi-server identity is introduced. Restored
 assignment ACLs must be revoked offline before reopening Tasks.
+
+## Android destination ledger
+
+Room v2 adds a destination key to backup records and replaces global media-ID
+uniqueness with `(destinationKey, localMediaId)`. The key hashes the canonical
+configured gateway URL (including scheme/port/path) and the authenticated local
+Core account ID, never a bearer token. Login responses establish that account;
+legacy sessions verify identity through Core using a captured URL/token pair.
+Queued work does not yet support multiple profiles.
+
+The v1 ledger recorded no destination, so its rows keep their original IDs,
+hashes, sizes and timestamps with an empty legacy destination. They remain
+retained history and are excluded from destination deduplication/totals. A first
+scoped run hashes/checks these files again; Cloud's per-user hash dedup avoids
+uploading content the server already has. Do not assign all old rows to whichever
+account happens to be active at upgrade. Offline totals require a previously
+verified account; an unknown legacy session reports unavailable history.
+
+Room v3 adds an optional source revision to each scoped record. On Android 11
+and later, the worker combines the MediaStore volume version, row generation,
+modified time and size. A matching confirmed revision skips reading the file.
+A missing or changed revision triggers a streaming SHA-256 check. A matching
+local hash refreshes the revision without an upload, and a different hash still
+uses the server's per-account deduplication. Android versions without generation
+metadata hash candidates during each run. The worker also checks the streamed
+upload against the chosen hash before completing the multipart body.
+
+This is a persistence prerequisite, not multi-server backup enablement. Device
+IDs, settings, profiles and WorkManager inputs/names must still be scoped. No
+application ID changes and no destructive Room fallback are permitted. Preserve
+an offline database copy before upgrading. A rollback to an earlier Room
+version uses that pre-upgrade copy.
+Use an isolated pre-upgrade recovery copy rather than deleting columns/history or
+trying to recreate global uniqueness after scoped duplicates have been recorded.
+
+## Media video posters
+
+Posters use the browser's existing video decoder, not a new server executable.
+This retains the current codec-support boundary and avoids adding FFmpeg/runtime
+dependencies. An offscreen video captures its first decoded frame into a JPEG
+with maximum dimension 640px; it stops after eight seconds and refuses canvas
+capture above 16,777,216 source pixels. It never plays audio or stores originals.
+Unsupported/corrupt sources, queue overflow and exhausted budgets retain the
+generic video placeholder. It does not sample a representative scene.
+
+Visible tiles request at most two concurrent decodes and queue at most 24 jobs.
+The memory-only cache keeps at most 48 entries/4 MiB of JPEGs, expires successes
+after five minutes and failures after 30 seconds, and keys entries by Cloud ID,
+size, creation time and MIME type. A changed login clears entries and rejects old
+results; sign-out unmount clears the cache. Library/favorites/album grids, covers
+and the picker reuse it. Optional cover metadata times out after five seconds;
+album names/counts remain usable if Cloud previews are unavailable.
+
+An authenticated poster ticket probes Cloud ownership with one byte, then permits
+at most eight range requests, 2 MiB per reservation and 16 MiB total, with a fixed
+15-second deadline and no-store responses. Limits are reserved before network
+awaits; ignored ranges and oversized streams fail closed. Each use still goes
+through Cloud's authorized download. Public media responses carry a sandbox CSP
+so navigating to an uploaded HTML/SVG cannot execute it as a HOME document.
+
+This is a session cache of already delivered client pixels, not an authorization
+or offline store. Existing Cloud file IDs have immutable bytes; any future file
+replacement/version API must update poster invalidation. No schema migration or
+new decoder dependency is required. Rolling back the backend makes new poster
+requests fall back; ordinary playback endpoints remain compatible.
+
+## Android backup feedback
+
+The Home screen observes both unique manual/periodic WorkManager flows. Worker
+progress reports scan/hash/server-check/upload stages and discovered/uploaded/
+already-on-server/failed counts; terminal manual results carry the final counts.
+The UI refreshes aggregate totals on actual work transitions, rather than a
+four-second timer. Manual enqueue uses KEEP so another tap cannot replace an
+active transfer. Hash/read failures request retry; cancellation is rethrown.
+
+ENQUEUED is labelled queued/scheduled (or retry queued after an attempt), with an
+explicit Android scheduling/network/battery wait explanation. It does not claim
+the exact currently unmet constraint. Periodic work returns to Scheduled and
+WorkManager may prune old work; the latest retained manual result is not a durable
+run history. No file names, credentials or new persistence are stored in progress.
+The application ID, Room schema, global work names and schedule constraints stay
+compatible. Rollback ignores the additional progress/output fields.
+
+## Cloud folder uploads
+
+Cloud's browser queue sends at most three whole-file uploads concurrently and
+retains at most 1000 rows. Folder selection/drop preserves relative paths of
+files, validates depth/names, reuses owned folders with SQLite ASCII NOCASE
+semantics and creates missing folders through the ordinary authorized API.
+Each selection captures its starting folder and session; a changed session fails
+closed. The server still enforces ownership, quota and upload validation.
+
+Rows expose progress, failures and explicit retry/cancel; switching file tabs
+retains the queue. Internal navigation/sign-out confirms cancellation, while
+reload/close uses the native browser prompt. Refresh loses in-memory state.
+Empty directories, chunked/resumable uploads and persistent queues are not
+implemented. Cancellation/partial failure keeps folders/files already committed;
+a retry after an ambiguous network failure can upload another copy. Rollback
+restores the previous frontend: no API or database migration is involved.
+## Personal Notes templates
+
+An owner can save an active note as a named, immutable template snapshot after
+the editor successfully flushes pending title/content/tag saves. The name is
+1–100 characters, unique per owner using SQLite NOCASE, with at most 100 personal
+templates. Lists expose summaries rather than whole Markdown bodies.
+Starting from a template creates an independent note with the original title,
+Markdown and tags. Folder, favorite state, Cloud attachment references and version
+history are excluded. Markdown links remain literal text, so links in a template
+still point to their original resources and keep their normal authorization.
+Removing a template never removes source notes, generated notes or Cloud files.
+Changing either a source or generated note never mutates the saved snapshot.
+
+The owning Notes database adds `note_templates`; existing rows/APIs are unchanged.
+Older binaries ignore the additive table on rollback. Retain it and its snapshots
+rather than dropping user data. Template bodies use the existing sanitized Notes
+editor and do not introduce shared/collaborative or cross-server permissions.
+
+## Notes save safety
+
+Notes serializes title/content/tag autosaves in the current editor. Internal
+navigation offers save-and-leave, keep-editing or explicit queued-change discard;
+save failures retain fields in memory for retry. Reload/close asks the browser's
+native unsaved-work question, and intentional sign-out confirms discard. A request
+already sent may complete even if queued edits are discarded. Attachment refreshes
+update metadata without replacing draft text; version restore/Trash flush edits
+first. A new note route owns a fresh queue, and late old-token failures cannot
+clear a newer session. Core remains the authority and ordinary Notes APIs remain
+unchanged.
+
+Draft plaintext is not written to localStorage/IndexedDB or retained across logout,
+session expiry or a confirmed page close. This prevents an implicit offline cache;
+browser/OS termination can still lose unsaved work. Multi-tab/user conflicts and
+persistent offline recovery need their own privacy and conflict design.
 
 ## Cross-app search
 

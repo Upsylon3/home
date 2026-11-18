@@ -15,7 +15,7 @@ async function request(path, options = {}) {
   const res = await fetch(`/api${path}`, { ...options, headers });
 
   // 401 = not signed in (any more): forget the token and tell App.jsx.
-  if (res.status === 401) {
+  if (res.status === 401 && getToken() === token) {
     setToken(null);
     window.dispatchEvent(new CustomEvent("homemonitor:session-expired"));
   }

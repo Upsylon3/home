@@ -24,7 +24,7 @@ async function request(path, options = {}) {
 
   const res = await fetch(`/api${path}`, { ...options, headers });
 
-  if (res.status === 401) {
+  if (res.status === 401 && getToken() === token) {
     setToken(null);
     window.dispatchEvent(new CustomEvent("homevault:session-expired"));
   }

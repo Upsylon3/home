@@ -8,6 +8,7 @@ import FolderView from "./pages/FolderView.jsx";
 import Trash from "./pages/Trash.jsx";
 import NoteEditor from "./pages/NoteEditor.jsx";
 import Settings from "./pages/Settings.jsx";
+import Templates from './pages/Templates.jsx';
 import Layout from "./components/Layout.jsx";
 
 export default function App() {
@@ -59,6 +60,7 @@ export default function App() {
       <Route element={<Layout user={user} onLogout={() => setUser(null)} />}>
         <Route path="/" element={<Notes />} />
         <Route path="/favorites" element={<Favorites />} />
+        <Route path="/templates" element={<Templates />} />
         <Route path="/trash" element={<Trash />} />
         <Route path="/folders/:folderId" element={<FolderView />} />
         <Route path="/notes/:noteId" element={<NoteEditor />} />

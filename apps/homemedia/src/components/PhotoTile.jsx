@@ -1,10 +1,12 @@
 import AuthImage from "./AuthImage.jsx";
+import VideoPoster from './VideoPoster.jsx';
 import { api } from "../api.js";
 import { StarGlyph, PlayGlyph, MusicGlyph } from "./icons.jsx";
 
 export default function PhotoTile({ file, onOpen, onToggleFavorite }) {
   return (
-    <div className="photo-tile" onClick={onOpen}>
+    <div className="photo-tile">
+      <button type="button" className="photo-tile-open" onClick={onOpen} aria-label={`Open ${file.name}`}>
       {file.kind === "image" ? (
         <AuthImage
           src={api.thumbnailUrl(file.id)}
@@ -20,18 +22,19 @@ export default function PhotoTile({ file, onOpen, onToggleFavorite }) {
           <span className="photo-tile-audio-name">{file.name}</span>
         </div>
       ) : (
-        <div className="photo-tile-video-placeholder">
-          <PlayGlyph size={28} />
-        </div>
+        <VideoPoster file={file} />
       )}
+      </button>
 
       <button
+        type="button"
         className={`photo-tile-favorite${file.favorited ? " active" : ""}`}
         onClick={(e) => {
           e.stopPropagation();
           onToggleFavorite();
         }}
         aria-label={file.favorited ? "Remove from favorites" : "Add to favorites"}
+        aria-pressed={file.favorited}
       >
         <StarGlyph size={14} filled={file.favorited} />
       </button>

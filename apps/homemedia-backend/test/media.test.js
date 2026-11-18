@@ -7,7 +7,7 @@ const assert = require("node:assert/strict");
 const { startTestApp, stopTestApp } = require("./helpers/app");
 const { makeClient, registerHomeMediaUser } = require("./helpers/client");
 
-let homemediaUrl, homecore, homecloudBackend;
+let homemediaUrl, homecore, homecloudBackend, fixtureAdmin;
 
 // A genuine 1x1 GIF, so HomeCloud's thumbnailer has something valid to read.
 const TINY_GIF = Buffer.from("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", "base64");
@@ -17,6 +17,7 @@ before(async () => {
   homemediaUrl = started.baseUrl;
   homecore = started.homecore;
   homecloudBackend = started.homecloudBackend;
+  fixtureAdmin = await registerHomeMediaUser(homecore, homemediaUrl, { username: 'media_fixture_admin' });
 });
 
 after(async () => {
@@ -168,4 +169,29 @@ test("streaming: tickets can't be forged, and can't be requested for someone els
 
   const noLogin = await makeClient(homemediaUrl).post(`/api/homemedia/${file.id}/ticket`);
   assert.equal(noLogin.status, 401);
+});
+
+test('poster tickets enforce ownership, bounded ranges, finite reads and source deletion', async () => {
+  const owner = await newUser('poster_owner'), stranger = await newUser('poster_stranger');
+  const admin = makeClient(homecore.baseUrl); admin.setToken(fixtureAdmin.token);
+  assert.equal((await admin.post(`/api/admin/users/${owner.user.id}/quota`, { quotaBytes: 10 * 1024 * 1024 })).status, 200);
+  const bytes = Buffer.alloc(3 * 1024 * 1024 + 17, 42);
+  const file = await putInHomeCloud(owner.homecloud, 'fixture.webm', bytes, 'video/webm');
+  assert.equal((await stranger.client.post(`/api/homemedia/${file.id}/poster-ticket`)).status, 404);
+  assert.equal((await makeClient(homemediaUrl).post(`/api/homemedia/${file.id}/poster-ticket`)).status, 401);
+  const issued = await owner.client.post(`/api/homemedia/${file.id}/poster-ticket`);
+  assert.equal(issued.status, 200);
+  const publicClient = makeClient(homemediaUrl), url = issued.body.url;
+  const first = await publicClient.get(url);
+  assert.equal(first.status, 206); assert.equal(first.body.byteLength, 2 * 1024 * 1024);
+  assert.equal(first.headers.get('cache-control'), 'private, no-store');
+  assert.equal(first.headers.get('content-security-policy'), "sandbox; default-src 'none'");
+  const end = await publicClient.get(url, { headers: { Range: 'bytes=2097152-' } });
+  assert.equal(end.status, 206); assert.equal(end.body.byteLength, 1024 * 1024 + 17);
+  for (let index = 0; index < 6; index++) assert.equal((await publicClient.get(url, { headers: { Range: 'bytes=0-0' } })).status, 206);
+  assert.equal((await publicClient.get(url)).status, 410);
+  const another = (await owner.client.post(`/api/homemedia/${file.id}/poster-ticket`)).body.url;
+  await owner.homecloud.delete(`/api/homecloud/files/${file.id}`);
+  await owner.homecloud.delete(`/api/homecloud/files/${file.id}/permanent`);
+  assert.equal((await publicClient.get(another)).status, 404);
 });

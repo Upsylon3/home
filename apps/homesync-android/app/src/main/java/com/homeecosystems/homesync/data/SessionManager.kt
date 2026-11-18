@@ -30,7 +30,7 @@ private val Context.sessionDataStore by preferencesDataStore(name = "homesync_se
  *    OkHttp interceptor (see ApiClient) runs on a plain background
  *    thread and can't `suspend` to await a DataStore read for every
  *    single network call. So this class keeps an in-memory copy in
- *    [MutableStateFlow]s, loaded once by [initialize] at app startup
+ *    immutable URL/token snapshot, loaded by [initialize] at app startup
  *    (see HomeSyncApplication and MainActivity, both of which call it
  *    before doing anything else), and every write updates the in-memory
  *    copy *and* the persisted value together — so a read immediately
@@ -42,10 +42,10 @@ class SessionManager(private val context: Context) {
         val SERVER_URL = stringPreferencesKey("server_url")
         val TOKEN = stringPreferencesKey("token")
         val DEVICE_ID = intPreferencesKey("device_id")
+        val ACCOUNT_ID = intPreferencesKey("account_id")
     }
 
-    private val _serverUrl = MutableStateFlow<String?>(null)
-    private val _token = MutableStateFlow<String?>(null)
+    @Volatile private var session = ServerSession()
 
     /**
      * This device's ID once registered with homesync-backend, or `null`
@@ -64,17 +64,34 @@ class SessionManager(private val context: Context) {
      */
     suspend fun initialize() {
         val prefs = context.sessionDataStore.data.first()
-        _serverUrl.value = prefs[Keys.SERVER_URL]
-        _token.value = prefs[Keys.TOKEN]
+        session = ServerSession(prefs[Keys.SERVER_URL], prefs[Keys.TOKEN], prefs[Keys.ACCOUNT_ID])
         deviceId.value = prefs[Keys.DEVICE_ID]
     }
 
-    fun isSignedIn(): Boolean = !_serverUrl.value.isNullOrBlank() && !_token.value.isNullOrBlank()
+    fun isSignedIn(): Boolean = session.let { !it.serverUrl.isNullOrBlank() && !it.token.isNullOrBlank() }
 
-    fun currentServerUrl(): String? = _serverUrl.value
+    fun currentServerUrl(): String? = session.serverUrl
 
     /** Read by ApiClient's auth interceptor on every request — see ApiClient.kt. */
-    fun currentToken(): String? = _token.value
+    fun currentToken(): String? = session.token
+
+    internal fun currentSession(): ServerSession = session
+
+    fun currentDestinationKey(): String? = session.destinationKey()
+
+    /** Adopt legacy identity only after Core verifies this exact URL/token pair. */
+    internal suspend fun bindAccount(expected: ServerSession, accountId: Int): Boolean {
+        require(accountId > 0)
+        var bound = false
+        context.sessionDataStore.edit { prefs ->
+            if (prefs[Keys.SERVER_URL] == expected.serverUrl && prefs[Keys.TOKEN] == expected.token) {
+                prefs[Keys.ACCOUNT_ID] = accountId
+                session = expected.copy(accountId = accountId)
+                bound = true
+            }
+        }
+        return bound
+    }
 
     /**
      * Called twice in a normal login flow (see LoginViewModel.submitCredentials):
@@ -82,12 +99,13 @@ class SessionManager(private val context: Context) {
      * address, so ApiClient has somewhere to actually send the login
      * request to, then again with the real token once login succeeds.
      */
-    suspend fun saveSession(serverUrl: String, token: String) {
-        _serverUrl.value = serverUrl
-        _token.value = token
+    suspend fun saveSession(serverUrl: String, token: String, accountId: Int? = null) {
+        require(accountId == null || accountId > 0)
+        session = ServerSession(serverUrl, token, accountId)
         context.sessionDataStore.edit { prefs ->
             prefs[Keys.SERVER_URL] = serverUrl
             prefs[Keys.TOKEN] = token
+            if (accountId == null) prefs.remove(Keys.ACCOUNT_ID) else prefs[Keys.ACCOUNT_ID] = accountId
         }
     }
 
@@ -105,8 +123,7 @@ class SessionManager(private val context: Context) {
      * on later. Clears both the in-memory state and everything persisted.
      */
     suspend fun clearSession() {
-        _serverUrl.value = null
-        _token.value = null
+        session = ServerSession()
         deviceId.value = null
         context.sessionDataStore.edit { it.clear() }
     }

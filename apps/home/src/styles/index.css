@@ -343,6 +343,7 @@ a:focus-visible {
 
 .shell-main {
   min-height: 100%;
+  min-width: 0; /* Keep wide account tables inside their scrolling panel. */
 }
 
 .page {

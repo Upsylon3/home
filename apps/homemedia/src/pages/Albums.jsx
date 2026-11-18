@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api.js";
-import AuthImage from "../components/AuthImage.jsx";
+import AlbumCover from '../components/AlbumCover.jsx';
 import { GridGlyph } from "../components/icons.jsx";
 
 export default function Albums() {
@@ -10,6 +10,8 @@ export default function Albums() {
   const [error, setError] = useState("");
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
+  const [coverFiles, setCoverFiles] = useState(new Map());
+  const [coversUnavailable, setCoversUnavailable] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -26,6 +28,17 @@ export default function Albums() {
 
   useEffect(() => {
     load();
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController(); let active = true;
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    // Optional Cloud metadata selects the right decoder. Album names/counts
+    // remain usable if preview metadata is unavailable.
+    api.library({}, controller.signal).then(({ data }) => {
+      if (active) setCoverFiles(new Map(data.files.map(file => [file.id, file])));
+    }).catch(() => { if (active) setCoversUnavailable(true); }).finally(() => clearTimeout(timeout));
+    return () => { active = false; clearTimeout(timeout); controller.abort(); };
   }, []);
 
   async function handleCreate(e) {
@@ -52,6 +65,7 @@ export default function Albums() {
       </div>
 
       {error && <div className="error-banner">{error}</div>}
+      {coversUnavailable && <p role="status">Cover previews are unavailable. Albums are still available.</p>}
 
       <form className="album-create-row" onSubmit={handleCreate}>
         <input
@@ -80,12 +94,7 @@ export default function Albums() {
             <Link key={album.id} to={`/albums/${album.id}`} className="album-card">
               <div className="album-card-cover">
                 {album.coverFileId ? (
-                  <AuthImage
-                    src={api.thumbnailUrl(album.coverFileId)}
-                    alt=""
-                    className="album-card-cover-img"
-                    placeholder={<div className="album-card-cover-placeholder" />}
-                  />
+                  <AlbumCover file={coverFiles.get(album.coverFileId)} />
                 ) : (
                   <div className="album-card-cover-placeholder">
                     <GridGlyph size={22} />

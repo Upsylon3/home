@@ -8,6 +8,29 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
 ## [Unreleased]
 
 ### Added
+- Browser-native video posters in Media library/favorites/albums/covers/picker,
+  with lazy bounded decoding and a small session-only cache. Add owner-authorized
+  short-lived range tickets with byte/request/deadline limits, unsupported-file
+  fallback and real-video browser proof. Keep original bytes in Cloud; no new
+  server decoder, database migration or persistent browser cache.
+- Android backup feedback observes real manual/automatic WorkManager state,
+  scanning/checking/uploading stages, per-run file outcomes and the latest retained
+  manual result. Report queued/retrying/failed/cancelled states without claiming
+  an enqueue started a backup; keep active manual work on repeated taps. Durable
+  multi-run history and exact unmet-constraint diagnostics remain open.
+- Cloud folder selection/drop preserves directory hierarchy, reuses existing
+  folders and provides a bounded three-transfer queue with progress, per-file
+  retry/cancel and navigation protection. Keep the original destination while
+  browsing; refresh loses the queue but retains completed files/created folders.
+- Personal Notes templates: save a note's title/Markdown/tags as a named private
+  snapshot, then create independent editable notes. Keep source notes and created
+  notes when removing a template; exclude attachments, folders, favorites and
+  version history. Add bounded owner-scoped APIs, autosave-safe creation, list
+  retry/empty states and desktop/mobile navigation.
+- HOME account settings now expose Core password changes, TOTP enrollment and
+  recovery, personal activity and account administration. Add disposable real-Core
+  browser journeys and frontend API regression tests, including masked
+  administrator password reset, emergency 2FA reset and last-admin protection.
 - Experimental signed two-owner server pairing with exact transcript/key approval,
   durable replay and retry receipts, uncached live status, local revocation with
   notification retries and bounded public-HTTPS transport. Keep the protocol off
@@ -23,6 +46,14 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
   security-review gates. Guest authentication remains unimplemented.
 
 ### Changed
+- Cloud account links now open HOME settings. Existing `/cloud/settings` and
+  `/cloud/admin` bookmarks retain appearance/personal storage activity and the
+  administrator storage audit, with links to HOME replacing duplicate account
+  mutations. Authentication/API aliases and stored sessions are unchanged.
+- Media, Notes, Tasks and Monitor settings now link to HOME account settings
+  using a shared navigation helper, replacing stale HomeCloud guidance. Keep
+  their intentionally small appearance controls and Vault's own master-password
+  controls separate from global account security.
 - Restore unfinished application scope and HOME's personal/room-based direction
   from pre-cleanup specifications, checked against current source. Prioritize
   daily single-server app work, distinguish existing features from genuine gaps,
@@ -34,7 +65,40 @@ ecosystem (see root `package.json`), bumped on any meaningful release.
   validation from feature work. Setup, recovery and security requirements remain.
 
 ### Fixed
+- Back up in-place Android media edits even when MediaStore keeps the same ID.
+  Confirmed revisions skip unchanged files. Files without a confirmed revision
+  are hashed locally, and changed content follows the whole-file retry path.
+- Scope Android local backup deduplication and offline totals by canonical
+  server/account identity. Room v2 retains every legacy record without assuming
+  its destination; recheck those files through the server before recording new
+  scoped history. Capture Core identity verification against one session pair.
+  Device/profile/job isolation and multi-server enablement remain separate work.
+- Sandbox bearer media responses so directly opening uploaded HTML/SVG cannot
+  create an active same-origin document. Preserve ordinary media-element playback.
+- Media cached thumbnails and EXIF now recheck Cloud's authorized source download
+  before returning derivatives. Permanent source deletion, permission denial and
+  Cloud outages cannot fall back to old cache entries; use private/no-store
+  responses and a bounded HEAD check without downloading the original again.
+- Bind Android HTTP clients to an immutable server URL/token snapshot, publish
+  cached URLs/clients together and reject new requests after a server switch or
+  logout. Disable automatic redirects so login bodies and uploads cannot follow
+  an unconfirmed destination. Existing preferences, application ID and Room data
+  remain unchanged; multi-server backup still requires scoped data/jobs.
+- Preserve pending Notes edits when navigating before autosave. Serialize text/tag
+  saves, retain failed fields for retry, require save or explicit discard before
+  internal navigation, and warn on reload/close or intentional sign-out. Keep
+  attachment refreshes from replacing draft text, flush edits before version
+  restore/Trash, retry failed note loads and ignore late old-session failures.
+- Keep valid HOME sessions after incorrect account passwords or authenticator
+  codes, expire revoked sessions and ignore late failures for replaced tokens.
+  Apply replacement-token protection to Media, Tasks, Monitor and Vault, including
+  Media image downloads and XHR uploads; retain genuine current-session expiry.
+  Bound the administrator table on narrow screens, retry failed account/TOTP
+  loads and preserve quota precision when editing existing values.
 - HomeMedia demo pictures load in browsers that reject Blob values in IndexedDB.
+- Media gallery tiles now support Tab/Enter/Space, expose favorite state and keep
+  focus visible. The media viewer uses a native modal dialog, contains keyboard
+  focus, closes with Escape and restores the opener.
 - The browser demo can open and save changes when service workers are unavailable.
 - Wait for originally running containers that transiently restart during
   snapshot recovery; retain strict preflight and foreign-writer checks.

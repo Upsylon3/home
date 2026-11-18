@@ -3,6 +3,222 @@
 Outstanding review/device evidence and reproduction notes live here. Run fixtures
 only against disposable data; never equate CI with independent or physical testing.
 
+## HomeSync edited backups
+
+On 2026-11-18, a disposable x86_64 AOSP API-34 emulator on Windows ran three
+instrumentation tests using app and test APKs from
+[Android CI](https://github.com/Upsylon3/home/actions/runs/44356448043).
+The backup journey exercised real isolated HomeCore, HomeCloud and HomeSync
+over a loopback fixture. After the first constrained backup, an unchanged
+run had zero candidates. The fixture rewrote the same MediaStore URI and
+returned one HTTP 503 for its edited upload. WorkManager retried, recorded
+one edited upload and skipped the next unchanged run. The fixture verified
+both stored byte sequences, both SHA-256 records and one registered device.
+
+Room opened seeded v1 and v2 databases through the production migrations.
+The tests verified retained legacy rows, scoped hashes and timestamps, and
+guarded revision updates by destination and hash. Three Node 26 SQLite tests
+matched the v2/v3 schema contracts and checked transaction rollback. The
+JVM suite also verified that a same-length byte change during an upload
+fails the streamed hash check. The 18 HomeSync backend tests passed locally
+on Windows with the committed npm lockfile.
+
+Physical-device behavior and battery measurements remain open.
+The API-34 fixture exercised MediaStore revision-based skipping. Older Android
+versions use the streaming hash fallback.
+
+## Android destination ledger migration
+
+Room v2 preserves legacy rows with an unknown destination and scopes new rows by
+canonical server URL plus Core account ID. Existing sessions verify identity
+through the compatible Sync-to-Core `/api/homesync/auth/me` proxy; no JWT claims
+are decoded as account authority. Legacy rows never suppress scoped backups.
+
+Windows/JDK 21/Gradle 9.3.1 executed `assembleDebug`, `testDebugUnitTest` and
+`assembleDebugAndroidTest` successfully. Android CI also compiles the runtime
+fixture and runs the JVM suite. Two Node 26 SQLite tests execute the production
+migration statements, compare the resulting columns/defaults/index with Room's
+generated v2 contract, preserve every seeded v1 field/ID, check server/account
+uniqueness, and roll back an injected migration failure. CI runs these checks
+after generating the schema and rejects uncommitted schema drift.
+
+After integrating the merged live-feedback slice, all 25 JVM tests, both APK
+builds and both SQLite migration checks passed again locally; the generated
+Room schema remained unchanged. Destination-scoped DAO reads/writes and retained
+legacy-history notices remain intact. This adds no runtime migration execution.
+
+~~~sh
+cd apps/homesync-android
+gradle --no-daemon --console=plain :app:assembleDebug :app:testDebugUnitTest :app:assembleDebugAndroidTest
+node --test test/destination-migration.test.mjs
+adb -s DISPOSABLE_SERIAL shell am instrument -w -e homeFixture disposable -e class com.homeecosystems.homesync.DestinationLedgerMigrationTest com.homeecosystems.homesync.test/androidx.test.runner.AndroidJUnitRunner
+~~~
+
+On 2026-11-18, the app and instrumentation APKs from
+[Android CI](https://github.com/Upsylon3/home/actions/runs/44352658539) ran on a
+disposable x86_64 AOSP API-34 emulator using Windows Hypervisor Platform.
+`DestinationLedgerMigrationTest` passed (one test). Room opened the seeded v1
+database, ran the production migration, validated the generated v2 schema and
+preserved the legacy row and its ID. The DAO isolated totals and deduplication
+by server and account, and replacing a scoped record preserved the other rows.
+The earlier software-only AVD had stayed ADB-offline. The accelerated image
+reported an uppercase SDK model label, which the fixture now accepts.
+
+Physical-device and multi-server-worker validation remain open, along with
+device, profile, settings and job isolation. Preserve a pre-upgrade offline
+database copy for rollback.
+
+## Android credential isolation
+
+The [Android CI run](https://github.com/Upsylon3/home/actions/runs/43057804190)
+passed `:app:assembleDebug :app:testDebugUnitTest` on Java 17, Gradle 9.3.1 and
+the declared API-37 SDK. Unit-test Kotlin compilation and the test task executed;
+the debug APK artifact was uploaded. Five new JVM tests use real loopback HTTP
+listeners to check retained-client server switching, same-server renewal/logout,
+empty-token login, wrong-origin/port/path refusal, redirect header/body isolation
+and redacted session descriptions. They do not use Android framework mocks or
+an emulator. Existing SyncLogic/MediaAccess JVM tests remain in the same task.
+
+This proof does not validate physical phones, running-worker server switches,
+profile/Room migrations or multiple destinations. No application-ID, persisted
+preference-key or database-schema change is made. The local Windows Gradle
+distribution download was too slow and was cancelled after CI supplied the
+required APK/JVM proof; no local Android build is claimed.
+
+## Media derivative source checks
+
+The regression fixture reproduced HTTP 200 for a warm thumbnail after permanent
+Cloud deletion. Windows/Node 26.13.0 now passes all 30 Media backend test entries
+(28 behavioral tests plus two helper-file discovery entries). Real isolated
+Core/Cloud/Media tests verify thumbnail/EXIF priming, source deletion and 404s;
+injected Cloud 401/403/500/network failures prove fail-closed status handling,
+HEAD-only checks, private/no-store responses and recovery with the cache intact.
+No decoder, database migration or production deployment is part of this fix.
+
+## Android live backup feedback
+
+Windows/JBR 21 with the repository's exact Gradle 9.3.1 passed `assembleDebug`,
+`testDebugUnitTest` and `assembleDebugAndroidTest`. Five new JVM tests cover
+queued-vs-running truth, retry attempts, periodic scheduling, per-file outcomes,
+permission failure/cancellation and older work without recorded counters.
+The existing backup/picker instrumentation sources add queued/completed UI and
+terminal-count assertions; building the test APK does not execute those tests.
+No emulator/physical-device execution of this new feedback slice is claimed.
+This feedback slice was built while the available emulator was ADB-offline.
+[Room upgrade proof](#android-destination-ledger-migration) was later executed in
+a separate fixture. Durable run history, precise constraint diagnostics and
+destination-bound jobs remain roadmap work.
+
+## Cloud folder uploads
+
+Six dependency-free queue tests pass for path validation, directory-reader
+batches, shared folder creation, ASCII NOCASE matching, session changes, bounded
+concurrency, cancellation and failed-file retry. The production Cloud build and
+all seven demo builds pass. The Edge real-Core/Cloud fixture
+`node apps/homecloud/test-support/folder-browser.cjs` uses disposable databases,
+selects an actual nested directory, holds three transfers to prove the bound,
+injects a 503 and retries only that file, verifies exact downloaded bytes and
+existing-folder reuse, switches tabs, rejects navigation and checks 390px layout.
+The demo browser gate also checks directory selection/hierarchy/exact bytes with
+and without service-worker support. These are browser/loopback fixtures, not a
+production deployment or interruption/resume guarantee.
+## Personal Notes templates
+
+Windows/Node 26.13.0 passed 27 Notes backend tests using real disposable
+Core/Cloud/Notes, 21 Notes frontend tests, six demo API tests and the production
+Notes build. The real-service Edge journey covers immediate-edit snapshot
+creation, title/Markdown/tag copying, list persistence and failure/retry,
+independent editing, template removal with source/generated notes retained and
+390px layout. The same template journey runs in the seven-app demo browser gate.
+Backend cases additionally prove owner isolation, case-insensitive name conflicts,
+the 100-template cap, trashed-source refusal and exclusion of actual Cloud
+attachments/folders/favorites/versions.
+
+~~~sh
+npm test --workspace=apps/homenotes-backend
+npm test --workspace=apps/homenotes
+npm run build --workspace=apps/homenotes
+DEMO_BROWSER_CHANNEL=msedge node apps/homenotes/test-support/save-browser.cjs
+npm run build:demo
+DEMO_BROWSER_CHANNEL=msedge npm run test:demo:browser
+~~~
+
+Use PowerShell's `$env:DEMO_BROWSER_CHANNEL='msedge'` on Windows. The additive
+`note_templates` table is included in Notes database backups; old binaries ignore
+it on downgrade. No real accounts or installations are used by these fixtures.
+
+## Sibling session renewal
+
+Before the fix, all four new delayed-401 fixtures reproduced a replacement login
+being cleared in Media, Tasks, Monitor and Vault. Sixteen focused API regressions
+now pass: stale/current 401s, preserved 403s, original captured authorization,
+expiry events and Media's image/XHR request paths. They use disposable token
+strings and controlled responses, not real accounts. Core remains the authority;
+Vault cryptography and unlock behavior are unchanged by these response guards.
+
+## Notes save safety
+
+On 2026-11-11, the pre-fix demo reproduced lost text: type a title and immediately
+select All Notes; reopening returned `Untitled`. Windows/Node 26.13.0 now passes
+21 Notes tests, the production Notes build and the real-Core/Cloud/Notes Edge
+browser fixture. Browser proof covers immediate navigation/save, failed-save
+retention/retry, Back/keep-editing, deliberate queued-edit discard, sign-out
+cancellation, failed-load retry and the beforeunload guard. The same editor
+journey runs within the demo's browser regression with the hash router. Queue
+tests prove serialized in-flight edits, newer-field precedence, merged text/tags
+on retry and discard/unmount cancellation. The real-browser fixture injects only
+the requested failures; normal saves use the real temporary Notes database.
+
+~~~sh
+npm test --workspace=apps/homenotes
+npm run build --workspace=apps/homenotes
+DEMO_BROWSER_CHANNEL=msedge node apps/homenotes/test-support/save-browser.cjs
+~~~
+
+Use PowerShell's `$env:DEMO_BROWSER_CHANNEL='msedge'` on Windows, or an installed
+`chrome` channel elsewhere. Demo regression uses `npm run build:demo` followed
+by `npm run test:demo:browser`. Drafts are memory-only: this proof does not claim
+offline/crash recovery, multi-tab conflict resolution or mobile OS close prompts.
+
+## Unified HOME accounts
+
+On 2026-11-11, Node 26.13.0 on Windows passed the 29 Core auth/admin/route-alias
+tests and eight HOME API regressions. The production HOME build passed. The
+disposable real-Core browser fixture passed in headless Microsoft Edge: wrong
+password/TOTP retry, password token renewal and old-token refusal, enrollment,
+recovery rotation and one-use codes, disable 2FA, quota reset, role changes,
+disable/re-enable, member admin denial, revoked-session logout and 390px layout.
+The expanded journey also passes masked administrator password reset/session
+revocation, emergency 2FA reset and last-admin protection. Production Cloud builds
+and legacy settings/admin bookmarks pass navigation to HOME, retained storage
+activity and unavailable/retry checks. All seven demo builds and the Edge demo
+journey pass, including both Cloud-to-HOME hash-router account links.
+The follow-up navigation pass also exercises Media/Notes/Tasks/Monitor settings
+links to HOME in the demo, with 54 available frontend tests and all seven
+production builds passing on the combined revision.
+Cloud was unavailable during this fixture; account controls remained usable with
+unknown storage usage. This does not establish real deployment/device readiness.
+
+Reproduce after building HOME with Node 26 and an installed Playwright browser:
+
+~~~sh
+node --test homecore/test/auth.test.js homecore/test/admin.test.js homecore/test/routeAliases.test.js
+npm test --workspace=apps/home
+npm run build --workspace=apps/home
+npm run build --workspace=apps/homecloud
+DEMO_BROWSER_CHANNEL=msedge node apps/home/test-support/account-browser.cjs
+~~~
+
+Use `chrome` on CI/Linux or another installed supported channel. In PowerShell,
+set `$env:DEMO_BROWSER_CHANNEL='msedge'` before the fixture. The fixture creates
+only temporary accounts/databases and closes them on completion. Optional
+`HOME_ACCOUNT_SCREENSHOT` writes a screenshot containing test data only.
+Cloud authentication/API aliases remain; its legacy settings/admin routes now
+retain storage-specific views and link to HOME. Local development uses the
+separate HOME Vite server at `http://localhost:5174/settings` (sign in there if
+needed); production shares the gateway origin and existing session. Rollback is
+frontend-only: restore the previous Cloud UI with the same unchanged Core APIs.
+
 ## Multi-server pairing
 
 The experimental opt-in has automated two-owner transcript approval, invitation
@@ -313,7 +529,7 @@ From an already provisioned disposable emulator host:
 adb reverse tcp:18083 tcp:18083
 cd apps/homesync-android
 gradle --no-daemon --console=plain :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.homeFixture=disposable -Pandroid.testInstrumentationRunnerArguments.class=com.homeecosystems.homesync.BackupJourneyTest
-curl -fsS http://127.0.0.1:18083/__fixture__/verify
+curl -fsS http://127.0.0.1:18083/__fixture__/edited-verify
 ~~~
 
 For denial/picker cases, install app/test APKs fresh with `adb install -t`
@@ -426,3 +642,41 @@ Original exported values are preserved below, compacted without changing data.
 ~~~json
 {"schema":1,"source":{"revision":"7d9f944114960ce31a55cec1375c1fad4cc828f5","workingTreeDirty":false},"execution":"Automated headless browser on the local host; foreground page, no CPU throttling. Not representative minimum hardware.","browserVersion":"145.0.7632.6","host":{"platform":"win32","architecture":"x64","cpuModel":"Intel(R) Core(TM) i7-4790K CPU @ 4.00GHz","logicalProcessors":8,"memoryGiB":16},"runs":[{"schema":1,"algorithm":"Argon2id","implementation":"hash-wasm / production deriveMasterKeyBits","execution":"browser-main-thread","kdfParams":{"m":19456,"t":2,"p":1},"saltBytes":16,"derivedKeyBytes":32,"measuredAt":"2026-11-04T13:51:36.829Z","firstDerivationMs":55,"steadyMs":[49.19999998807907,48.5,298.19999998807907,46.19999998807907,47.10000002384186,73.89999997615814,67.10000002384186],"summary":{"minMs":46.19999998807907,"medianMs":49.19999998807907,"maxMs":298.19999998807907},"packageVersion":"1.7.0","deviceLabel":"Automated browser check; not a minimum-device certification","runInPage":1,"browser":{"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36","reportedLogicalProcessors":8,"reportedDeviceMemoryGiB":8},"scope":"Synthetic KDF timing only. Not total unlock time, a minimum-device certification, or a security review."},{"schema":1,"algorithm":"Argon2id","implementation":"hash-wasm / production deriveMasterKeyBits","execution":"browser-main-thread","kdfParams":{"m":19456,"t":2,"p":1},"saltBytes":16,"derivedKeyBytes":32,"measuredAt":"2026-11-04T13:51:38.332Z","firstDerivationMs":74.10000002384186,"steadyMs":[51.89999997615814,48.5,68.10000002384186,86.39999997615814,85.69999998807907,45.39999997615814,49.10000002384186],"summary":{"minMs":45.39999997615814,"medianMs":51.89999997615814,"maxMs":86.39999997615814},"packageVersion":"1.7.0","deviceLabel":"Automated browser check; not a minimum-device certification","runInPage":1,"browser":{"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36","reportedLogicalProcessors":8,"reportedDeviceMemoryGiB":8},"scope":"Synthetic KDF timing only. Not total unlock time, a minimum-device certification, or a security review."},{"schema":1,"algorithm":"Argon2id","implementation":"hash-wasm / production deriveMasterKeyBits","execution":"browser-main-thread","kdfParams":{"m":19456,"t":2,"p":1},"saltBytes":16,"derivedKeyBytes":32,"measuredAt":"2026-11-04T13:51:39.756Z","firstDerivationMs":47.69999998807907,"steadyMs":[45.80000001192093,48.40000003576279,78.40000003576279,46.59999996423721,46.80000001192093,47.5,129.69999998807907],"summary":{"minMs":45.80000001192093,"medianMs":47.5,"maxMs":129.69999998807907},"packageVersion":"1.7.0","deviceLabel":"Automated browser check; not a minimum-device certification","runInPage":1,"browser":{"userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.6 Safari/537.36","reportedLogicalProcessors":8,"reportedDeviceMemoryGiB":8},"scope":"Synthetic KDF timing only. Not total unlock time, a minimum-device certification, or a security review."}]}
 ~~~
+
+## Media keyboard navigation
+
+The production Media build and all seven demo builds pass. The Edge demo browser
+gate exercises actual Tab order, Enter/Space gallery activation, initial modal
+focus, repeated Tab containment, Escape close, opener restoration and independently
+focused favorites. A 390px viewer layout was also inspected. This uses the actual
+Media frontend with browser-local demo data; it is not a screen-reader audit or
+new backend authorization proof. Video posters are verified separately below.
+
+## Media video posters
+
+Windows/Node 26.13.0 passed ten Media frontend tests, 33 backend test entries
+(including two helper discovery entries), six demo API tests, four deployment
+artifact tests and 14 CI-policy tests. The production Media and all seven demo
+builds pass, as does the complete Edge demo gate with/without service workers.
+The real-Core/Cloud/Media browser fixture records a genuine canvas WebM, uploads
+it through Cloud, reads the resulting JPEG pixel to prove the green video frame
+was decoded, and checks unsupported-file fallback, normal playback and warm-cache
+reuse in favorites, album grids/covers and the picker. It also injects cover
+metadata failure while retaining album access, and verifies direct uploaded HTML
+cannot execute inside the response sandbox. The generated gallery was inspected.
+
+~~~sh
+npm run test --workspace=apps/homemedia --workspace=apps/homemedia-backend
+npm run build --workspace=apps/homemedia
+DEMO_BROWSER_CHANNEL=msedge node apps/homemedia/test-support/poster-browser.cjs
+npm run build:demo
+DEMO_BROWSER_CHANNEL=msedge npm run test:demo:browser
+~~~
+
+Use PowerShell environment assignment on Windows. CI runs the real-service
+journey when native dependencies and Media builds are selected. Test fixtures
+prove WebM/VP8 on Edge/Chrome, not all MP4/HEVC/MKV combinations or phone memory
+budgets. Unsupported, corrupt, oversized, slow and over-budget sources retain
+the fallback; no independent video security audit or new server decoder is
+claimed. Native/browser limits and the memory-cache rollback are documented in
+[architecture](ARCHITECTURE.md#media-video-posters).

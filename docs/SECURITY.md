@@ -1,5 +1,22 @@
 # Security
 
+## Android server credentials
+
+The native client publishes the selected server URL and token as one immutable
+snapshot, and caches each URL/client pair together. Before sending a request,
+the HTTP client checks the current snapshot against its bound base URL, origin,
+port and base path. A retained client refuses new work after a server change or
+logout. An already dispatched request remains bound to its original server;
+server switching cannot redirect it or attach the new server's token.
+Automatic redirects are disabled, including login bodies and uploads. Enter the
+final gateway URL rather than a redirecting portal address. HTTPS certificate
+verification remains enabled; the existing deliberate LAN HTTP policy is unchanged.
+
+This is credential isolation, not multi-server backup support. Room history,
+device IDs, settings and WorkManager jobs still need destination/account scoping
+and migration proof before multiple backup destinations can be enabled. Existing
+preferences/Room schema and the installed application ID are unchanged.
+
 Managed coordinated snapshots stop all project containers and read application
 sources through read-only mounts. Helpers have no Docker socket; capture has no
 network access. Only container identity/state/mount metadata is inspected, never
@@ -44,8 +61,20 @@ independent review and public-network drills remain unfinished; see the
 - App backends verify sessions with Core. Successful identities may be cached
   for at most five seconds; expired entries are not reused during outages.
   Verification has a five-second deadline and bounded caches/in-flight work.
+- Browser request handlers only clear the shared login for a 401 when the token
+  still matches the request's captured token. Delayed old-session failures remain
+  errors for that request but cannot sign out a replacement session; a current
+  session's 401 still expires it. Media applies this to images and uploads too.
 - Backends enforce roles and ownership. Frontend hiding is never authorization.
   Monitor is admin-only; Cloud files/folders are owner-only.
+- Media revalidates cached EXIF/thumbnails through Cloud's authorized download
+  before serving them. Source deletion/denial or an unavailable Cloud fails
+  closed; derivative responses are private/no-store. This cannot recall copies
+  already delivered to a client.
+- Browser video posters use owner-authorized, fixed-deadline source tickets with
+  shared request/byte budgets; the browser cache is bounded and never persisted.
+  No server video decoder is added. All bearer media responses sandbox uploaded
+  document content, including HTML/SVG, while media elements can decode bytes.
 - Share links use high-entropy tokens, separate rate limits and immediate
   invalidation when the underlying file is trashed.
 - Upload caps, per-user quotas, input/path validation and safe Markdown rendering

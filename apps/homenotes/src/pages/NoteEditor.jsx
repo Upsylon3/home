@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate, useOutletContext, useParams } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useBeforeUnload, useBlocker, useNavigate, useOutletContext, useParams } from "react-router-dom";
+import { createNoteSaveQueue } from '../noteSaveQueue.js';
 import { renderMarkdownToSafeHtml } from "../markdown.js";
 import { api } from "../api.js";
 import { StarGlyph, TrashGlyph, PaperclipGlyph, HistoryGlyph, FolderGlyph, TagGlyph } from "../components/icons.jsx";
-
-const AUTOSAVE_DELAY_MS = 1500;
 
 function timeAgo(iso) {
   const date = new Date(`${iso.replace(" ", "T")}Z`);
@@ -19,6 +18,10 @@ function timeAgo(iso) {
 
 export default function NoteEditor() {
   const { noteId } = useParams();
+  return <Editor key={noteId} noteId={noteId} />;
+}
+
+function Editor({ noteId }) {
   const navigate = useNavigate();
   const { folders } = useOutletContext();
 
@@ -28,26 +31,53 @@ export default function NoteEditor() {
   const [tags, setTags] = useState([]);
   const [tagDraft, setTagDraft] = useState("");
   const [mode, setMode] = useState("write"); // "write" | "preview"
-  const [saveState, setSaveState] = useState("idle"); // "idle" | "saving" | "saved" | "error"
+  const [saveState, setSaveState] = useState("idle"); // idle | pending | saving | saved | error
   const [error, setError] = useState("");
   const [showHistory, setShowHistory] = useState(false);
   const [showAttachments, setShowAttachments] = useState(false);
   const [versions, setVersions] = useState(null);
+  const [restoring, setRestoring] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  const [showTemplateForm, setShowTemplateForm] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+  const [creatingTemplate, setCreatingTemplate] = useState(false);
+  const [templateNotice, setTemplateNotice] = useState('');
 
-  const saveTimeout = useRef(null);
   const latest = useRef({ title: "", content: "" });
+  const loadGeneration = useRef(0);
+  const queue = useMemo(() => createNoteSaveQueue({
+    update: async fields => (await api.notes.update(noteId, fields)).data.note,
+    onSaved: setNote,
+    onState: (state, message) => { setSaveState(state); setError(message); }
+  }), [noteId]);
+  useEffect(() => { queue.resume(); return () => queue.dispose(); }, [queue]);
+  const blocker = useBlocker(({ currentLocation, nextLocation }) =>
+    currentLocation.pathname !== nextLocation.pathname && queue.hasUnsaved());
+  useBeforeUnload(useCallback(event => {
+    if (queue.hasUnsaved()) { event.preventDefault(); event.returnValue = ''; }
+  }, [queue]));
+  useEffect(() => {
+    function beforeLogout(event) {
+      if (queue.hasUnsaved() && !window.confirm('Discard unsaved note changes and sign out?')) event.preventDefault();
+    }
+    window.addEventListener('homenotes:before-logout', beforeLogout);
+    return () => window.removeEventListener('homenotes:before-logout', beforeLogout);
+  }, [queue]);
 
-  const loadNote = useCallback(async () => {
+  const loadNote = useCallback(async (metadataOnly = false) => {
+    const generation = ++loadGeneration.current;
     setError("");
     try {
       const { data } = await api.notes.get(noteId);
+      if (generation !== loadGeneration.current) return;
       setNote(data.note);
+      if (metadataOnly) return;
       setTitle(data.note.title);
       setContent(data.note.content);
       setTags(data.note.tags);
       latest.current = { title: data.note.title, content: data.note.content };
     } catch (err) {
-      setError(err.message);
+      if (generation === loadGeneration.current) setError(err.message);
     }
   }, [noteId]);
 
@@ -56,39 +86,19 @@ export default function NoteEditor() {
     setShowHistory(false);
     setShowAttachments(false);
     setVersions(null);
-    return () => clearTimeout(saveTimeout.current);
+    return () => { loadGeneration.current++; };
   }, [loadNote]);
-
-  const save = useCallback(
-    async (fields) => {
-      setSaveState("saving");
-      try {
-        const { data } = await api.notes.update(noteId, fields);
-        setNote(data.note);
-        setSaveState("saved");
-      } catch (err) {
-        setError(err.message);
-        setSaveState("error");
-      }
-    },
-    [noteId]
-  );
-
-  function scheduleAutosave(fields) {
-    clearTimeout(saveTimeout.current);
-    saveTimeout.current = setTimeout(() => save(fields), AUTOSAVE_DELAY_MS);
-  }
 
   function handleTitleChange(value) {
     setTitle(value);
     latest.current.title = value;
-    scheduleAutosave({ title: value, content: latest.current.content });
+    queue.edit({ title: value, content: latest.current.content });
   }
 
   function handleContentChange(value) {
     setContent(value);
     latest.current.content = value;
-    scheduleAutosave({ title: latest.current.title, content: value });
+    queue.edit({ title: latest.current.title, content: value });
   }
 
   async function toggleFavorite() {
@@ -114,6 +124,7 @@ export default function NoteEditor() {
 
   function addTag(e) {
     e.preventDefault();
+    if (restoring || creatingTemplate) return;
     const name = tagDraft.trim();
     if (!name || tags.some((t) => t.toLowerCase() === name.toLowerCase())) {
       setTagDraft("");
@@ -122,22 +133,28 @@ export default function NoteEditor() {
     const nextTags = [...tags, name];
     setTags(nextTags);
     setTagDraft("");
-    save({ tags: nextTags });
+    queue.edit({ tags: nextTags });
   }
 
   function removeTag(name) {
+    if (restoring || creatingTemplate) return;
     const nextTags = tags.filter((t) => t !== name);
     setTags(nextTags);
-    save({ tags: nextTags });
+    queue.edit({ tags: nextTags });
   }
 
   async function handleDelete() {
+    if (restoring) return;
     if (!window.confirm(`Move "${title || "Untitled"}" to trash?`)) return;
+    setRestoring(true);
     try {
+      if (!await queue.flush()) return;
       await api.notes.remove(noteId);
       navigate("/");
     } catch (err) {
       setError(err.message);
+    } finally {
+      setRestoring(false);
     }
   }
 
@@ -156,15 +173,21 @@ export default function NoteEditor() {
 
   async function restoreVersion(versionId) {
     if (!window.confirm("Restore this version? The current text will be saved as a version too, so nothing is lost.")) return;
+    setRestoring(true);
     try {
+      if (!await queue.flush()) return;
       const { data } = await api.notes.restoreVersion(noteId, versionId);
       setNote(data.note);
       setTitle(data.note.title);
       setContent(data.note.content);
+      setTags(data.note.tags);
+      latest.current = { title: data.note.title, content: data.note.content };
       const { data: versionData } = await api.notes.versions(noteId);
       setVersions(versionData.versions);
     } catch (err) {
       setError(err.message);
+    } finally {
+      setRestoring(false);
     }
   }
 
@@ -175,7 +198,7 @@ export default function NoteEditor() {
     form.append("file", file);
     try {
       await api.notes.uploadAttachment(noteId, form);
-      loadNote();
+      loadNote(true);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -186,24 +209,56 @@ export default function NoteEditor() {
   async function removeAttachment(fileId) {
     try {
       await api.notes.removeAttachment(noteId, fileId);
-      loadNote();
+      loadNote(true);
     } catch (err) {
       setError(err.message);
     }
   }
 
   if (!note) {
-    return <div className="loading-state">Loading note…</div>;
+    return error ? <div className="loading-state"><p role="alert">{error}</p><button className="btn btn-ghost" onClick={() => loadNote()}>Retry loading note</button></div> : <div className="loading-state">Loading note…</div>;
   }
 
-  const saveLabel = { idle: "", saving: "Saving…", saved: "Saved", error: "Couldn't save" }[saveState];
+  const saveLabel = { idle: "", pending: "Unsaved changes", saving: "Saving…", saved: "Saved", error: "Couldn't save" }[saveState];
 
   return (
     <div className="note-editor">
-      {error && <div className="error-banner">{error}</div>}
+      {error && <div className="error-banner" role="alert">{error}</div>}
+      {templateNotice && <p role="status">{templateNotice}</p>}
+      {showTemplateForm ? <form aria-label="Save note as template" onSubmit={async e => {
+        e.preventDefault();
+        if (creatingTemplate || restoring) return;
+        setCreatingTemplate(true); setTemplateNotice('');
+        try {
+          if (!await queue.flush()) return;
+          await api.templates.create(noteId, templateName.trim());
+          setShowTemplateForm(false); setTemplateName('');
+          setTemplateNotice('Template saved. Open Templates to start a new note.');
+        } catch (err) { setError(err.message); }
+        finally { setCreatingTemplate(false); }
+      }}>
+        <div className="field"><label htmlFor="template-name">Template name</label>
+          <input id="template-name" required maxLength={100} value={templateName} disabled={creatingTemplate} onChange={e => setTemplateName(e.target.value)} /></div>
+        <p>Copies the saved title, Markdown and tags. Attachments, folder, favorites and history stay with this note.</p>
+        <button className="btn btn-primary btn-sm" disabled={creatingTemplate || restoring}>Save template</button>
+        <button type="button" className="btn btn-ghost btn-sm" disabled={creatingTemplate} onClick={() => { setShowTemplateForm(false); setTemplateName(''); }}>Cancel template</button>
+      </form> : <button className="btn btn-ghost btn-sm" disabled={restoring} onClick={() => { setShowTemplateForm(true); setTemplateName(title || 'Untitled'); setTemplateNotice(''); }}>Save as template</button>}
+      {blocker.state === 'blocked' && <section role="alertdialog" aria-labelledby="unsaved-note-title" aria-describedby="unsaved-note-description" className="panel">
+        <h2 id="unsaved-note-title">Unsaved note changes</h2>
+        <p id="unsaved-note-description">Save your changes before leaving, or stay here to keep editing. Failed saves remain in this editor for retry. A save already sent to the server may still complete.</p>
+        <button className="btn btn-primary" autoFocus disabled={leaving} onClick={async () => {
+          setLeaving(true);
+          if (await queue.flush()) blocker.proceed();
+          setLeaving(false);
+        }}>Save and leave</button>
+        <button className="btn btn-ghost" disabled={leaving} onClick={() => blocker.reset()}>Keep editing</button>
+        <button className="btn btn-danger-ghost" disabled={leaving} onClick={() => { queue.dispose(); blocker.proceed(); }}>Discard queued changes and leave</button>
+      </section>}
 
       <input
         className="note-editor-title"
+        aria-label="Note title"
+        disabled={restoring || creatingTemplate}
         value={title}
         onChange={(e) => handleTitleChange(e.target.value)}
         placeholder="Untitled"
@@ -257,6 +312,8 @@ export default function NoteEditor() {
         {mode === "write" ? (
           <textarea
             className="note-editor-textarea"
+            aria-label="Note content"
+            disabled={restoring || creatingTemplate}
             value={content}
             onChange={(e) => handleContentChange(e.target.value)}
             placeholder="Start writing in Markdown…"
@@ -268,7 +325,8 @@ export default function NoteEditor() {
       </div>
 
       <div className="note-editor-meta-row">
-        <span className="note-editor-save-state">{saveLabel}</span>
+        <span className="note-editor-save-state" role="status">{saveLabel}</span>
+        {saveState === 'error' && <button className="btn btn-ghost btn-sm" onClick={() => queue.flush()}>Retry saving</button>}
 
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <FolderGlyph size={13} />
@@ -323,7 +381,7 @@ export default function NoteEditor() {
               <div key={v.id} className="version-item">
                 <div className="version-item-date">{timeAgo(v.createdAt)}</div>
                 <div className="version-item-preview">{v.content.slice(0, 140) || "(empty)"}</div>
-                <button className="btn btn-ghost btn-sm" onClick={() => restoreVersion(v.id)}>
+                <button className="btn btn-ghost btn-sm" disabled={restoring || creatingTemplate} onClick={() => restoreVersion(v.id)}>
                   Restore this version
                 </button>
               </div>

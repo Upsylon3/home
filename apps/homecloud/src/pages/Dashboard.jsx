@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, setToken } from "../api.js";
+import { homeAccountUrl } from "../accountNavigation.js";
 import StorageGauge from "../components/StorageGauge.jsx";
 import ActivityLED from "../components/ActivityLED.jsx";
 import UploadZone from "../components/UploadZone.jsx";
@@ -111,13 +112,14 @@ export default function Dashboard({ user, onLogout }) {
   }
 
   function handleLogout() {
+    if (!window.dispatchEvent(new Event('homecloud:before-logout', { cancelable: true }))) return;
     setToken(null);
     onLogout();
     navigate("/login");
   }
 
   function handleUploaded(file) {
-    setFiles((prev) => [file, ...prev]);
+    if (String(file.folderId ?? '') === String(currentFolderId ?? '')) setFiles((prev) => [file, ...prev]);
     setQuota((prev) => (prev ? { ...prev, usedBytes: prev.usedBytes + file.size } : prev));
   }
 
@@ -374,12 +376,15 @@ export default function Dashboard({ user, onLogout }) {
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <ThemeToggle />
-          <Link className="btn btn-ghost" to="/settings" style={{ textAlign: "center", textDecoration: "none" }}>
+          <a className="btn btn-ghost" href={homeAccountUrl} style={{ textAlign: "center", textDecoration: "none" }}>
             Account settings
+          </a>
+          <Link className="btn btn-ghost" to="/settings" style={{ textAlign: "center", textDecoration: "none" }}>
+            Cloud preferences
           </Link>
           {me?.role === "admin" && (
             <Link className="btn btn-ghost" to="/admin" style={{ textAlign: "center", textDecoration: "none" }}>
-              Admin panel
+              Storage activity
             </Link>
           )}
           <button className="btn btn-ghost" onClick={handleLogout}>
@@ -440,21 +445,12 @@ export default function Dashboard({ user, onLogout }) {
               </button>
             </div>
 
-            <UploadZone
-              onUploaded={handleUploaded}
-              onActivity={blinkLED}
-              onError={(msg) => setError(msg)}
-              folderId={currentFolderId}
-            />
-
-            <FolderGrid
-              folders={folders}
-              onOpen={setCurrentFolderId}
-              onRename={handleRenameFolder}
-              onDelete={handleDeleteFolder}
-            />
           </>
         )}
+
+        <UploadZone showPicker={tab === 'files'} onUploaded={handleUploaded} onActivity={blinkLED}
+          onError={setError} onSettled={refresh} folderId={currentFolderId} />
+        {tab === 'files' && <FolderGrid folders={folders} onOpen={setCurrentFolderId} onRename={handleRenameFolder} onDelete={handleDeleteFolder} />}
 
         {(tab === "files" || tab === "trash") && (
           <>

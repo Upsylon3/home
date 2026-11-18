@@ -94,6 +94,7 @@ class SelectedPhotosJourneyTest {
             shell("dumpsys battery set ac 1")
             shell("dumpsys battery set status 2")
             waitFor { work().state == WorkInfo.State.SUCCEEDED }
+            waitFor { compose.onAllNodesWithText("Manual: Completed").fetchSemanticsNodes().isNotEmpty() }
             val proof = status()
             assertEquals(1, proof.getInt("files")); assertTrue(proof.getBoolean("bytesMatch")); assertTrue(proof.getBoolean("hashMatches"))
             val firstId = work().id
@@ -133,6 +134,7 @@ class SelectedPhotosJourneyTest {
             val expanded = status("picker-reselection-status")
             assertEquals(2, expanded.getInt("files")); assertTrue(expanded.getBoolean("bytesMatch")); assertTrue(expanded.getBoolean("hashMatches"))
             val expandedId = work().id
+            waitFor { compose.onAllNodesWithText("Manual: Completed").fetchSemanticsNodes().isNotEmpty() }
             compose.onNodeWithText("Back Up Now").performScrollTo().performClick()
             waitFor { work().let { it.id != expandedId && it.state == WorkInfo.State.SUCCEEDED } }
             assertEquals(2, status("picker-reselection-status").getInt("files"))

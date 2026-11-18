@@ -20,7 +20,7 @@ async function request(path, options = {}) {
 
   const res = await fetch(`/api${path}`, { ...options, headers });
 
-  if (res.status === 401) {
+  if (res.status === 401 && getToken() === token) {
     setToken(null);
     window.dispatchEvent(new CustomEvent("homemedia:session-expired"));
   }
@@ -47,7 +47,7 @@ async function request(path, options = {}) {
 export async function fetchImageBlob(url) {
   const token = getToken();
   const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
-  if (res.status === 401) {
+  if (res.status === 401 && getToken() === token) {
     setToken(null);
     window.dispatchEvent(new CustomEvent("homemedia:session-expired"));
   }
@@ -83,7 +83,7 @@ export function uploadMedia(file, folderId, onProgress) {
       } catch {
         // not JSON: fall through to the generic message below
       }
-      if (xhr.status === 401) {
+      if (xhr.status === 401 && getToken() === token) {
         setToken(null);
         window.dispatchEvent(new CustomEvent("homemedia:session-expired"));
       }
@@ -101,9 +101,9 @@ export const api = {
     request("/auth/2fa/verify", { method: "POST", body: JSON.stringify({ pendingToken, code }) }),
   me: () => request("/auth/me"),
 
-  library: (params = {}) => {
+  library: (params = {}, signal) => {
     const qs = new URLSearchParams(params).toString();
-    return request(`/homemedia/library${qs ? `?${qs}` : ""}`);
+    return request(`/homemedia/library${qs ? `?${qs}` : ""}`, { signal });
   },
   exif: (fileId) => request(`/homemedia/${fileId}/exif`),
   thumbnailUrl: (fileId) => `/api/homemedia/${fileId}/thumbnail`,
@@ -111,6 +111,7 @@ export const api = {
   // directly (those tags can't send a login header). See
   // homemedia-backend/src/stream.js for how tickets work.
   mediaTicket: async (fileId) => (await request(`/homemedia/${fileId}/ticket`, { method: "POST" })).data.url,
+  posterTicket: async (fileId, signal) => (await request(`/homemedia/${fileId}/poster-ticket`, { method: 'POST', signal })).data.url,
   uploadFolder: async () => (await request("/homemedia/upload-folder")).data.folderId,
 
   favorite: (fileId) => request(`/homemedia/favorites/${fileId}`, { method: "POST" }),

@@ -41,7 +41,7 @@ class BackupJourneyTest {
 
     @Test fun signInConstrainedBackupAndRepeat() {
         check(InstrumentationRegistry.getArguments().getString("homeFixture") == "disposable")
-        check(Build.MODEL.contains("sdk") || Build.FINGERPRINT.contains("generic"))
+        check(Build.MODEL.contains("sdk", ignoreCase = true) || Build.FINGERPRINT.contains("generic"))
         val context = instrumentation.targetContext
         val wm = WorkManager.getInstance(context)
         fun work(name: String) = wm.getWorkInfosForUniqueWork(name).get(5, TimeUnit.SECONDS)
@@ -98,19 +98,52 @@ class BackupJourneyTest {
             assertFalse(context.getSystemService(BatteryManager::class.java).isCharging)
             assertTrue(work(manualName).single().constraints.requiresCharging())
             assertEquals("Discharging manual work; backend=${status()}", WorkInfo.State.ENQUEUED, work(manualName).single().state)
+            waitFor { compose.onAllNodesWithText("Manual: Queued").fetchSemanticsNodes().isNotEmpty() }
+            compose.onNodeWithText("Back Up Now").assertIsNotEnabled()
             assertEquals(0, status().getInt("files"))
             shell("dumpsys battery set ac 1")
             shell("dumpsys battery set status 2")
             waitFor { work(manualName).single().state == WorkInfo.State.SUCCEEDED }
+            waitFor { compose.onAllNodesWithText("Manual: Completed").fetchSemanticsNodes().isNotEmpty() }
+            val outcome = work(manualName).single().outputData
+            assertEquals("completed", outcome.getString("phase"))
+            assertEquals(1, outcome.getInt("uploaded", -1))
+            assertEquals(0, outcome.getInt("failed", -1))
             val proof = status()
             assertEquals(1, proof.getInt("files")); assertEquals(1, proof.getInt("synced"))
             assertTrue(proof.getBoolean("bytesMatch")); assertTrue(proof.getBoolean("hashMatches"))
-            val firstId = work(manualName).single().id
-            compose.onNodeWithText("Back Up Now").performScrollTo().performClick()
-            waitFor { work(manualName).single().let { it.id != firstId && it.state == WorkInfo.State.SUCCEEDED } }
+            fun repeatBackup(): WorkInfo {
+                val previous = work(manualName).single().id
+                compose.onNodeWithText("Back Up Now").performScrollTo().performClick()
+                waitFor { work(manualName).single().let { it.id != previous && it.state == WorkInfo.State.SUCCEEDED } }
+                waitFor { compose.onAllNodesWithText("Manual: Completed").fetchSemanticsNodes().isNotEmpty() }
+                return work(manualName).single()
+            }
+            assertEquals(0, repeatBackup().outputData.getInt("total", -1))
             assertEquals(1, status().getInt("files"))
+
+            val revisionColumn = MediaStore.MediaColumns.GENERATION_MODIFIED
+            fun revision(): Long = checkNotNull(context.contentResolver.query(uri, arrayOf(revisionColumn), null, null, null)).use { cursor ->
+                check(cursor.moveToFirst())
+                cursor.getLong(0)
+            }
+            val originalRevision = revision()
+            assertTrue(originalRevision > 0)
+            val edited = Base64.decode(EDITED_PHOTO, Base64.DEFAULT)
+            context.contentResolver.openOutputStream(uri, "rwt")!!.use { it.write(edited) }
+            waitFor { revision() != originalRevision }
+            fixtureRequest("retry-upload", "POST").disconnect()
+            val editedRun = repeatBackup()
+            assertTrue("The fixture rejected the first edited upload", editedRun.runAttemptCount > 1)
+            assertEquals(1, editedRun.outputData.getInt("uploaded", -1))
+            assertEquals(0, editedRun.outputData.getInt("failed", -1))
+            val editedProof = status("edited-status")
+            assertEquals(2, editedProof.getInt("files")); assertEquals(2, editedProof.getInt("synced"))
+            assertTrue(editedProof.getBoolean("bytesMatch")); assertTrue(editedProof.getBoolean("hashMatches"))
+            assertEquals(0, repeatBackup().outputData.getInt("total", -1))
+            assertEquals(2, status("edited-status").getInt("files"))
             compose.activityRule.scenario.recreate()
-            waitFor { compose.onAllNodesWithText("1 files", substring = true).fetchSemanticsNodes().isNotEmpty() }
+            waitFor { compose.onAllNodesWithText("2 files", substring = true).fetchSemanticsNodes().isNotEmpty() }
             // UTP can uninstall the app after a connected test, removing its
             // external-files directory. Keep this disposable screenshot in a
             // shell-owned location until the workflow pulls the evidence.
@@ -122,9 +155,16 @@ class BackupJourneyTest {
         }
     }
 
-    private fun status(): JSONObject {
-        val connection = URL("$base/__fixture__/status").openConnection() as HttpURLConnection
+    private fun fixtureRequest(route: String, method: String = "GET"): HttpURLConnection {
+        val connection = URL("$base/__fixture__/$route").openConnection() as HttpURLConnection
+        connection.requestMethod = method
         connection.connectTimeout = 5_000; connection.readTimeout = 5_000
+        check(connection.responseCode in 200..299) { "Fixture request failed: $route" }
+        return connection
+    }
+
+    private fun status(route: String = "status"): JSONObject {
+        val connection = fixtureRequest(route)
         return try { JSONObject(connection.inputStream.bufferedReader().use { it.readText() }) }
         finally { connection.disconnect() }
     }
@@ -134,6 +174,7 @@ class BackupJourneyTest {
     }
 
     companion object {
+        private const val EDITED_PHOTO = "iVBORw0KGgoAAAANSUhEUgAAAAMAAAADCAIAAADZSiLoAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAEElEQVQImWOQWOAFQQxYWACGagkTrKDSXwAAAABJRU5ErkJggg=="
         private const val PHOTO = "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAEklEQVQImWPYEiWyJUqEAUIBACJGBImnebzNAAAAAElFTkSuQmCC"
     }
 }

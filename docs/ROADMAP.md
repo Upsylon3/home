@@ -6,40 +6,131 @@ Only unfinished work is listed here. Completed changes belong in
 Daily personal/family use on one HOME is the current priority. Optional
 multi-server work does not block improving the applications.
 
+## Platform consolidation: HOME mobile, Core accounts and Sync devices
+
+Status: approved direction; implementation and full frontend inventory pending. This
+section records new product decisions, not claims that the work is complete.
+Keep changes in focused PRs with migrations, tests and rollback plans. Preserve
+existing data and functionality; do not create parallel Android clients or
+authentication authorities.
+
+### 1. One HOME Android application
+
+- Audit the entire existing `apps/homesync-android/` Kotlin/Compose project,
+  its tests, permissions, WorkManager jobs, API clients and persistence.
+- Evolve the existing native project into the general HOME Android client,
+  including an application dashboard, Core login/profile, server selection and
+  mobile-appropriate entry points to installed HOME applications. Decide the
+  supported native versus embedded/web journeys per app before implementation.
+- Migrate package/application identifiers, build paths and release workflows
+  deliberately; preserve installed-client data or provide an explicit migration
+  and rollback. Avoid a second competing Android project.
+- Retain and reuse the current media-backup worker, device registration,
+  deduplication, scheduling and settings as the HomeSync portion of the app.
+- Provide a physical-phone install/test guide and APK build, then validate
+  permissions, selected media, Doze, reboot, network transitions and upgrades.
+
+### 2. HomeSync as the cross-device coordination service
+
+- Define HomeSync's scope as device enrollment, state/health, opt-in
+  synchronization, and backup orchestration, with HomeCloud remaining the
+  authoritative file store and HomeMedia consuming Cloud media.
+- Keep device synchronization distinct from Core's experimental *server-to-server
+  federation*: server pairing proves server identity but does not grant user or
+  resource access. Do not bypass the pairing design's authorization gates.
+- Support multiple saved HOME servers on Android with per-server sessions,
+  device IDs, backup settings, queue identity and deduplication history.
+  Explicitly define whether each server is a backup destination or a selected
+  interactive HOME; never implicitly replicate private data to every server.
+- ~~Bind Android credentials and cached clients to one destination; reject
+  retained-client work after switching/logout and prevent redirect forwarding.~~
+  APK/JVM checks pass; this prerequisite does not enable multiple backup targets.
+- ~~Scope the local backup ledger by verified server and account and preserve
+  v1 history through the Room upgrade.~~ [Validation](VALIDATION.md#android-destination-ledger-migration)
+- Migrate legacy single-server profiles, device IDs and backup settings without
+  losing local history. Bind queued WorkManager work to an immutable
+  destination identity, and test
+  server switching, logout, retries, token isolation, changed files and
+  destination-specific deduplication.
+- Define conflicts, offline behavior, encryption/transport, trust, revocation
+  and user-visible synchronization status before expanding to other app data.
+
+### 3. Centralize account ownership in HomeCore and HOME
+
+- ~~Move Core-backed account settings/administration into HOME and retire
+  duplicate Cloud account controls after API/browser proof.~~ Existing Cloud
+  bookmarks preserve storage preferences/audit and link to HOME. See
+  [validation](VALIDATION.md#unified-home-accounts) for executed checks.
+- Audit registration/login entry points across the remaining frontends;
+  preserve owner setup, compatible auth APIs and existing sessions.
+- ~~Replace stale Cloud account guidance in Media, Notes, Tasks and Monitor
+  Settings with working HOME account links.~~ Their appearance controls and
+  Vault's separate master-password controls remain app-owned. Continue the
+  broader route/control inventory below; registration/login audit remains above.
+- Avoid copying identity tables into other services or introducing another
+  account authority. Use additive migrations, compatibility windows,
+  disposable test fixtures and documented rollback.
+
+### 4. Frontend completion and UX consistency audit
+
+- Inspect every frontend route, visible control, placeholder, disabled action,
+  unfinished workflow, dead navigation target, error/empty/loading state,
+  mobile layout and settings screen. Classify each as implemented, intentionally
+  minimal, incomplete, broken or aspirational; verify with source and tests.
+- Produce a prioritized issue inventory with reproduction, owning app,
+  acceptance criteria and dependencies. Do not confuse a placeholder input
+  attribute with an unfinished feature, or reopen completed features.
+- Fix confirmed dead ends and high-impact incomplete journeys in focused PRs;
+  use the shared design system and preserve app-specific capabilities.
+- Update API/architecture/security docs, validation evidence, roadmap and
+  changelog as each slice lands. Never claim APK/device or browser validation
+  from source inspection alone.
+
+### Suggested delivery order
+
+1. Inventory and architecture decisions, including account ownership and
+   Android migration compatibility.
+2. Core-backed unified HOME account/settings UX and safe Cloud redirects.
+3. Rename/evolve the existing Android app into HOME while retaining Sync.
+4. HomeSync multi-server profile/queue/data migrations and device UX.
+5. Cross-device functionality expansion after explicit data/conflict/security
+   designs; parallel frontend-completion fixes by severity.
+
 ## Next application work
 
 Work in this order unless a confirmed regression or security fix takes priority.
 Each item needs its own focused change and appropriate proof; this list does
 not authorize changing a real installation or storing real secrets in Vault.
 
-1. **Notes save safety.** Reproduce navigation before the 1.5-second autosave
-   delay and failed-save/retry behavior. The editor currently cancels the pending
-   timer on cleanup, and no durable draft or leave protection was found in this
-   audit. Investigate possible lost edits before adding features; this is a
-   source finding, not a reproduced browser result. Preserve unsaved text and
-   make saved/saving/failed states dependable. Full offline editing additionally
-   needs explicit cache privacy, conflict and recovery behavior.
-2. **Notes templates.** Restore the deferred reusable-note workflow: create a
-   personal template and start an independent editable note from it. Define
-   title/content/tag copying and ownership; reuse Notes' existing APIs and
-   sanitized editor. Templates must not require another server or collaboration.
-3. **Cloud folder upload.** Add folder selection/drop with preserved directory
-   hierarchy, a bounded upload queue and per-file outcomes/retry. Multiple-file
-   selection/drop already exists; do not rebuild it or flatten a folder tree.
-   Use the owning user's existing folder/upload APIs, quota and path checks.
-4. **Media video posters.** Replace generic video placeholders with bounded,
-   cached poster generation through Cloud's authorized file API. Review decoder
-   dependency/runtime cost, invalid videos, cache invalidation and fallback first.
-   Photo thumbnails, playback, EXIF and browser upload already exist.
+1. ~~**Notes save safety:** reproduce immediate-navigation loss; preserve pending
+   edits with save/discard navigation protection, serialized saves and explicit
+   failed-save retry.~~ Verified against real disposable services and the demo.
+   Persistent offline drafts, crash recovery and concurrent-edit conflicts remain
+   in the separately designed offline workspace below.
+2. ~~**Notes templates:** save a personal title/content/tag snapshot and start
+   independent editable notes from it.~~ Owner-scoped APIs and the sanitized
+   editor are reused; templates need no other server or collaboration.
+3. ~~**Cloud folder upload.** Folder selection/drop preserves file hierarchy,
+   reuses owned folders, limits transfers to three and queue entries to 1000,
+   and reports per-file outcomes with retry/cancel.~~ Uses existing authorized
+   folder/upload APIs and quota checks. Real-service and demo browser proof pass;
+   empty directories and persistent/resumable queues remain unsupported.
+4. ~~**Media video posters.** Browser-native first-frame posters replace generic
+   video tiles in the library, favorites, albums, covers and picker.~~ Decode jobs,
+   source range tickets and the session-only cache are bounded; invalid,
+   unsupported or over-budget sources keep the fallback. No server decoder or
+   persistent poster store is introduced. Cross-browser/codec coverage beyond the
+   recorded WebM fixture remains an explicit validation limit.
 5. **Sync backup feedback.** Show actual queued, waiting-for-constraints, running,
    retrying, failed and completed work, with meaningful run progress/history.
-   The current aggregate totals/last-upload summary and transient request message
-   do not show a live backup queue. Use real worker state rather than an optimistic
-   "backup requested" success; keep phone permission/charging limits visible.
-6. **Sync changed-file detection.** Stop treating a previously backed-up local
-   media ID as proof its contents are unchanged. Design modified-time/size/hash
-   rechecks and test an in-place edit, unchanged runs, retry and deduplication.
-   Preserve whole-file retry and WorkManager's battery constraints.
+   Current slice observes manual/automatic WorkManager state, reports real
+   scanning/checking/upload counts and retains the latest manual result. Requests
+   no longer claim a run started, and repeated taps keep active manual work.
+   Durable multi-run history and exact unmet-constraint diagnostics remain open;
+   the UI labels scheduling/constraint waits without guessing their cause.
+6. ~~**Sync changed-file detection.** Recheck a file after an in-place edit and
+   skip confirmed unchanged content while preserving WorkManager constraints
+   and whole-file retry.~~ [Validation](VALIDATION.md#homesync-edited-backups)
 
 Entry points: [Notes editor](../apps/homenotes/src/pages/NoteEditor.jsx),
 [Cloud uploads](../apps/homecloud/src/components/UploadZone.jsx),

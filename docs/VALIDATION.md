@@ -30,15 +30,19 @@ node --test test/destination-migration.test.mjs
 adb -s DISPOSABLE_SERIAL shell am instrument -w -e homeFixture disposable -e class com.homeecosystems.homesync.DestinationLedgerMigrationTest com.homeecosystems.homesync.test/androidx.test.runner.AndroidJUnitRunner
 ~~~
 
-The instrumentation fixture is compiled, **not executed** in this evidence. The
-host has no Android emulator acceleration driver; a fresh software-only API-34
-AVD remained ADB-offline and was stopped. No personal AVD or phone was used and
-no host driver/settings were changed. SQLite/schema proof does not claim actual
-Android Room open/upgrade, physical-device or multi-server-worker verification.
-Keep this runtime evidence gap explicit; the PR remains a draft pending its
-runtime migration acceptance gate. Device/profile/settings/job isolation remains
-unfinished independently. Preserve a pre-upgrade offline database copy for
-rollback; never use destructive fallback or drop retained legacy history.
+On 2026-11-18, the app and instrumentation APKs from
+[Android CI](https://github.com/Upsylon3/home/actions/runs/44352658539) ran on a
+disposable x86_64 AOSP API-34 emulator using Windows Hypervisor Platform.
+`DestinationLedgerMigrationTest` passed (one test). Room opened the seeded v1
+database, ran the production migration, validated the generated v2 schema and
+preserved the legacy row and its ID. The DAO isolated totals and deduplication
+by server and account, and replacing a scoped record preserved the other rows.
+The earlier software-only AVD had stayed ADB-offline. The accelerated image
+reported an uppercase SDK model label, which the fixture now accepts.
+
+Physical-device and multi-server-worker validation remain open, along with
+device, profile, settings and job isolation. Preserve a pre-upgrade offline
+database copy for rollback.
 
 ## Android credential isolation
 
@@ -76,10 +80,10 @@ permission failure/cancellation and older work without recorded counters.
 The existing backup/picker instrumentation sources add queued/completed UI and
 terminal-count assertions; building the test APK does not execute those tests.
 No emulator/physical-device execution of this new feedback slice is claimed.
-The disposable emulator remains unavailable without usable acceleration; no host
-driver/settings changes were made. Durable run history and precise constraint
-diagnostics remain roadmap work, as do destination-bound jobs and Room runtime
-migration proof in the separate draft ledger change.
+This feedback slice was built while the available emulator was ADB-offline.
+[Room upgrade proof](#android-destination-ledger-migration) was later executed in
+a separate fixture. Durable run history, precise constraint diagnostics and
+destination-bound jobs remain roadmap work.
 
 ## Cloud folder uploads
 

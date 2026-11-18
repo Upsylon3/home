@@ -1,9 +1,12 @@
 package com.homeecosystems.homesync.sync
 
+import okio.Buffer
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.ByteArrayInputStream
+import java.io.IOException
 import java.security.MessageDigest
 
 /**
@@ -34,6 +37,20 @@ class SyncLogicTest {
         val viaHasher = FileHasher.sha256(ByteArrayInputStream(bigInput))
         val viaDirectDigest = MessageDigest.getInstance("SHA-256").digest(bigInput).joinToString("") { "%02x".format(it) }
         assertEquals(viaDirectDigest, viaHasher)
+    }
+
+    @Test
+    fun `upload rejects an edit with the same byte length`() {
+        val original = "before".toByteArray()
+        val edited = "after!".toByteArray()
+        val expectedHash = FileHasher.sha256(ByteArrayInputStream(original))
+        val valid = streamingRequestBody(null, original.size.toLong(), expectedHash) { ByteArrayInputStream(original) }
+        val sink = Buffer()
+        valid.writeTo(sink)
+        assertEquals("before", sink.readUtf8())
+
+        val changed = streamingRequestBody(null, original.size.toLong(), expectedHash) { ByteArrayInputStream(edited) }
+        assertThrows(IOException::class.java) { changed.writeTo(Buffer()) }
     }
 
     @Test

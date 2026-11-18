@@ -19,6 +19,7 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okio.BufferedSink
+import okio.HashingSource
 import okio.source
 import java.time.Instant
 import kotlinx.coroutines.CancellationException
@@ -85,9 +86,10 @@ class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         val deviceId = ensureDeviceId(api) ?: return Result.retry()
 
         val dao = db.syncedMediaDao()
-        val alreadyKnownLocalIds = dao.allSyncedLocalIds(destinationKey).toSet()
-
-        val candidates = mediaScanner.scan(categories).filter { it.localId !in alreadyKnownLocalIds }
+        val syncedVersions = dao.syncedVersions(destinationKey).associateBy { it.localMediaId }
+        val candidates = mediaScanner.scan(categories).filter { candidate ->
+            candidate.sourceVersion == null || candidate.sourceVersion != syncedVersions[candidate.localId]?.sourceVersion
+        }
         total = candidates.size
         if (candidates.isEmpty()) return completed()
         report("hashing")
@@ -106,13 +108,24 @@ class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker
             }
         }
         failed = candidates.size - hashed.size
-        if (hashed.isEmpty()) return Result.retry()
+        val needsServerCheck = mutableListOf<HashedFile>()
+        for (file in hashed) {
+            if (syncedVersions[file.candidate.localId]?.contentHash == file.contentHash) {
+                file.candidate.sourceVersion?.let { version ->
+                    dao.rememberSourceVersion(destinationKey, file.candidate.localId, file.contentHash, version)
+                }
+                matched++
+            } else {
+                needsServerCheck += file
+            }
+        }
+        if (needsServerCheck.isEmpty()) return if (failed > 0) Result.retry() else completed()
         report("checking")
 
         // Covers cross-device dedup (see homesync-backend/src/sync.js) —
         // batched to respect its 500-entries-per-call cap.
         val alreadySyncedHashes = mutableSetOf<String>()
-        for (batch in chunked(hashed, 500)) {
+        for (batch in chunked(needsServerCheck, 500)) {
             val response = try {
                 api.check(CheckRequest(batch.map { CheckFileEntry(it.contentHash, it.candidate.sizeBytes) }))
             } catch (e: CancellationException) { throw e }
@@ -120,7 +133,7 @@ class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker
             response?.body()?.results?.forEach { if (it.alreadySynced) alreadySyncedHashes += it.hash }
         }
 
-        val plan = planSync(hashed, alreadySyncedHashes)
+        val plan = planSync(needsServerCheck, alreadySyncedHashes)
 
         // Server already has these (backed up from another device, most
         // likely) — record locally without re-uploading, so future runs
@@ -158,7 +171,8 @@ class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker
         contentHash = contentHash,
         category = candidate.category.toApiValue(),
         sizeBytes = candidate.sizeBytes,
-        uploadedAtEpochMs = System.currentTimeMillis()
+        uploadedAtEpochMs = System.currentTimeMillis(),
+        sourceVersion = candidate.sourceVersion
     )
 
     private suspend fun ensureDeviceId(api: HomeSyncApi): Int? {
@@ -172,12 +186,14 @@ class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker
 
     private suspend fun uploadOne(api: HomeSyncApi, deviceId: Int, file: HashedFile): Boolean {
         val length = file.candidate.sizeBytes
-        val stream = mediaScanner.openStream(file.candidate.localId) ?: return false
         // Streams straight from the on-device file into the multipart body
         // rather than buffering it into a ByteArray first — buffering a
         // multi-hundred-MB video into memory on a phone is a real OOM risk
-        // this specifically avoids. The stream is closed by writeTo() below.
-        val body = streamingRequestBody(file.candidate.mimeType.toMediaTypeOrNull(), stream, length)
+        // this specifically avoids. Validate the streamed bytes before OkHttp
+        // finishes the multipart body, so an edit during upload is retried.
+        val body = streamingRequestBody(file.candidate.mimeType.toMediaTypeOrNull(), length, file.contentHash) {
+            mediaScanner.openStream(file.candidate.localId)
+        }
         val filePart = MultipartBody.Part.createFormData("file", file.candidate.displayName, body)
         val plainText = "text/plain".toMediaTypeOrNull()
 
@@ -196,11 +212,23 @@ class BackupWorker(context: Context, params: WorkerParameters) : CoroutineWorker
     }
 }
 
-private fun streamingRequestBody(contentType: okhttp3.MediaType?, inputStream: java.io.InputStream, length: Long): RequestBody =
-    object : RequestBody() {
-        override fun contentType() = contentType
-        override fun contentLength() = length
-        override fun writeTo(sink: BufferedSink) {
-            inputStream.source().use { source -> sink.writeAll(source) }
+internal fun streamingRequestBody(
+    contentType: okhttp3.MediaType?,
+    length: Long,
+    expectedHash: String,
+    openStream: () -> java.io.InputStream?
+): RequestBody = object : RequestBody() {
+    override fun contentType() = contentType
+    override fun contentLength() = length
+    override fun isOneShot() = true
+
+    override fun writeTo(sink: BufferedSink) {
+        val stream = openStream() ?: throw IOException("Backup media is unavailable.")
+        HashingSource.sha256(stream.source()).use { source ->
+            val written = sink.writeAll(source)
+            if (written != length || source.hash.hex() != expectedHash) {
+                throw IOException("Backup media changed while uploading.")
+            }
         }
     }
+}

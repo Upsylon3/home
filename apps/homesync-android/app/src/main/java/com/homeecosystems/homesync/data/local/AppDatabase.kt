@@ -13,10 +13,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * header comment for why this exists alongside the server's own /check
  * endpoint rather than instead of it).
  *
- * Version 2 exports its schema and retains all v1 rows under the empty legacy
- * destination. The explicit migration never guesses an old row's owner/server.
+ * Version 2 retains unscoped v1 rows. Version 3 adds an optional media revision.
+ * Existing scoped rows keep their confirmed hashes and recheck on the next scan.
  */
-@Database(entities = [SyncedMediaEntity::class], version = 2, exportSchema = true)
+@Database(entities = [SyncedMediaEntity::class], version = 3, exportSchema = true)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun syncedMediaDao(): SyncedMediaDao
@@ -31,6 +31,12 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("CREATE UNIQUE INDEX index_synced_media_destinationKey_localMediaId ON synced_media(destinationKey, localMediaId)")
             }
         }
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE synced_media ADD COLUMN sourceVersion TEXT")
+            }
+        }
+
         // @Volatile + synchronized double-checked locking: the standard,
         // textbook way to make a lazily-created singleton safe when
         // multiple threads might call getInstance() at close to the same
@@ -51,7 +57,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "homesync.db"
-                ).addMigrations(MIGRATION_1_2).build().also { INSTANCE = it }
+                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { INSTANCE = it }
             }
         }
     }

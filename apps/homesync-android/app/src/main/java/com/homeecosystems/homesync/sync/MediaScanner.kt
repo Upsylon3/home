@@ -2,6 +2,7 @@ package com.homeecosystems.homesync.sync
 
 import android.content.ContentUris
 import android.content.Context
+import android.database.Cursor
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
@@ -23,18 +24,20 @@ import java.io.InputStream
 class MediaScanner(private val context: Context) {
 
     fun scan(categories: Set<BackupCategory>): List<CandidateFile> {
+        val versions = MediaVersions(context)
         val results = mutableListOf<CandidateFile>()
         if (BackupCategory.PHOTOS in categories || BackupCategory.SCREENSHOTS in categories) {
             results += scanImages(
                 wantPhotos = BackupCategory.PHOTOS in categories,
-                wantScreenshots = BackupCategory.SCREENSHOTS in categories
+                wantScreenshots = BackupCategory.SCREENSHOTS in categories,
+                versions = versions
             )
         }
         if (BackupCategory.VIDEOS in categories) {
-            results += scanVideos()
+            results += scanVideos(versions)
         }
         if (BackupCategory.DOWNLOADS in categories) {
-            results += scanDownloads()
+            results += scanDownloads(versions)
         }
         return results
     }
@@ -59,8 +62,12 @@ class MediaScanner(private val context: Context) {
         }
     }
 
-    private fun scanImages(wantPhotos: Boolean, wantScreenshots: Boolean): List<CandidateFile> {
+    @Suppress("DEPRECATION")
+    private fun scanImages(wantPhotos: Boolean, wantScreenshots: Boolean, versions: MediaVersions): List<CandidateFile> {
         val results = mutableListOf<CandidateFile>()
+        val pathColumn = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            MediaStore.Images.Media.RELATIVE_PATH
+        } else MediaStore.Images.Media.DATA
         val projection = arrayOf(
             MediaStore.Images.Media._ID,
             MediaStore.Images.Media.DISPLAY_NAME,
@@ -68,12 +75,12 @@ class MediaScanner(private val context: Context) {
             MediaStore.Images.Media.SIZE,
             MediaStore.Images.Media.DATE_TAKEN,
             MediaStore.Images.Media.DATE_ADDED,
-            MediaStore.Images.Media.RELATIVE_PATH
+            pathColumn
         )
 
         context.contentResolver.query(
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-            projection,
+            versions.withRevisionColumns(projection),
             null,
             null,
             "${MediaStore.Images.Media.DATE_ADDED} DESC"
@@ -84,7 +91,7 @@ class MediaScanner(private val context: Context) {
             val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.SIZE)
             val dateTakenCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_TAKEN)
             val dateAddedCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_ADDED)
-            val pathCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.RELATIVE_PATH)
+            val pathCol = cursor.getColumnIndexOrThrow(pathColumn)
 
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(idCol)
@@ -109,14 +116,15 @@ class MediaScanner(private val context: Context) {
                     mimeType = cursor.getString(mimeCol) ?: "image/*",
                     sizeBytes = cursor.getLong(sizeCol),
                     capturedAtEpochMs = capturedAtMs,
-                    category = if (isScreenshot) BackupCategory.SCREENSHOTS else BackupCategory.PHOTOS
+                    category = if (isScreenshot) BackupCategory.SCREENSHOTS else BackupCategory.PHOTOS,
+                    sourceVersion = versions.read(cursor, cursor.getLong(sizeCol))
                 )
             }
         }
         return results
     }
 
-    private fun scanVideos(): List<CandidateFile> {
+    private fun scanVideos(versions: MediaVersions): List<CandidateFile> {
         val results = mutableListOf<CandidateFile>()
         val projection = arrayOf(
             MediaStore.Video.Media._ID,
@@ -129,7 +137,7 @@ class MediaScanner(private val context: Context) {
 
         context.contentResolver.query(
             MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-            projection,
+            versions.withRevisionColumns(projection),
             null,
             null,
             "${MediaStore.Video.Media.DATE_ADDED} DESC"
@@ -153,7 +161,8 @@ class MediaScanner(private val context: Context) {
                     mimeType = cursor.getString(mimeCol) ?: "video/*",
                     sizeBytes = cursor.getLong(sizeCol),
                     capturedAtEpochMs = capturedAtMs,
-                    category = BackupCategory.VIDEOS
+                    category = BackupCategory.VIDEOS,
+                    sourceVersion = versions.read(cursor, cursor.getLong(sizeCol))
                 )
             }
         }
@@ -161,7 +170,7 @@ class MediaScanner(private val context: Context) {
     }
 
     /** MediaStore.Downloads only exists from API 29 (Android 10) — older devices simply don't get Downloads backup, matching the AndroidManifest's minSdk 26 supporting Photos/Videos/Screenshots universally. */
-    private fun scanDownloads(): List<CandidateFile> {
+    private fun scanDownloads(versions: MediaVersions): List<CandidateFile> {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return emptyList()
         val results = mutableListOf<CandidateFile>()
         val projection = arrayOf(
@@ -174,7 +183,7 @@ class MediaScanner(private val context: Context) {
 
         context.contentResolver.query(
             MediaStore.Downloads.EXTERNAL_CONTENT_URI,
-            projection,
+            versions.withRevisionColumns(projection),
             null,
             null,
             "${MediaStore.Downloads.DATE_ADDED} DESC"
@@ -195,10 +204,38 @@ class MediaScanner(private val context: Context) {
                     mimeType = cursor.getString(mimeCol) ?: "application/octet-stream",
                     sizeBytes = cursor.getLong(sizeCol),
                     capturedAtEpochMs = cursor.getLong(dateAddedCol) * 1000,
-                    category = BackupCategory.DOWNLOADS
+                    category = BackupCategory.DOWNLOADS,
+                    sourceVersion = versions.read(cursor, cursor.getLong(sizeCol))
                 )
             }
         }
         return results
+    }
+}
+
+/** One snapshot of volume versions for this scan. A reset or unmounted volume requires a fresh hash. */
+private class MediaVersions(context: Context) {
+    private val versions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        MediaStore.getExternalVolumeNames(context).associateWith { volume ->
+            try { MediaStore.getVersion(context, volume) }
+            catch (_: IllegalArgumentException) { null } // The volume may detach during a scan.
+        }
+    } else emptyMap()
+
+    fun withRevisionColumns(projection: Array<String>): Array<String> =
+        if (versions.isEmpty()) projection else projection + arrayOf(
+            MediaStore.MediaColumns.VOLUME_NAME,
+            MediaStore.MediaColumns.GENERATION_MODIFIED,
+            MediaStore.MediaColumns.DATE_MODIFIED
+        )
+
+    fun read(cursor: Cursor, size: Long): String? {
+        if (versions.isEmpty()) return null
+        val volume = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.VOLUME_NAME))
+        val version = versions[volume] ?: return null
+        val generation = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.GENERATION_MODIFIED))
+        if (generation <= 0) return null
+        val modified = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_MODIFIED))
+        return "$volume\n$version\n$generation\n$modified\n$size"
     }
 }

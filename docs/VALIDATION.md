@@ -3,6 +3,47 @@
 Outstanding review/device evidence and reproduction notes live here. Run fixtures
 only against disposable data; never equate CI with independent or physical testing.
 
+## Android destination ledger migration
+
+Room v2 preserves legacy rows with an unknown destination and scopes new rows by
+canonical server URL plus Core account ID. Existing sessions verify identity
+through the compatible Sync-to-Core `/api/homesync/auth/me` proxy; no JWT claims
+are decoded as account authority. Legacy rows never suppress scoped backups.
+
+Windows/JDK 21/Gradle 9.3.1 executed `assembleDebug`, `testDebugUnitTest` and
+`assembleDebugAndroidTest` successfully. Android CI also compiles the runtime
+fixture and runs the JVM suite. Two Node 26 SQLite tests execute the production
+migration statements, compare the resulting columns/defaults/index with Room's
+generated v2 contract, preserve every seeded v1 field/ID, check server/account
+uniqueness, and roll back an injected migration failure. CI runs these checks
+after generating the schema and rejects uncommitted schema drift.
+
+After integrating the merged live-feedback slice, all 25 JVM tests, both APK
+builds and both SQLite migration checks passed again locally; the generated
+Room schema remained unchanged. Destination-scoped DAO reads/writes and retained
+legacy-history notices remain intact. This adds no runtime migration execution.
+
+~~~sh
+cd apps/homesync-android
+gradle --no-daemon --console=plain :app:assembleDebug :app:testDebugUnitTest :app:assembleDebugAndroidTest
+node --test test/destination-migration.test.mjs
+adb -s DISPOSABLE_SERIAL shell am instrument -w -e homeFixture disposable -e class com.homeecosystems.homesync.DestinationLedgerMigrationTest com.homeecosystems.homesync.test/androidx.test.runner.AndroidJUnitRunner
+~~~
+
+On 2026-11-18, the app and instrumentation APKs from
+[Android CI](https://github.com/Upsylon3/home/actions/runs/44352658539) ran on a
+disposable x86_64 AOSP API-34 emulator using Windows Hypervisor Platform.
+`DestinationLedgerMigrationTest` passed (one test). Room opened the seeded v1
+database, ran the production migration, validated the generated v2 schema and
+preserved the legacy row and its ID. The DAO isolated totals and deduplication
+by server and account, and replacing a scoped record preserved the other rows.
+The earlier software-only AVD had stayed ADB-offline. The accelerated image
+reported an uppercase SDK model label, which the fixture now accepts.
+
+Physical-device and multi-server-worker validation remain open, along with
+device, profile, settings and job isolation. Preserve a pre-upgrade offline
+database copy for rollback.
+
 ## Android credential isolation
 
 The [Android CI run](https://github.com/Upsylon3/home/actions/runs/43057804190)
@@ -39,10 +80,10 @@ permission failure/cancellation and older work without recorded counters.
 The existing backup/picker instrumentation sources add queued/completed UI and
 terminal-count assertions; building the test APK does not execute those tests.
 No emulator/physical-device execution of this new feedback slice is claimed.
-The disposable emulator remains unavailable without usable acceleration; no host
-driver/settings changes were made. Durable run history and precise constraint
-diagnostics remain roadmap work, as do destination-bound jobs and Room runtime
-migration proof in the separate draft ledger change.
+This feedback slice was built while the available emulator was ADB-offline.
+[Room upgrade proof](#android-destination-ledger-migration) was later executed in
+a separate fixture. Durable run history, precise constraint diagnostics and
+destination-bound jobs remain roadmap work.
 
 ## Cloud folder uploads
 

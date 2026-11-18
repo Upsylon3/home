@@ -12,20 +12,23 @@ import androidx.room.PrimaryKey
  * while /check catches files backed up *from a different device*, which
  * this table can't know about on its own).
  *
- * [localMediaId] has a unique index because it's how BackupWorker filters
+ * [localMediaId] is unique within [destinationKey], because BackupWorker filters
  * MediaScanner's results down to genuinely new candidates
- * (`dao.allSyncedLocalIds()` — see BackupWorker.doWork) — two rows for
- * the same on-device file would be a bug, not a valid state, so the
- * database itself refuses to allow it rather than relying on every call
- * site to check first.
+ * candidates for one server/account. The same local file can be recorded for
+ * another destination independently. Legacy empty-destination rows remain as
+ * history but cannot suppress new work.
  */
 @Entity(
     tableName = "synced_media",
-    indices = [androidx.room.Index(value = ["localMediaId"], unique = true)]
+    indices = [androidx.room.Index(value = ["destinationKey", "localMediaId"], unique = true)]
 )
 data class SyncedMediaEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
+
+    /** Empty only for preserved v1 records with unknown historical provenance. */
+    @ColumnInfo(name = "destinationKey", defaultValue = "''")
+    val destinationKey: String = "",
 
     /** MediaScanner's own id format, e.g. "images:1234" — see MediaScanner.uriFor for how this gets turned back into a content:// Uri. */
     @ColumnInfo(name = "localMediaId")

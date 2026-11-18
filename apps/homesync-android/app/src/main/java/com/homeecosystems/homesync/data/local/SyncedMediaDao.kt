@@ -21,8 +21,8 @@ interface SyncedMediaDao {
      * recorded as synced, so they can be filtered out of this run's
      * candidates before any hashing happens — see BackupWorker.doWork.
      */
-    @Query("SELECT localMediaId FROM synced_media")
-    suspend fun allSyncedLocalIds(): List<String>
+    @Query("SELECT localMediaId FROM synced_media WHERE destinationKey = :destinationKey AND destinationKey != ''")
+    suspend fun allSyncedLocalIds(destinationKey: String): List<String>
 
     /**
      * REPLACE rather than the default ABORT: BackupWorker calls this for
@@ -35,14 +35,17 @@ interface SyncedMediaDao {
     suspend fun insert(entity: SyncedMediaEntity)
 
     /** For the Home screen's offline summary fallback — see HomeViewModel.refreshSummary. */
-    @Query("SELECT COUNT(*) FROM synced_media")
-    suspend fun count(): Int
+    @Query("SELECT COUNT(*) FROM synced_media WHERE destinationKey = :destinationKey AND destinationKey != ''")
+    suspend fun count(destinationKey: String): Int
 
     /** COALESCE guards against SQL's SUM(...) returning NULL (not 0) over an empty table — a fresh install with nothing synced yet should report 0 bytes, not crash trying to unwrap a null Long. */
-    @Query("SELECT COALESCE(SUM(sizeBytes), 0) FROM synced_media")
-    suspend fun totalBytes(): Long
+    @Query("SELECT COALESCE(SUM(sizeBytes), 0) FROM synced_media WHERE destinationKey = :destinationKey AND destinationKey != ''")
+    suspend fun totalBytes(destinationKey: String): Long
 
     /** Null on a fresh install (nothing synced yet) — HomeViewModel handles that directly rather than this DAO inventing a fake "never" timestamp. */
-    @Query("SELECT MAX(uploadedAtEpochMs) FROM synced_media")
-    suspend fun lastUploadedAtEpochMs(): Long?
+    @Query("SELECT MAX(uploadedAtEpochMs) FROM synced_media WHERE destinationKey = :destinationKey AND destinationKey != ''")
+    suspend fun lastUploadedAtEpochMs(destinationKey: String): Long?
+
+    @Query("SELECT COUNT(*) FROM synced_media WHERE destinationKey = ''")
+    suspend fun legacyCount(): Int
 }

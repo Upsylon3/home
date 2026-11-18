@@ -38,6 +38,8 @@ class BackupFeedbackTest {
         assertEquals("Failed", denied.status)
         assertTrue(denied.detail.contains("Review media access"))
         assertFalse(denied.active)
+        assertTrue(backupFeedback("id", "Manual", WorkInfo.State.FAILED, 0,
+            reason = "account-verification-required").detail.contains("verify this backup destination"))
         val cancelled = backupFeedback("id", "Manual", WorkInfo.State.CANCELLED, 0)
         assertTrue(cancelled.detail.contains("already received"))
         assertFalse(cancelled.active)

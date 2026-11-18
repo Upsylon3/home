@@ -45,8 +45,11 @@ authentication authorities.
 - ~~Bind Android credentials and cached clients to one destination; reject
   retained-client work after switching/logout and prevent redirect forwarding.~~
   APK/JVM checks pass; this prerequisite does not enable multiple backup targets.
-- Migrate legacy single-server local data without losing backup history.
-  Bind queued WorkManager work to an immutable destination identity, and test
+- ~~Scope the local backup ledger by verified server and account and preserve
+  v1 history through the Room upgrade.~~ [Validation](VALIDATION.md#android-destination-ledger-migration)
+- Migrate legacy single-server profiles, device IDs and backup settings without
+  losing local history. Bind queued WorkManager work to an immutable
+  destination identity, and test
   server switching, logout, retries, token isolation, changed files and
   destination-specific deduplication.
 - Define conflicts, offline behavior, encryption/transport, trust, revocation
